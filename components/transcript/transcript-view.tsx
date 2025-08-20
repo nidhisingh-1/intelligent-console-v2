@@ -12,9 +12,10 @@ interface TranscriptViewProps {
   transcript?: Call["transcript"]
   callId: string
   currentTime?: number
+  onMarkIssue?: (transcriptText: string, timestamp: number) => void
 }
 
-export function TranscriptView({ transcript, callId, currentTime = 0 }: TranscriptViewProps) {
+export function TranscriptView({ transcript, callId, currentTime = 0, onMarkIssue }: TranscriptViewProps) {
   // Remove local currentTime state - use prop from parent
   const [markIssueDialog, setMarkIssueDialog] = React.useState<{
     open: boolean
@@ -64,22 +65,29 @@ export function TranscriptView({ transcript, callId, currentTime = 0 }: Transcri
   }, [transcript])
 
   const handleWordClick = (timestamp: number) => {
+    // Move 1 second earlier by subtracting 1 from timestamp
+    const adjustedTimestamp = Math.max(0, timestamp - 1)
     // Only dispatch seek event to audio player - don't manage local state
     window.dispatchEvent(new CustomEvent('seekAudioToTime', { 
-      detail: { time: timestamp } 
+      detail: { time: adjustedTimestamp } 
     }))
-    console.log(`Seeking to ${timestamp}s`)
+    console.log(`Seeking to ${adjustedTimestamp}s (adjusted from ${timestamp}s)`)
   }
 
   const handleMarkIssue = (transcriptText: string, timestamp: number) => {
-    setMarkIssueDialog({
-      open: true,
-      transcriptText,
-      timestamp
-    })
+    if (onMarkIssue) {
+      onMarkIssue(transcriptText, timestamp)
+    } else {
+      // Fallback to local dialog if no callback provided
+      setMarkIssueDialog({
+        open: true,
+        transcriptText,
+        timestamp
+      })
+    }
   }
 
-  const handleIssueSubmit = (issue: { type: string; description: string; severity: string }) => {
+  const handleIssueSubmit = (issue: { issues: Array<{ type: string; severity: string }>; description: string }) => {
     // Here you would typically save the issue to your backend
     console.log("Issue marked:", {
       callId,
@@ -157,7 +165,7 @@ export function TranscriptView({ transcript, callId, currentTime = 0 }: Transcri
                         }}
                         className="text-xs text-gray-500 hover:text-gray-700 hover:underline font-medium ml-2 whitespace-nowrap"
                       >
-                        Mark issue
+                        M
                       </button>
                     </div>
                   </div>
@@ -172,14 +180,16 @@ export function TranscriptView({ transcript, callId, currentTime = 0 }: Transcri
         Click on any word or timestamp to seek to that position in the audio
       </div>
 
-      {/* Mark Issue Dialog */}
-      <MarkIssueDialog
-        open={markIssueDialog.open}
-        onOpenChange={(open) => setMarkIssueDialog(prev => ({ ...prev, open }))}
-        onSubmit={handleIssueSubmit}
-        transcriptText={markIssueDialog.transcriptText}
-        timestamp={markIssueDialog.timestamp}
-      />
+      {/* Mark Issue Dialog - Only show if no callback provided */}
+      {!onMarkIssue && (
+        <MarkIssueDialog
+          open={markIssueDialog.open}
+          onOpenChange={(open) => setMarkIssueDialog(prev => ({ ...prev, open }))}
+          onSubmit={handleIssueSubmit}
+          transcriptText={markIssueDialog.transcriptText}
+          timestamp={markIssueDialog.timestamp}
+        />
+      )}
     </div>
   )
 }

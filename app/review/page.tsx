@@ -34,15 +34,28 @@ export default function ReviewPage() {
   // Function to scroll to current transcript line
   const scrollToCurrentTranscriptLine = (currentTime: number) => {
     if (!transcriptContainerRef.current || !detailedCall?.callDetails?.messages) return
-    
+
     const messages = detailedCall.callDetails.messages
     // Move 1 second earlier by subtracting 1 from currentTime
     const adjustedTime = Math.max(0, currentTime - 1)
+
+    // Find the CURRENT message that's actively being spoken
+    let currentMessageIndex = -1
     
-    const currentMessageIndex = messages.findIndex((msg: any) => 
-      msg.secondsFromStart && msg.secondsFromStart >= adjustedTime
-    )
-    
+    // Loop through messages to find the one that should be active
+    for (let i = 0; i < messages.length; i++) {
+      const messageStart = messages[i]?.secondsFromStart
+      const nextMessageStart = messages[i + 1]?.secondsFromStart
+      
+      if (typeof messageStart === 'number' && messageStart <= adjustedTime) {
+        // Check if this is the current message by seeing if the next one starts after current time
+        if (typeof nextMessageStart !== 'number' || nextMessageStart > adjustedTime) {
+          currentMessageIndex = i
+          break
+        }
+      }
+    }
+
     if (currentMessageIndex !== -1) {
       const messageElements = transcriptContainerRef.current.children
       if (messageElements[currentMessageIndex]) {
@@ -56,6 +69,7 @@ export default function ReviewPage() {
 
   // Function to seek audio to a specific time
   const seekToTime = (seconds: number) => {
+    console.log('Seeking to time:', seconds)
     // Dispatch a custom event that the audio player can listen to
     window.dispatchEvent(new CustomEvent('seekAudioToTime', { 
       detail: { time: seconds } 
@@ -74,7 +88,7 @@ export default function ReviewPage() {
   }
 
   // Function to handle issue submission
-  const handleIssueSubmit = (issue: { type: string; description: string; severity: string }) => {
+  const handleIssueSubmit = (issue: { issues: Array<{ type: string; severity: string }>; description: string }) => {
     // Here you would typically save the issue to your backend
     console.log("Issue marked:", {
       callId: selectedCall?.id,
@@ -106,25 +120,96 @@ export default function ReviewPage() {
     }
   }, [selectedCall?.id])
 
-  // Global keyboard shortcuts for audio control
+  // Global keyboard shortcuts for audio control and mark issue
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      // Only handle spacebar when not typing in input fields
-      if (event.code === 'Space' && !(event.target as HTMLElement)?.tagName?.toLowerCase().includes('input')) {
-        event.preventDefault()
+      console.log('Key pressed:', event.code, 'Target:', (event.target as HTMLElement)?.tagName)
+      
+      // Only handle shortcuts when not typing in input fields
+      if (!(event.target as HTMLElement)?.tagName?.toLowerCase().includes('input')) {
+        // Spacebar - Play/Pause audio
+        if (event.code === 'Space') {
+          event.preventDefault()
+          console.log('Spacebar pressed - attempting to toggle audio')
+          
+          // Trigger play/pause if we have an audio player
+          if (detailedCall?.callDetails?.recordingUrl) {
+            console.log('Dispatching toggleAudioPlayPause event')
+            // We'll need to expose the audio player's play/pause function
+            // For now, we can dispatch a custom event that the audio player can listen to
+            window.dispatchEvent(new CustomEvent('toggleAudioPlayPause'))
+          } else {
+            console.log('No recording URL found')
+          }
+        }
         
-        // Trigger play/pause if we have an audio player
-        if (detailedCall?.callDetails?.recordingUrl) {
-          // We'll need to expose the audio player's play/pause function
-          // For now, we can dispatch a custom event that the audio player can listen to
-          window.dispatchEvent(new CustomEvent('toggleAudioPlayPause'))
+        // M key - Open Mark Issue popup
+        if (event.code === 'KeyM') {
+          event.preventDefault()
+          console.log('M key pressed - attempting to open mark issue dialog')
+          
+          // Open mark issue dialog with current transcript context
+          if (detailedCall?.callDetails?.messages && currentPlaybackTime > 0) {
+            console.log('Found messages and currentPlaybackTime:', currentPlaybackTime)
+            
+            // Find the current transcript line based on playback time
+            const messages = detailedCall.callDetails.messages
+            const adjustedTime = Math.max(0, currentPlaybackTime - 1)
+            
+            console.log('Looking for message around time:', adjustedTime)
+            console.log('Available messages:', messages.map((m: any) => ({ 
+              start: m.secondsFromStart, 
+              message: m.message?.substring(0, 50) + '...' 
+            })))
+            
+            let currentMessageIndex = -1
+            // Loop through messages to find the one that should be active
+            for (let i = 0; i < messages.length; i++) {
+              const messageStart = messages[i]?.secondsFromStart
+              const nextMessageStart = messages[i + 1]?.secondsFromStart
+              
+              if (typeof messageStart === 'number' && messageStart <= adjustedTime) {
+                // Check if this is the current message by seeing if the next one starts after current time
+                if (typeof nextMessageStart !== 'number' || nextMessageStart > adjustedTime) {
+                  currentMessageIndex = i
+                  break
+                }
+              }
+            }
+            
+            console.log('Selected message index:', currentMessageIndex)
+            
+            if (currentMessageIndex !== -1) {
+              const currentMessage = messages[currentMessageIndex]
+              console.log('Opening mark issue dialog for:', currentMessage.message)
+              setMarkIssueDialog({
+                open: true,
+                transcriptText: currentMessage.message || "Current transcript line",
+                timestamp: currentMessage.secondsFromStart || currentPlaybackTime
+              })
+            } else {
+              console.log('No current message found, using fallback')
+              // Fallback: open dialog with current time and a generic message
+              setMarkIssueDialog({
+                open: true,
+                transcriptText: "Current transcript line at " + Math.floor(currentPlaybackTime / 60) + ":" + (currentPlaybackTime % 60).toString().padStart(2, '0'),
+                timestamp: currentPlaybackTime
+              })
+            }
+          } else {
+            console.log('Missing data:', { 
+              hasMessages: !!detailedCall?.callDetails?.messages, 
+              currentPlaybackTime, 
+              hasRecordingUrl: !!detailedCall?.callDetails?.recordingUrl 
+            })
+          }
         }
       }
     }
 
     document.addEventListener('keydown', handleKeyPress)
     return () => document.removeEventListener('keydown', handleKeyPress)
-  }, [detailedCall?.callDetails?.recordingUrl])
+  }, [detailedCall?.callDetails?.recordingUrl, detailedCall?.callDetails?.messages, currentPlaybackTime])
 
   return (
     <AppShell>
@@ -157,27 +242,36 @@ export default function ReviewPage() {
                     </div>
                   </div>
                   
-                  <div className="mt-4 space-y-4">
-                    <div className="flex items-center text-sm">
-                      <span className="text-gray-900 font-bold w-28 flex-shrink-0">Phone number</span>
-                      <span className="text-gray-900">{selectedCall.phoneNumber}</span>
+                  <div className="mt-4 space-y-3">
+                    {/* Row 1: Phone number + Call length */}
+                    <div className="grid grid-cols-2 gap-8 text-sm">
+                      <div className="flex items-center">
+                        <span className="text-gray-900 font-bold w-28 flex-shrink-0">Phone number</span>
+                        <span className="text-gray-900">{selectedCall.phoneNumber}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-gray-900 font-bold w-20 flex-shrink-0">Call length</span>
+                        <span className="text-gray-900">{selectedCall.callLength}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center text-sm">
-                      <span className="text-gray-900 font-bold w-24">Call type</span>
-                      <span className={`px-3 py-1.5 text-xs text-center ${selectedCall.callType === 'Inbound' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`} style={{ borderRadius: '8px' }}>
-                        {selectedCall.callType}
-                      </span>
+                    
+                    {/* Row 2: Call type + Timestamp */}
+                    <div className="grid grid-cols-2 gap-8 text-sm">
+                      <div className="flex items-center">
+                        <span className="text-gray-900 font-bold w-24 flex-shrink-0">Call type</span>
+                        <span className={`px-3 py-1.5 text-xs text-center ${selectedCall.callType === 'Inbound' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`} style={{ borderRadius: '8px' }}>
+                          {selectedCall.callType}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-gray-900 font-bold w-20 flex-shrink-0">Timestamp</span>
+                        <span className="text-gray-900">{selectedCall.timestamp}</span>
+                      </div>
                     </div>
+                    
+                    {/* Row 3: Call Priority */}
                     <div className="flex items-center text-sm">
-                      <span className="text-gray-900 font-bold w-24">Call length</span>
-                      <span className="text-gray-900">{selectedCall.callLength}</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <span className="text-gray-900 font-bold w-24">Timestamp</span>
-                      <span className="text-gray-900">{selectedCall.timestamp}</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <span className="text-gray-900 font-bold w-24">Call Priority</span>
+                      <span className="text-gray-900 font-bold w-24 flex-shrink-0">Call Priority</span>
                       <span className={`px-3 py-1.5 text-xs ${selectedCall.callPriority === 'High' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`} style={{ borderRadius: '8px' }}>
                         {selectedCall.callPriority}
                       </span>
@@ -197,21 +291,23 @@ export default function ReviewPage() {
 
             {selectedCall && (
               <>
-                {/* Navigation Tabs */}
-                <div className="border-b border-gray-200 mb-6">
-                  <nav className="flex space-x-8">
-                    <button className="border-b-2 border-purple-500 text-purple-600 py-2 px-1 text-sm font-medium">
-                      Overview
-                    </button>
-                    <button className="border-b-2 border-transparent text-gray-500 hover:text-gray-700 py-2 px-1 text-sm font-medium">
-                      QC Details
-                    </button>
-                  </nav>
-                </div>
+
 
                 {/* Combined Call Recording and Transcription Card */}
                 <div className="bg-gray-50 border border-gray-300 pt-4 px-6 pb-6 shadow-md" style={{ borderRadius: '16px' }}>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-300">Call Recording</h3>
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-300">
+                    <h3 className="text-lg font-semibold text-gray-900">Call Recording</h3>
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <kbd className="px-2 py-1 bg-gray-200 rounded text-xs font-mono">Space</kbd>
+                        Play/Pause
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <kbd className="px-2 py-1 bg-gray-200 rounded text-xs font-mono">M</kbd>
+                        Mark Issue
+                      </span>
+                    </div>
+                  </div>
                   
                   {isLoadingCall ? (
                     <div className="space-y-6">
@@ -305,11 +401,27 @@ export default function ReviewPage() {
                             // Determine if this is the currently active transcript line
                             // Move 1 second earlier by subtracting 1 from currentPlaybackTime
                             const adjustedPlaybackTime = Math.max(0, currentPlaybackTime - 1)
-                            const isCurrentLine = message.secondsFromStart && 
-                              message.secondsFromStart <= adjustedPlaybackTime && 
-                              (index === detailedCall.callDetails.messages.length - 1 || 
-                               !detailedCall.callDetails.messages[index + 1]?.secondsFromStart || 
-                               detailedCall.callDetails.messages[index + 1]?.secondsFromStart > adjustedPlaybackTime)
+                            const messageStart = message.secondsFromStart
+                            const nextStart = detailedCall.callDetails.messages[index + 1]?.secondsFromStart
+                            
+                            // A message is current if:
+                            // 1. It has a valid start time
+                            // 2. It starts at or before the current playback time (adjusted)
+                            // 3. AND either it's the last message OR the next message starts after current time
+                            const isCurrentLine = typeof messageStart === 'number' && 
+                              messageStart <= adjustedPlaybackTime && 
+                              (
+                                index === detailedCall.callDetails.messages.length - 1 ||
+                                typeof nextStart !== 'number' ||
+                                nextStart > adjustedPlaybackTime
+                              )
+                            
+                            // Debug: Log highlighting logic for clicked messages
+                            if (Math.abs(messageStart - currentPlaybackTime) < 2) { // Within 2 seconds
+                              console.log(`Highlighting debug - Message ${index}: start=${messageStart}, currentTime=${currentPlaybackTime}, adjustedTime=${adjustedPlaybackTime}, isCurrent=${isCurrentLine}`)
+                            }
+                            
+
                             
                             return (
                               <div 

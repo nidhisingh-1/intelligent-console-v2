@@ -147,9 +147,48 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
 
     useEffect(() => {
       onTimeUpdate?.(
-        showWaveform ? Math.round(wavesurferCurrentTime) : Math.round(progress)
+        showWaveform ? wavesurferCurrentTime : progress
       );
-    }, [showWaveform, Math.round(wavesurferCurrentTime), Math.round(progress)]);
+    }, [showWaveform, wavesurferCurrentTime, progress]);
+
+    // Listen for seek events from transcript clicks
+    useEffect(() => {
+      const handleSeekEvent = (event: CustomEvent) => {
+        const { time } = event.detail;
+        handleSeek(time);
+      };
+
+      window.addEventListener('seekAudioToTime', handleSeekEvent as EventListener);
+      
+      return () => {
+        window.removeEventListener('seekAudioToTime', handleSeekEvent as EventListener);
+      };
+    }, []);
+
+    // Listen for play/pause toggle events
+    useEffect(() => {
+      const handleToggleEvent = () => {
+        console.log('Audio player received toggleAudioPlayPause event')
+        if (showWaveform) {
+          console.log('Toggling wavesurfer play/pause')
+          wavesurfer?.playPause();
+        } else {
+          console.log('Toggling HTML audio play/pause')
+          if (!audioPlayerRef.current) return;
+          if (audioPlayerRef.current.paused) {
+            audioPlayerRef.current.play();
+          } else {
+            audioPlayerRef.current.pause();
+          }
+        }
+      };
+
+      window.addEventListener('toggleAudioPlayPause', handleToggleEvent);
+      
+      return () => {
+        window.removeEventListener('toggleAudioPlayPause', handleToggleEvent);
+      };
+    }, [showWaveform, wavesurfer]);
 
     const handleSeek = (time: number) => {
       if (showWaveform) {

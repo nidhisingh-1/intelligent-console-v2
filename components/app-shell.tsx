@@ -32,12 +32,6 @@ const navigation = [
     description: "Call review dashboard",
   },
   {
-    name: "QC Analytics",
-    href: "/dashboard",
-    icon: BarChart3,
-    description: "Analytics and status overview",
-  },
-  {
     name: "Enum Management",
     href: "/enums",
     icon: Settings,
@@ -72,41 +66,15 @@ export function AppShell({ children }: AppShellProps) {
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div className={cn("flex flex-col", mobile ? "h-full" : "h-screen")}>
-      <div className="flex h-16 items-center border-b px-6">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold">QC Dashboard</span>
-        </div>
-      </div>
-      <nav className="flex-1 space-y-1 p-4">
-        {navigation.map((item) => {
-          const isActive = pathname.startsWith(item.href)
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={() => mobile && setMobileMenuOpen(false)}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                "hover:bg-[rgba(245,244,247,255)] hover:text-[#6825d8]",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                isActive ? "bg-[rgba(245,244,247,255)] text-[#6825d8]" : "text-muted-foreground",
-              )}
-              aria-current={isActive ? "page" : undefined}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.name}
-            </Link>
-          )
-        })}
-      </nav>
+      {/* Empty sidebar - navigation moved to top header */}
     </div>
   )
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Desktop Sidebar */}
-      <div className="hidden w-64 border-r bg-card lg:block">
-        <Sidebar />
+      {/* Desktop Sidebar - Hidden since navigation moved to top header */}
+      <div className="hidden lg:block">
+        {/* Sidebar removed - navigation now in top header */}
       </div>
 
       {/* Mobile Sidebar */}
@@ -119,30 +87,60 @@ export function AppShell({ children }: AppShellProps) {
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="flex h-16 items-center gap-4 bg-card px-6">
-          {/* Mobile Menu Button */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(true)}>
-                <Menu className="h-4 w-4" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-          </Sheet>
+        <header className="flex flex-col bg-card">
+          {/* Main Header Row */}
+          <div className="flex h-16 items-center gap-4 px-6">
+            {/* Mobile Menu Button */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(true)}>
+                  <Menu className="h-4 w-4" />
+                  <span className="sr-only">Toggle navigation menu</span>
+                </Button>
+              </SheetTrigger>
+            </Sheet>
 
-          {/* Spacer */}
-          <div className="flex-1" />
+            {/* Spacer */}
+            <div className="flex-1" />
 
-          {/* Theme toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-          >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Toggle theme</span>
-          </Button>
+            {/* Theme toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            >
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <span className="sr-only">Toggle theme</span>
+            </Button>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="border-b border-gray-200 px-6">
+            <nav className="flex">
+              {navigation.map((item) => {
+                const isActive = pathname.startsWith(item.href)
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2",
+                      "hover:text-[#6825d8] hover:border-[#6825d8]",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      isActive 
+                        ? "text-[#6825d8] border-[#6825d8]" 
+                        : "text-muted-foreground border-transparent"
+                    )}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.name}
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
         </header>
 
         {/* Page Content */}
