@@ -119,66 +119,30 @@ export function AppShell({ children }: AppShellProps) {
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="flex h-16 items-center justify-between bg-card px-6">
-          {/* Left side - Mobile Menu Button */}
-          <div className="flex items-center gap-4">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(true)}>
-                  <Menu className="h-4 w-4" />
-                  <span className="sr-only">Toggle navigation menu</span>
-                </Button>
-              </SheetTrigger>
-            </Sheet>
-          </div>
+        <header className="flex h-16 items-center gap-4 bg-card px-6">
+          {/* Mobile Menu Button */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileMenuOpen(true)}>
+                <Menu className="h-4 w-4" />
+                <span className="sr-only">Toggle navigation menu</span>
+              </Button>
+            </SheetTrigger>
+          </Sheet>
 
-          {/* Center - Enterprise and Team Filters */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label htmlFor="enterprise-filter" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Enterprise ID:
-              </label>
-              <select
-                id="enterprise-filter"
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-w-[140px]"
-                defaultValue="nextgear"
-              >
-                <option value="nextgear">NextGear</option>
-                <option value="enterprise-001">Enterprise 001</option>
-                <option value="enterprise-002">Enterprise 002</option>
-                <option value="enterprise-003">Enterprise 003</option>
-              </select>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <label htmlFor="team-filter" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Team ID:
-              </label>
-              <select
-                id="team-filter"
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-w-[140px]"
-                defaultValue="nextgear"
-              >
-                <option value="nextgear">NextGear</option>
-                <option value="team-001">Team 001</option>
-                <option value="team-002">Team 002</option>
-                <option value="team-003">Team 003</option>
-              </select>
-            </div>
-          </div>
+          {/* Spacer */}
+          <div className="flex-1" />
 
-          {/* Right side - Theme toggle and other controls can go here */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-            >
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-          </div>
+          {/* Theme toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+          >
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+          </Button>
         </header>
 
         {/* Page Content */}

@@ -107,7 +107,10 @@ export const MOCKS = {
       severity: "HIGH",
       timestamp: 15000,
       transcriptText: "I can't seem to log into my account",
-      createdAt: "2024-01-15T10:35:00Z"
+      createdAt: "2024-01-15T10:35:00Z",
+      callTsSec: 15,
+      note: "Customer needs password reset",
+      aiSummary: "Account access issue requiring immediate attention"
     }
   ] as Annotation[],
   
@@ -147,6 +150,54 @@ export const MOCKS = {
     {
       id: "dealership-1",
       name: "Main Branch"
+    }
+  ],
+  
+  occurrences: [
+    {
+      id: "occ-1",
+      enumId: "enum-1",
+      reviewId: "review-1",
+      severity: "HIGH",
+      timestamp: "2024-01-15T10:30:00Z",
+      resolved: false
+    },
+    {
+      id: "occ-2",
+      enumId: "enum-2",
+      reviewId: "review-2",
+      severity: "MEDIUM",
+      timestamp: "2024-01-15T14:15:00Z",
+      resolved: true
+    },
+    {
+      id: "occ-3",
+      enumId: "enum-1",
+      reviewId: "review-3",
+      severity: "LOW",
+      timestamp: "2024-01-16T09:20:00Z",
+      resolved: false
+    }
+  ],
+  
+  resolutions: [
+    {
+      id: "res-1",
+      enumId: "enum-1",
+      status: "In Progress",
+      assignedTo: "agent-1",
+      scope: "Technical",
+      createdAt: "2024-01-15T10:30:00Z",
+      updatedAt: "2024-01-16T12:00:00Z"
+    },
+    {
+      id: "res-2",
+      enumId: "enum-2",
+      status: "Resolved",
+      assignedTo: "agent-2",
+      scope: "Business",
+      createdAt: "2024-01-15T14:15:00Z",
+      updatedAt: "2024-01-15T16:30:00Z"
     }
   ]
 }

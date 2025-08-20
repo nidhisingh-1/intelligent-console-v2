@@ -26,6 +26,39 @@ export interface Call {
   agentId?: string
 }
 
+export type Severity = "LOW" | "MEDIUM" | "HIGH"
+
+export interface QAAnnotation {
+  id: string
+  reviewId: string
+  enumId?: string
+  type: string
+  description: string
+  severity: string
+  timestamp: number
+  transcriptText: string
+  createdAt: string
+  callTsSec: number
+  note?: string
+  aiSummary?: string
+}
+
+export interface Filters {
+  dateRange: {
+    from: Date | undefined
+    to: Date | undefined
+  }
+  status: string[]
+  priority: string[]
+  callType: string[]
+  severity: string[]
+  searchQuery: string
+  dealerships: string[]
+  agents: string[]
+  aiOnly: boolean
+  enumStatus: string[]
+}
+
 export interface QAReview {
   id: string
   callId: string
@@ -55,4 +88,7 @@ export interface Annotation {
   timestamp: number
   transcriptText: string
   createdAt: string
+  callTsSec: number
+  note?: string
+  aiSummary?: string
 }

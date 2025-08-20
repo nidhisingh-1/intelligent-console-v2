@@ -36,8 +36,11 @@ export default function ReviewPage() {
     if (!transcriptContainerRef.current || !detailedCall?.callDetails?.messages) return
     
     const messages = detailedCall.callDetails.messages
+    // Move 1 second earlier by subtracting 1 from currentTime
+    const adjustedTime = Math.max(0, currentTime - 1)
+    
     const currentMessageIndex = messages.findIndex((msg: any) => 
-      msg.secondsFromStart && msg.secondsFromStart >= currentTime
+      msg.secondsFromStart && msg.secondsFromStart >= adjustedTime
     )
     
     if (currentMessageIndex !== -1) {
@@ -273,7 +276,7 @@ export default function ReviewPage() {
                     {isLoadingCall ? (
                       <div className="space-y-3">
                         {/* Transcript Skeleton */}
-                        {Array.from({ length: 5 }).map((_, index) => (
+                        {Array.from({ length: 8 }).map((_, index) => (
                           <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
                             <div className="flex items-start justify-between mb-2">
                               <div className="w-16 h-4 bg-gray-200 rounded"></div>
@@ -294,23 +297,26 @@ export default function ReviewPage() {
                             const isAI = message.role === 'bot'
                             const speaker = isAI ? 'Agent' : formatCustomerName(detailedCall.callDetails.name || '')
                             
-                            // Use real timestamp if available, otherwise don't show
+                            // Format timestamp from secondsFromStart to [MM:SS] format
                             const timestamp = message.secondsFromStart 
                               ? `[${Math.floor(message.secondsFromStart / 60)}:${Math.floor(message.secondsFromStart % 60).toString().padStart(2, '0')}]`
                               : null
                             
+                            // Determine if this is the currently active transcript line
+                            // Move 1 second earlier by subtracting 1 from currentPlaybackTime
+                            const adjustedPlaybackTime = Math.max(0, currentPlaybackTime - 1)
                             const isCurrentLine = message.secondsFromStart && 
-                              message.secondsFromStart <= currentPlaybackTime && 
+                              message.secondsFromStart <= adjustedPlaybackTime && 
                               (index === detailedCall.callDetails.messages.length - 1 || 
                                !detailedCall.callDetails.messages[index + 1]?.secondsFromStart || 
-                               detailedCall.callDetails.messages[index + 1]?.secondsFromStart > currentPlaybackTime)
+                               detailedCall.callDetails.messages[index + 1]?.secondsFromStart > adjustedPlaybackTime)
                             
                             return (
                               <div 
                                 key={index} 
                                 className={`border rounded-lg p-4 transition-colors shadow-sm cursor-pointer relative ${
                                   isCurrentLine 
-                                    ? 'bg-blue-50 border-blue-300' 
+                                    ? 'bg-purple-100 border-purple-300' 
                                     : 'bg-white border-gray-200 hover:bg-gray-50'
                                 }`}
                                 onClick={() => message.secondsFromStart && seekToTime(message.secondsFromStart)}
@@ -353,7 +359,59 @@ export default function ReviewPage() {
                           })}
                         </div>
                       </div>
-                    ) : detailedCall?.callDetails?.transcript ? (
+                    ) : detailedCall?.callDetails?.transcript && Array.isArray(detailedCall.callDetails.transcript) && detailedCall.callDetails.transcript.length > 0 ? (
+                      <div>
+                        <div ref={transcriptContainerRef} className="space-y-3 max-h-96 overflow-y-auto">
+                          {detailedCall.callDetails.transcript.map((item: any, index: number) => {
+                            const isAI = item.speaker === 'Agent'
+                            const speaker = isAI ? 'Agent' : formatCustomerName(detailedCall.callDetails.name || '')
+                            
+                            // Use timestamp from transcript data
+                            const timestamp = item.timestamp ? item.timestamp : null
+                            
+                            return (
+                              <div 
+                                key={index} 
+                                className="border rounded-lg p-4 transition-colors shadow-sm cursor-pointer relative bg-white border-gray-200 hover:bg-gray-50"
+                              >
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className={`text-sm font-medium ${
+                                    isAI 
+                                      ? 'text-[#4f45e6]' 
+                                      : 'text-green-800'
+                                  }`}>
+                                    {speaker}
+                                  </div>
+                                  {timestamp && (
+                                    <div className="text-xs text-gray-500">
+                                      {timestamp}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 pb-8">
+                                  <p className="text-sm text-gray-900 leading-relaxed">
+                                    {item.text}
+                                  </p>
+                                </div>
+                                
+                                {/* Mark Issue Button - Bottom Right */}
+                                <div className="absolute bottom-3 right-3">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleMarkIssue(item.text, 0) // No timestamp available in this format
+                                    }}
+                                    className="text-xs text-gray-500 hover:text-gray-700 hover:underline font-medium"
+                                  >
+                                    Mark issue
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ) : detailedCall?.callDetails?.transcript && typeof detailedCall.callDetails.transcript === 'string' ? (
                       <div>
                         <div className="space-y-3 max-h-96 overflow-y-auto">
                           {detailedCall.callDetails.transcript.split('\n').map((line: string, index: number) => {

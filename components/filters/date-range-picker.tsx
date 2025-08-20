@@ -20,7 +20,7 @@ export function DateRangePicker() {
 
   React.useEffect(() => {
     if (date?.from !== filters.dateRange.from || date?.to !== filters.dateRange.to) {
-      setDateRange({ from: date?.from, to: date?.to })
+      setDateRange(date?.from, date?.to)
     }
   }, [date, filters.dateRange, setDateRange])
 

@@ -31,7 +31,7 @@ export function EnumFormDialog({ open, onOpenChange, enum_ }: EnumFormDialogProp
   const [code, setCode] = React.useState(enum_?.code || "")
   const [title, setTitle] = React.useState(enum_?.title || "")
   const [description, setDescription] = React.useState(enum_?.description || "")
-  const [defaultSeverity, setDefaultSeverity] = React.useState<Severity>(enum_?.defaultSeverity || "MEDIUM")
+  const [defaultSeverity, setDefaultSeverity] = React.useState<Severity>((enum_?.severity as Severity) || "MEDIUM")
   const [isActive, setIsActive] = React.useState(enum_?.isActive ?? true)
   const [errors, setErrors] = React.useState<Record<string, string>>({})
 
@@ -43,7 +43,7 @@ export function EnumFormDialog({ open, onOpenChange, enum_ }: EnumFormDialogProp
       setCode(enum_?.code || "")
       setTitle(enum_?.title || "")
       setDescription(enum_?.description || "")
-      setDefaultSeverity(enum_?.defaultSeverity || "MEDIUM")
+      setDefaultSeverity((enum_?.severity as Severity) || "MEDIUM")
       setIsActive(enum_?.isActive ?? true)
       setErrors({})
     }

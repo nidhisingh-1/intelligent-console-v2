@@ -36,7 +36,7 @@ export function MergeEnumDialog({ open, onOpenChange, sourceEnum }: MergeEnumDia
   const targetEnum = availableTargets.find((e) => e.id === targetEnumId)
 
   // Check if severities are different
-  const hasSeverityMismatch = targetEnum && targetEnum.defaultSeverity !== sourceEnum.defaultSeverity
+  const hasSeverityMismatch = targetEnum && targetEnum.severity !== sourceEnum.severity
 
   // Get usage statistics for the source enum
   const sourceUsage = React.useMemo(() => {

@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Clock } from "lucide-react"
 import { fetchCalls, transformCallData } from "@/lib/api"
-import { dummyCalls } from "@/lib/dummyCalls"
 
 interface TransformedCall {
   id: string
@@ -37,6 +36,7 @@ interface CallsTableProps {
 export function CallsTable({ onCallSelect }: CallsTableProps) {
   const [calls, setCalls] = React.useState<TransformedCall[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
   const [selectedCallId, setSelectedCallId] = React.useState<string | null>(null)
 
   // Fetch calls from API
@@ -44,13 +44,15 @@ export function CallsTable({ onCallSelect }: CallsTableProps) {
     const loadCalls = async () => {
       try {
         setIsLoading(true)
-        const response = await fetchCalls(20) // Get last 20 calls
-        const transformedCalls = response.data.map(transformCallData)
+        setError(null)
+        const response = await fetchCalls(100) // Get last 100 calls
+        const apiCalls = Array.isArray(response?.data) ? response.data : []
+        const transformedCalls = apiCalls.map(transformCallData)
         setCalls(transformedCalls)
       } catch (error) {
         console.error('Error loading calls:', error)
-        // Fallback to dummy data if API fails
-        setCalls(dummyCalls)
+        setError('Failed to load calls from the server.')
+        setCalls([])
       } finally {
         setIsLoading(false)
       }
@@ -93,6 +95,15 @@ export function CallsTable({ onCallSelect }: CallsTableProps) {
             </div>
           </div>
         ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-center text-red-600">
+        <h3 className="mt-2 text-sm font-medium">{error}</h3>
+        <p className="mt-1 text-sm text-gray-500">Please try again later.</p>
       </div>
     )
   }

@@ -75,24 +75,8 @@ export async function fetchCalls(limit: number = 20): Promise<ApiResponse> {
     return await response.json()
   } catch (error) {
     console.error('Error fetching calls:', error)
-    return { 
-      data: [], 
-      analytics: {
-        totalCalls: 0,
-        appointmentCount: 0,
-        sentimentBreakdown: { happy: 0, sad: 0, angry: 0, neutral: 0 },
-        avgAiScore: 0,
-        sentimentAnalysis: []
-      }, 
-      pagination: {
-        page: 1,
-        limit: limit,
-        total: 0,
-        totalPages: 0,
-        hasNextPage: false,
-        hasPrevPage: false
-      } 
-    }
+    // Re-throw so UI can explicitly surface the failure
+    throw error
   }
 }
 

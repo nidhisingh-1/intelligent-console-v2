@@ -266,7 +266,7 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
           </span>
         </div>
         {showWaveform ? (
-          <div ref={wavesurferContainerRef} className="flex-1 bg-gray-50 rounded-lg p-2"></div>
+          <div ref={wavesurferContainerRef} className="flex-1 bg-gray-50 rounded-lg p-2 h-16"></div>
         ) : (
           <div
             ref={progressRef}

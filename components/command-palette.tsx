@@ -23,10 +23,10 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const router = useRouter()
-  const resetFilters = useFiltersStore((state) => state.resetFilters)
+  const { resetFilters } = useFiltersStore()
   const [searchQuery, setSearchQuery] = React.useState("")
 
-  const { data: searchResults } = useGlobalSearch(searchQuery)
+  const { data: searchResults } = useGlobalSearch()
 
   const runCommand = React.useCallback(
     (command: () => unknown) => {
@@ -66,7 +66,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         <CommandSeparator />
 
         <CommandGroup heading="Quick Actions">
-          <CommandItem onSelect={() => runCommand(() => resetFilters())}>
+          <CommandItem onSelect={() => runCommand(() => resetFilters)}>
             <Filter className="mr-2 h-4 w-4" />
             <span>Reset All Filters</span>
           </CommandItem>

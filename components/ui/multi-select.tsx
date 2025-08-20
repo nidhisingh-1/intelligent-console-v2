@@ -25,8 +25,10 @@ export interface Option {
 
 interface MultiSelectProps {
   options: Option[]
-  selected: string[]
-  onChange: (selected: string[]) => void
+  selected?: string[]
+  value?: string[]
+  onChange?: (selected: string[]) => void
+  onValueChange?: (selected: string[]) => void
   placeholder?: string
   className?: string
   disabled?: boolean
@@ -35,22 +37,28 @@ interface MultiSelectProps {
 export function MultiSelect({
   options,
   selected,
+  value,
   onChange,
+  onValueChange,
   placeholder = "Select options...",
   className,
   disabled = false,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
 
+  // Use value or selected for backward compatibility
+  const currentValue = value || selected || []
+  const currentOnChange = onValueChange || onChange || (() => {})
+
   const handleUnselect = (item: string) => {
-    onChange(selected.filter((i) => i !== item))
+    currentOnChange(currentValue.filter((i) => i !== item))
   }
 
   const handleSelect = (item: string) => {
-    if (selected.includes(item)) {
-      onChange(selected.filter((i) => i !== item))
+    if (currentValue.includes(item)) {
+      currentOnChange(currentValue.filter((i) => i !== item))
     } else {
-      onChange([...selected, item])
+      currentOnChange([...currentValue, item])
     }
   }
 
@@ -63,14 +71,14 @@ export function MultiSelect({
           aria-expanded={open}
           className={cn(
             "w-full justify-between",
-            !selected.length && "text-muted-foreground",
+            !currentValue.length && "text-muted-foreground",
             className
           )}
           disabled={disabled}
         >
           <div className="flex gap-1 flex-wrap">
-            {selected.length === 0 && placeholder}
-            {selected.map((item) => (
+            {currentValue.length === 0 && placeholder}
+            {currentValue.map((item) => (
               <Badge
                 variant="secondary"
                 key={item}
@@ -119,7 +127,7 @@ export function MultiSelect({
                 <Check
                   className={cn(
                     "mr-2 h-4 w-4",
-                    selected.includes(option.value) ? "opacity-100" : "opacity-0"
+                    currentValue.includes(option.value) ? "opacity-100" : "opacity-0"
                   )}
                 />
                 {option.label}

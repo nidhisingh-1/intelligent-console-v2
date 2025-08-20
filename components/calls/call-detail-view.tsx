@@ -124,7 +124,7 @@ export function CallDetailView({ call }: CallDetailViewProps) {
 
             {/* Review Summary - Fixed at bottom */}
             <div className="border-t bg-card p-6">
-              <ReviewSummaryCard callId={call.id} review={null} />
+              <ReviewSummaryCard callId={call.id} />
             </div>
           </div>
         </div>
