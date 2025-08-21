@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { AppShell } from "@/components/app-shell"
 import { CallsTable } from "@/components/calls/calls-table"
-import AudioPlayer from "@/components/audio/audio-player"
+import AudioPlayer, { AudioPlayerRef } from "@/components/audio/audio-player"
 import { MarkIssueForm, MarkIssueFormRef } from "@/components/transcript/mark-issue-form"
 import { fetchCallById } from "@/lib/api"
 
@@ -15,6 +15,7 @@ export default function ReviewPage() {
   const [isLoadingCall, setIsLoadingCall] = React.useState(false)
   const [currentPlaybackTime, setCurrentPlaybackTime] = React.useState(0)
   const transcriptContainerRef = React.useRef<HTMLDivElement>(null)
+  const audioPlayerRef = useRef<AudioPlayerRef>(null)
   
   // Mark Issue state
   const [markIssueData, setMarkIssueData] = React.useState<{
@@ -164,28 +165,23 @@ export default function ReviewPage() {
 
   // Function to seek audio to a specific time
   const seekToTime = (seconds: number) => {
-    console.log('🎯 SEEKING to time:', seconds, 'seconds')
-    
-    // Dispatch a custom event that the audio player can listen to
-    window.dispatchEvent(new CustomEvent('seekAudioToTime', { 
-      detail: { time: seconds } 
-    }))
-    
-    // Update the current playback time to reflect the seek
-    setCurrentPlaybackTime(seconds)
-    
-    // Ensure audio continues playing after seek with multiple attempts
-    const ensurePlayback = () => {
-      if (detailedCall?.callDetails?.recordingUrl) {
-        console.log('🚀 Ensuring audio plays after seek to', seconds, 's')
-        window.dispatchEvent(new CustomEvent('ensureAudioPlaying'))
-      }
+    // Try direct ref approach first
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.seek(seconds)
+    } else {
+      // Fallback to event approach
+      window.dispatchEvent(new CustomEvent('seekAudioToTime', { 
+        detail: { time: seconds } 
+      }))
     }
     
-    // Try multiple times to ensure audio plays
-    setTimeout(ensurePlayback, 100)  // First attempt
-    setTimeout(ensurePlayback, 300)  // Second attempt
-    setTimeout(ensurePlayback, 500)  // Third attempt
+    // Update the current playback time
+    setCurrentPlaybackTime(seconds)
+    
+    // Ensure audio plays after seek
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('ensureAudioPlaying'))
+    }, 100)
   }
 
   // Mark Issue handlers
@@ -588,6 +584,7 @@ export default function ReviewPage() {
                       ) : detailedCall?.callDetails?.recordingUrl ? (
                         <div className="px-6">
                           <AudioPlayer
+                            ref={audioPlayerRef}
                             audioUrl={detailedCall.callDetails.recordingUrl}
                             showWaveform={true}
                             onTimeUpdate={(currentTime) => {
@@ -700,17 +697,13 @@ export default function ReviewPage() {
                                       : 'bg-card border-border hover:bg-muted/50'
                                   }`}
                                   onClick={() => {
-                                    if (message.secondsFromStart) {
-                                      console.log(`🎯 Clicked transcript card ${index}: seeking to ${message.secondsFromStart}s`)
-                                      seekToTime(message.secondsFromStart)
-                                      
-                                      setTimeout(() => {
-                                        if (detailedCall?.callDetails?.recordingUrl) {
-                                          console.log('🚀 Ensuring audio plays after seek')
-                                          window.dispatchEvent(new CustomEvent('ensureAudioPlaying'))
-                                        }
-                                      }, 150)
-                                    }
+                                    // Calculate time based on message index and call duration
+                                    const totalMessages = detailedCall.callDetails.messages.length;
+                                    const callDuration = detailedCall.duration || 300; // Default to 5 minutes if no duration
+                                    const estimatedTime = Math.floor((index / Math.max(totalMessages - 1, 1)) * callDuration);
+                                    
+                                    // Optional: console.log(`Seeking to ${estimatedTime}s (card ${index})`)
+                                    seekToTime(estimatedTime)
                                     setSelectedTranscriptIndex(index)
                                   }}
                                   title="Click to jump to this point in audio"

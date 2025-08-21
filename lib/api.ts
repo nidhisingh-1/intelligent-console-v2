@@ -13,6 +13,14 @@ export interface CallData {
     transcript?: string
     startedAt?: string
     endedAt?: string
+    messages?: Array<{
+      role: string
+      message: string
+      timestamp?: string | number
+      secondsFromStart?: number
+      time?: number
+      startTime?: number
+    }>
   }
   createdAt: string
   note: string
