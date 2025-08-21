@@ -15,8 +15,19 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, X, Filter, ArrowRight, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COMPREHENSIVE_ENUMS, ENUM_CATEGORIES } from "@/lib/comprehensive-enums"
+
+interface PreviousIssue {
+  id: string
+  type: string
+  severity: string
+  timestamp: number
+  transcriptText: string
+  createdAt: string
+}
 
 interface MarkIssueDialogProps {
   open: boolean
@@ -24,77 +35,41 @@ interface MarkIssueDialogProps {
   onSubmit: (issue: { issues: Array<{ type: string; severity: string }>; description: string }) => void
   transcriptText: string
   timestamp: number
+  callId: string
+  previousIssues?: PreviousIssue[]
 }
 
-// Flattened issue types with category metadata for easier navigation
-const ISSUE_TYPES = [
-  // Communication Issues
-  { id: "long-pauses", text: "Long/awkward pauses or random breaks", category: "Communication" },
-  { id: "lag-reply", text: "Lag in agent reply", category: "Communication" },
-  { id: "call-collision", text: "Call collision (agent & customer talk over each other)", category: "Communication" },
-  { id: "cuts-customer", text: "Agent cuts customer mid-speech", category: "Communication" },
-  { id: "speaks-slowly", text: "Agent speaks too slowly", category: "Communication" },
-  { id: "rushes-info", text: "Agent rushes info (too fast after search)", category: "Communication" },
-  { id: "monologue", text: "Agent dumps >3 sentences at once (monologue)", category: "Communication" },
-  { id: "endless-confirmations", text: "Endless confirmations / repeating same question", category: "Communication" },
-  { id: "silence-not-handled", text: "Silence not handled (no checkback after 2–3s)", category: "Communication" },
-  { id: "overly-friendly", text: "Overly friendly (e.g., \"Nice choice\", \"Good choice\")", category: "Communication" },
-  { id: "uses-slang", text: "Uses slang (\"slick\", \"trendy\")", category: "Communication" },
-  { id: "overuses-filler", text: "Overuses filler (\"Good question\" after everything)", category: "Communication" },
-  { id: "sounds-robotic", text: "Sounds robotic", category: "Communication" },
-  
-  // Technical Problems
-  { id: "call-cut-abruptly", text: "Call cut abruptly (no recovery)", category: "Technical" },
-  { id: "background-noise", text: "Background noise not handled", category: "Technical" },
-  { id: "stock-search-failed", text: "Search by stock number not working", category: "Technical" },
-  { id: "vin-search-failed", text: "Search by VIN not working", category: "Technical" },
-  { id: "inventory-search-failed", text: "Inventory search failed (no data returned)", category: "Technical" },
-  { id: "dealer-crm-not-linked", text: "Dealer CRM not linked", category: "Technical" },
-  { id: "call-log-sync", text: "Call log data sync issues", category: "Technical" },
-  { id: "vin-solutions-data", text: "VIN Solutions data not handled", category: "Technical" },
-  { id: "past-conversation-missing", text: "Past conversation data missing", category: "Technical" },
-  { id: "fuzzy-search-missing", text: "Fuzzy stock search missing", category: "Technical" },
-  { id: "no-inventory-data", text: "Agent doesn't have inventory data", category: "Technical" },
-  
-  // Information Accuracy
-  { id: "wrong-car-color", text: "Wrong car color informed", category: "Information" },
-  { id: "wrong-stock-vin", text: "Wrong/missing stock number or VIN", category: "Information" },
-  { id: "stock-number-confusion", text: "Confusion between \"a\" and \"8\" in stock number", category: "Information" },
-  { id: "fabricates-info", text: "Agent fabricates inventory info", category: "Information" },
-  { id: "cant-narrow-search", text: "Agent unable to narrow down search results", category: "Information" },
-  { id: "carfax-missing", text: "Carfax info missing or not explained", category: "Information" },
-  { id: "dealer-location-early", text: "Dealer location given too early", category: "Information" },
-  { id: "dealer-details-assumed", text: "Dealer details assumed incorrectly", category: "Information" },
-  { id: "missing-date-context", text: "Current date/time context missing", category: "Information" },
-  { id: "rounded-pricing", text: "Agent provides rounded-off pricing", category: "Information" },
-  { id: "incorrect-miles-format", text: "Agent uses \"k\" for miles incorrectly", category: "Information" },
-  { id: "missing-otd-price", text: "Out-the-door price missing", category: "Information" },
-  
-  // Process & Workflow
-  { id: "callback-setup-failed", text: "Callback setup failed (customer left waiting)", category: "Process" },
-  { id: "customer-name-not-asked", text: "Customer name not asked", category: "Process" },
-  { id: "appointment-not-booked", text: "Appointment not booked", category: "Process" },
-  { id: "appointment-repeated", text: "Appointment booking repeated unnecessarily", category: "Process" },
-  { id: "appointment-off-day", text: "Appointment booked on dealership off-day", category: "Process" },
-  { id: "phone-number-repeated", text: "Asking phone number even though customer already called", category: "Process" },
-  { id: "timezone-mismatch", text: "Call log time not aligned with dealer timezone", category: "Process" },
-  { id: "trade-in-missing", text: "Trade-in / pre-qualification flow missing", category: "Process" },
-  { id: "no-human-transfer", text: "Didn't transfer to human when requested", category: "Process" },
-  { id: "vin-not-shortened", text: "VIN not shortened (6 digits)", category: "Process" },
-  { id: "vin-letter-confirmation", text: "VIN confirmed letter by letter (annoying)", category: "Process" },
-  { id: "email-letter-confirmation", text: "Email confirmed letter by letter (annoying)", category: "Process" },
-  { id: "test-drive-repeated", text: "Test drive appointment flow repeated", category: "Process" },
-  { id: "no-email-summary", text: "No email summary of call sent", category: "Process" },
-  { id: "no-sms-confirmation", text: "No SMS confirmation for appointments", category: "Process" },
-  
-  // Customer Experience
-  { id: "carfax-robotic", text: "Carfax explanation robotic/unhelpful", category: "Experience" },
-  { id: "car-info-overload", text: "Car info overload (too much detail from inventory)", category: "Experience" },
-  { id: "repetitive-car-info", text: "Car make/model/year repeated too often", category: "Experience" },
-  { id: "unprompted-finance", text: "Agent provides too much finance info unprompted", category: "Experience" },
-  { id: "goes-off-scope", text: "Agent goes off-scope into finance", category: "Experience" },
-  { id: "car-not-held", text: "Car not held correctly for test drive (or agent creates FOMO)", category: "Experience" }
-]
+// Convert comprehensive enums to the format expected by the dialog
+const ISSUE_TYPES = COMPREHENSIVE_ENUMS.map(enum_ => ({
+  id: enum_.code.toLowerCase().replace(/_/g, '-'),
+  text: enum_.title,
+  category: getCategoryDisplayName(enum_.id),
+  severity: enum_.severity.toLowerCase()
+}))
+
+// Helper function to map enum IDs to consolidated automotive-specific category names
+function getCategoryDisplayName(enumId: string): string {
+  const prefix = enumId.split('-')[1] // Extract 'cf', 'cs', etc. from 'enum-cf-001'
+  switch (prefix) {
+    case 'cf': // Call Flow & Timing Issues
+    case 'cs': // Agent Communication Style
+      return 'Communication & Call Quality'
+      
+    case 'da': // Vehicle & Pricing Data
+    case 'st': // Inventory & Search Systems
+      return 'Vehicle Data & Systems'
+      
+    case 'ci': // Customer Information Management
+    case 'ab': // Appointment & Test Drive Booking
+    case 'ps': // Process & Workflow Adherence
+      return 'Process & Customer Management'
+      
+    case 'fc': // Follow-up & Confirmations
+      return 'Follow-up & Communications'
+      
+    default: return 'Other Issues'
+  }
+}
 
 interface SelectedIssue {
   id: string
@@ -108,12 +83,16 @@ export function MarkIssueDialog({
   onOpenChange, 
   onSubmit, 
   transcriptText, 
-  timestamp 
+  timestamp,
+  callId,
+  previousIssues = []
 }: MarkIssueDialogProps) {
   const [selectedIssues, setSelectedIssues] = React.useState<SelectedIssue[]>([])
-  const [description, setDescription] = React.useState("")
   const [searchQuery, setSearchQuery] = React.useState("")
   const [selectedCategory, setSelectedCategory] = React.useState<string>("")
+  const [currentTab, setCurrentTab] = React.useState<'search' | 'selected' | 'previous'>('search')
+  const [focusedIssueIndex, setFocusedIssueIndex] = React.useState<number>(-1)
+  const [selectedIssueIndex, setSelectedIssueIndex] = React.useState<number>(-1)
 
   // Filter issues based on search query and category
   const filteredIssues = React.useMemo(() => {
@@ -131,11 +110,9 @@ export function MarkIssueDialog({
       filtered = filtered.filter(issue => issue.category === selectedCategory)
     }
 
-    // Filter out already selected issues
-    filtered = filtered.filter(issue => !selectedIssues.some(selected => selected.id === issue.id))
-
+    // Keep all issues visible, selected ones will show as checked
     return filtered
-  }, [searchQuery, selectedCategory, selectedIssues])
+  }, [searchQuery, selectedCategory])
 
   // Get unique categories for filter
   const categories = React.useMemo(() => {
@@ -163,9 +140,154 @@ export function MarkIssueDialog({
     ))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (selectedIssues.length > 0 && description) {
+  // Keyboard event handler
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!open) return
+
+      // Tab to close dialog
+      if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault()
+        onOpenChange(false)
+        return
+      }
+
+      // 'n' to switch to search tab and focus search input
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault()
+        setCurrentTab('search')
+        // Focus the search input after switching tabs
+        setTimeout(() => {
+          const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement
+          if (searchInput) {
+            searchInput.focus()
+          }
+        }, 100)
+        return
+      }
+
+      // 's' key specifically for switching from Previous Issues tab to Search tab
+      if (e.key === 's' || e.key === 'S') {
+        e.preventDefault()
+        setCurrentTab('search')
+        // Focus the search input after switching tabs
+        setTimeout(() => {
+          const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement
+          if (searchInput) {
+            searchInput.focus()
+          }
+        }, 100)
+        return
+      }
+
+      // Cmd+Shift+N (Mac) or Ctrl+Shift+N (Windows/Linux) to switch back to search from previous issues tab
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'N') {
+        e.preventDefault()
+        setCurrentTab('search')
+        // Focus the search input after switching tabs
+        setTimeout(() => {
+          const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement
+          if (searchInput) {
+            searchInput.focus()
+          }
+        }, 100)
+        return
+      }
+
+      // Severity selection (1=low, 2=medium, 3=high) - PRIORITY: Handle this FIRST when there are selected issues
+      if (selectedIssues.length > 0 && /^[1-3]$/.test(e.key) && !(e.target instanceof HTMLInputElement)) {
+        e.preventDefault()
+        const severityMap = { '1': 'low', '2': 'medium', '3': 'high' }
+        const severity = severityMap[e.key as '1' | '2' | '3']
+        const issue = selectedIssues[0] // Only one issue since we enforce single selection
+        if (issue) {
+          updateIssueSeverity(issue.id, severity)
+          // Auto-switch to selected tab if not already there to show the change
+          if (currentTab !== 'selected') {
+            setCurrentTab('selected')
+          }
+        }
+        return
+      }
+
+      // Number keys for issue selection (1-9) - works in search tab and when search input is focused
+      // Only runs if no selected issues (severity takes priority)
+      if ((currentTab === 'search' || e.target instanceof HTMLInputElement) && /^[1-9]$/.test(e.key)) {
+        e.preventDefault()
+        const index = parseInt(e.key) - 1
+        if (index < filteredIssues.length) {
+          const issue = filteredIssues[index]
+          const isSelected = selectedIssues.some(selected => selected.id === issue.id)
+          
+          if (!isSelected) {
+            // Clear previous selections and add only this issue
+            setSelectedIssues([])
+            addIssue(issue)
+            
+            // Switch to selected tab and focus the newly added issue
+            setCurrentTab('selected')
+            setTimeout(() => {
+              setSelectedIssueIndex(0) // Always the first (and only) item
+              // Scroll to the selected issues section
+              const selectedSection = document.querySelector('[data-selected-issues]')
+              if (selectedSection) {
+                selectedSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }
+            }, 100)
+          } else {
+            // Remove the issue if already selected
+            removeIssue(issue.id)
+          }
+        }
+        return
+      }
+
+      // Shift + number keys for issues 10-18 (Shift+1-9) - works in search tab and when search input is focused
+      if ((currentTab === 'search' || e.target instanceof HTMLInputElement) && e.shiftKey && /^[1-9]$/.test(e.key)) {
+        e.preventDefault()
+        const index = parseInt(e.key) - 1 + 9 // 10-18
+        if (index < filteredIssues.length) {
+          const issue = filteredIssues[index]
+          const isSelected = selectedIssues.some(selected => selected.id === issue.id)
+          
+          if (!isSelected) {
+            // Clear previous selections and add only this issue
+            setSelectedIssues([])
+            addIssue(issue)
+            
+            // Switch to selected tab and focus the newly added issue
+            setCurrentTab('selected')
+            setTimeout(() => {
+              setSelectedIssueIndex(0) // Always the first (and only) item
+              // Scroll to the selected issues section
+              const selectedSection = document.querySelector('[data-selected-issues]')
+              if (selectedSection) {
+                selectedSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }
+            }, 100)
+          } else {
+            // Remove the issue if already selected
+            removeIssue(issue.id)
+          }
+        }
+        return
+      }
+
+            // Enter key to submit when there are selected issues (works globally)
+      if (e.key === 'Enter' && selectedIssues.length > 0 && !(e.target instanceof HTMLInputElement)) {
+        e.preventDefault()
+        handleSubmit()
+        return
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, currentTab, filteredIssues, selectedIssues, selectedIssueIndex])
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (selectedIssues.length > 0) {
       const issuesData = selectedIssues.map(issue => ({
         type: issue.text,
         severity: issue.severity
@@ -173,15 +295,17 @@ export function MarkIssueDialog({
 
       onSubmit({
         issues: issuesData,
-        description
+        description: `${selectedIssues.length} issue(s) marked at ${formatTimestamp(timestamp)}s`
       })
       
-      // Reset form
+      // Reset form and switch to previous issues tab to show what was just marked
       setSelectedIssues([])
-      setDescription("")
       setSearchQuery("")
       setSelectedCategory("")
-      onOpenChange(false)
+      setCurrentTab('previous')
+      setSelectedIssueIndex(-1)
+      setFocusedIssueIndex(-1)
+      // Keep dialog open and show previous issues
     }
   }
 
@@ -211,6 +335,10 @@ export function MarkIssueDialog({
           <DialogDescription>
             Report issues found in this transcript line at {formatTimestamp(timestamp)}s
           </DialogDescription>
+          <div className="text-xs text-muted-foreground mt-2 space-y-1">
+            <div><kbd className="px-2 py-1 bg-muted rounded text-xs">1-9</kbd> Select & focus issue • <kbd className="px-2 py-1 bg-muted rounded text-xs">Shift+1-9</kbd> Select issues 10-18</div>
+            <div><kbd className="px-2 py-1 bg-muted rounded text-xs">1/2/3</kbd> Set severity • <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> Submit • <kbd className="px-2 py-1 bg-muted rounded text-xs">N</kbd> or <kbd className="px-2 py-1 bg-muted rounded text-xs">S</kbd> New search • <kbd className="px-2 py-1 bg-muted rounded text-xs">Tab</kbd> Close</div>
+          </div>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
@@ -222,9 +350,46 @@ export function MarkIssueDialog({
             </div>
           </div>
 
-            {/* Two Column Layout */}
-            <div className="grid grid-cols-2 gap-6">
-              {/* Left Column - Available Issues */}
+            {/* Tab Navigation */}
+            <div className="flex border-b">
+              <button
+                type="button"
+                onClick={() => setCurrentTab('search')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  currentTab === 'search'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Search Issues ({filteredIssues.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentTab('selected')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  currentTab === 'selected'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Selected Issues ({selectedIssues.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentTab('previous')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  currentTab === 'previous'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Previous Issues ({previousIssues.length})
+              </button>
+            </div>
+
+            {currentTab === 'search' ? (
+              <div className="space-y-3">
+                {/* Search Issues Content */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-medium">Available Issues</Label>
@@ -244,17 +409,18 @@ export function MarkIssueDialog({
                       />
                     </div>
                     <div className="relative">
-                      <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <select
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="pl-10 pr-8 py-2 border border-input rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
-                        <option value="">All Categories</option>
+                      <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="pl-10 pr-8">
+                          <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All Categories</SelectItem>
                         {categories.map(category => (
-                          <option key={category} value={category}>{category}</option>
+                            <SelectItem key={category} value={category}>{category}</SelectItem>
                         ))}
-                      </select>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   {(searchQuery || selectedCategory) && (
@@ -274,41 +440,52 @@ export function MarkIssueDialog({
                 <div className="border rounded-md h-80 overflow-y-auto">
                   {filteredIssues.length > 0 ? (
                     <div className="divide-y">
-                      {filteredIssues.map((issue) => (
+                      {filteredIssues.map((issue, index) => {
+                        const isSelected = selectedIssues.some(selected => selected.id === issue.id)
+                        const shortcutKey = index < 9 ? `${index + 1}` : index < 18 ? `Shift+${index - 8}` : null
+                        
+                        return (
                         <div
                           key={issue.id}
                           className="flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors"
                         >
+                                                        <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    addIssue(issue)
+                                  } else {
+                                    removeIssue(issue.id)
+                                  }
+                                }}
+                              />
+                            </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
                               <span className="text-sm font-medium">{issue.text}</span>
-                              <Badge variant="outline" className="text-xs flex-shrink-0">
-                                {issue.category}
-                              </Badge>
+                            </div>
+                            <div className="flex-shrink-0">
+                              {shortcutKey && (
+                                <kbd className="px-2 py-1 bg-muted text-xs rounded font-mono border">
+                                  {shortcutKey}
+                                </kbd>
+                              )}
                             </div>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => addIssue(issue)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   ) : (
                     <div className="p-4 text-center text-muted-foreground">
-                      {selectedIssues.length > 0 ? "All issues have been selected" : "No issues found matching your search."}
+                      No issues found matching your search.
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Right Column - Selected Issues */}
-              <div className="space-y-3">
+              </div>
+            ) : currentTab === 'selected' ? (
+              <div className="space-y-3" data-selected-issues>
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-medium">Selected Issues</Label>
                   <Badge variant="secondary">{selectedIssues.length} selected</Badge>
@@ -318,47 +495,68 @@ export function MarkIssueDialog({
                 <div className="border rounded-md h-80 overflow-y-auto">
                   {selectedIssues.length > 0 ? (
                     <div className="divide-y">
-                      {selectedIssues.map((issue) => (
+                      {selectedIssues.map((issue, index) => (
                         <div
                           key={issue.id}
-                          className="p-3 space-y-2"
+                          className={`p-3 space-y-2 cursor-pointer transition-colors ${
+                            selectedIssueIndex === index ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-muted/50'
+                          }`}
+                          onClick={() => setSelectedIssueIndex(index)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2 mb-1">
                                 <span className="text-sm font-medium">{issue.text}</span>
-                                <Badge variant="outline" className="text-xs flex-shrink-0">
-                                  {issue.category}
-                                </Badge>
-                              </div>
                             </div>
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => removeIssue(issue.id)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeIssue(issue.id)
+                              }}
                               className="h-8 w-8 p-0"
                             >
-                              <ArrowLeft className="h-4 w-4" />
+                              <X className="h-4 w-4" />
                             </Button>
                           </div>
                           
                           {/* Severity Selection */}
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Severity:</Label>
-                            <div className="grid grid-cols-2 gap-1">
-                              {severityOptions.map((option) => (
+                            <Label className="text-xs text-muted-foreground">
+                              Severity {selectedIssueIndex === index && '(Press 1/2/3)'}:
+                            </Label>
+                            <div className="grid grid-cols-3 gap-1">
+                              {[
+                                { value: 'low', label: 'Low', key: '1' },
+                                { value: 'medium', label: 'Medium', key: '2' },
+                                { value: 'high', label: 'High', key: '3' }
+                              ].map((option) => (
                                 <button
                                   key={option.value}
                                   type="button"
-                                  onClick={() => updateIssueSeverity(issue.id, option.value)}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    updateIssueSeverity(issue.id, option.value)
+                                  }}
                                   className={cn(
-                                    "px-2 py-1 text-xs rounded border transition-colors",
+                                    "px-2 py-1 text-xs rounded border transition-colors flex items-center justify-center gap-1",
                                     issue.severity === option.value
-                                      ? option.color
-                                      : "bg-background border-border hover:bg-muted/50"
+                                      ? option.value === 'low'
+                                        ? "bg-green-50 border-green-200 text-green-700"
+                                        : option.value === 'medium'
+                                        ? "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                        : "bg-red-50 border-red-200 text-red-700"
+                                      : option.value === 'low'
+                                      ? "bg-background border-border hover:bg-green-50 hover:border-green-300"
+                                      : option.value === 'medium'
+                                      ? "bg-background border-border hover:bg-yellow-50 hover:border-yellow-300"
+                                      : "bg-background border-border hover:bg-red-50 hover:border-red-300"
                                   )}
                                 >
+                                  {selectedIssueIndex === index && (
+                                    <kbd className="text-xs opacity-70">{option.key}</kbd>
+                                  )}
                                   {option.label}
                                 </button>
                               ))}
@@ -369,24 +567,58 @@ export function MarkIssueDialog({
                     </div>
                   ) : (
                     <div className="p-4 text-center text-muted-foreground">
-                      No issues selected. Choose issues from the left panel.
+                      No issues selected. Switch to Search tab to select issues.
                     </div>
                   )}
                 </div>
               </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Previous Issues for Call {callId}</Label>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">N</kbd> or <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">S</kbd> for new issue
+                    </div>
+                    <Badge variant="outline">{previousIssues.length} total</Badge>
+                  </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
-            <Textarea
-              id="description"
-                placeholder="Describe the issues in detail..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-              rows={3}
-            />
+                {/* Previous Issues List */}
+                <div className="border rounded-md h-80 overflow-y-auto">
+                  {previousIssues.length > 0 ? (
+                    <div className="divide-y">
+                      {previousIssues.map((issue) => (
+                        <div key={issue.id} className="p-3 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium">{issue.type}</span>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                At {formatTimestamp(issue.timestamp)}s: "{issue.transcriptText}"
+                              </div>
+                            </div>
+                            <Badge 
+                              variant={
+                                issue.severity === 'high' ? 'destructive' : 
+                                issue.severity === 'medium' ? 'default' : 
+                                'secondary'
+                              }
+                              className="text-xs"
+                            >
+                              {issue.severity.toUpperCase()}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No previous issues found for this call.
+                    </div>
+                  )}
+                </div>
             </div>
+            )}
           </div>
 
           <DialogFooter className="flex-shrink-0 pt-4 border-t">
@@ -395,7 +627,7 @@ export function MarkIssueDialog({
             </Button>
             <Button 
               type="submit" 
-              disabled={selectedIssues.length === 0 || !description}
+              disabled={selectedIssues.length === 0}
             >
               Mark {selectedIssues.length > 0 ? `${selectedIssues.length} Issue${selectedIssues.length > 1 ? 's' : ''}` : 'Issues'}
             </Button>

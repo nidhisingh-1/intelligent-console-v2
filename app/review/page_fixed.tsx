@@ -35,6 +35,43 @@ export default function ReviewPage() {
     ).join(' ')
   }
 
+  // Helper function to generate pastel colors based on name
+  const getAvatarColor = (name: string) => {
+    if (!name) return { bg: 'bg-slate-200', text: 'text-slate-700' }
+    
+    const firstLetter = name.charAt(0).toLowerCase()
+    const colors = {
+      a: { bg: 'bg-red-200', text: 'text-red-800' },
+      b: { bg: 'bg-orange-200', text: 'text-orange-800' },
+      c: { bg: 'bg-amber-200', text: 'text-amber-800' },
+      d: { bg: 'bg-yellow-200', text: 'text-yellow-800' },
+      e: { bg: 'bg-lime-200', text: 'text-lime-800' },
+      f: { bg: 'bg-green-200', text: 'text-green-800' },
+      g: { bg: 'bg-emerald-200', text: 'text-emerald-800' },
+      h: { bg: 'bg-teal-200', text: 'text-teal-800' },
+      i: { bg: 'bg-cyan-200', text: 'text-cyan-800' },
+      j: { bg: 'bg-sky-200', text: 'text-sky-800' },
+      k: { bg: 'bg-blue-200', text: 'text-blue-800' },
+      l: { bg: 'bg-indigo-200', text: 'text-indigo-800' },
+      m: { bg: 'bg-violet-200', text: 'text-violet-800' },
+      n: { bg: 'bg-purple-200', text: 'text-purple-800' },
+      o: { bg: 'bg-fuchsia-200', text: 'text-fuchsia-800' },
+      p: { bg: 'bg-pink-200', text: 'text-pink-800' },
+      q: { bg: 'bg-rose-200', text: 'text-rose-800' },
+      r: { bg: 'bg-red-200', text: 'text-red-800' },
+      s: { bg: 'bg-orange-200', text: 'text-orange-800' },
+      t: { bg: 'bg-amber-200', text: 'text-amber-800' },
+      u: { bg: 'bg-yellow-200', text: 'text-yellow-800' },
+      v: { bg: 'bg-lime-200', text: 'text-lime-800' },
+      w: { bg: 'bg-green-200', text: 'text-green-800' },
+      x: { bg: 'bg-emerald-200', text: 'text-emerald-800' },
+      y: { bg: 'bg-teal-200', text: 'text-teal-800' },
+      z: { bg: 'bg-cyan-200', text: 'text-cyan-800' },
+    }
+    
+    return colors[firstLetter as keyof typeof colors] || { bg: 'bg-slate-200', text: 'text-slate-700' }
+  }
+
   // Function to scroll to current transcript line
   const scrollToCurrentTranscriptLine = (currentTime: number) => {
     if (!transcriptContainerRef.current || !detailedCall?.callDetails?.messages) return
@@ -187,8 +224,9 @@ export default function ReviewPage() {
     const handleKeyPress = (event: KeyboardEvent) => {
       console.log('Key pressed:', event.code, 'Target:', (event.target as HTMLElement)?.tagName)
       
-      // Only handle shortcuts when not typing in input fields
-      if (!(event.target as HTMLElement)?.tagName?.toLowerCase().includes('input')) {
+      // Only handle shortcuts when not typing in input fields or textareas
+      const targetTag = (event.target as HTMLElement)?.tagName?.toLowerCase()
+      if (targetTag !== 'input' && targetTag !== 'textarea') {
         // Spacebar - Play/Pause audio
         if (event.code === 'Space') {
           event.preventDefault()
@@ -272,12 +310,17 @@ export default function ReviewPage() {
               <>
                 {/* Caller Information */}
                 <div className="mb-6">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
-                      <span className="text-white font-semibold text-lg">{selectedCall.customerInitials}</span>
-                    </div>
+                  <div className="flex items-start space-x-3 mb-2">
+                    {(() => {
+                      const avatarColor = getAvatarColor(selectedCall.customerName)
+                      return (
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${avatarColor.bg}`}>
+                          <span className={`font-semibold text-lg ${avatarColor.text}`}>{selectedCall.customerInitials}</span>
+                        </div>
+                      )
+                    })()}
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">{selectedCall.customerName}</h2>
+                      <h2 className="text-2xl font-semibold text-gray-900">{selectedCall.customerName}</h2>
                     </div>
                   </div>
                   

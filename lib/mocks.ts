@@ -1,4 +1,5 @@
 import type { Call, QAEnum, Annotation } from "./types"
+import { COMPREHENSIVE_ENUMS } from "./comprehensive-enums"
 
 // Mock data for development
 export const MOCKS = {
@@ -64,53 +65,50 @@ export const MOCKS = {
     }
   ] as Call[],
   
-  enums: [
-    {
-      id: "enum-1",
-      code: "TECH_ISSUE",
-      title: "Technical Issue",
-      description: "Customer experiencing technical problems",
-      severity: "HIGH",
-      isActive: true,
-      createdAt: "2024-01-01T00:00:00Z",
-      updatedAt: "2024-01-01T00:00:00Z"
-    },
-    {
-      id: "enum-2",
-      code: "BILLING_QUERY",
-      title: "Billing Query",
-      description: "Questions about billing or charges",
-      severity: "MEDIUM",
-      isActive: true,
-      createdAt: "2024-01-01T00:00:00Z",
-      updatedAt: "2024-01-01T00:00:00Z"
-    },
-    {
-      id: "enum-3",
-      code: "FEATURE_REQUEST",
-      title: "Feature Request",
-      description: "Customer requesting new features",
-      severity: "LOW",
-      isActive: true,
-      createdAt: "2024-01-01T00:00:00Z",
-      updatedAt: "2024-01-01T00:00:00Z"
-    }
-  ] as QAEnum[],
+  enums: COMPREHENSIVE_ENUMS,
   
   annotations: [
     {
       id: "ann-1",
       reviewId: "review-1",
-      enumId: "enum-1",
-      type: "Issue",
-      description: "Customer unable to access account",
+      enumId: "enum-cf-001",
+      type: "Long/Awkward Pauses",
+      description: "Agent had long pauses during conversation",
       severity: "HIGH",
       timestamp: 15000,
       transcriptText: "I can't seem to log into my account",
       createdAt: "2024-01-15T10:35:00Z",
       callTsSec: 15,
-      note: "Customer needs password reset",
-      aiSummary: "Account access issue requiring immediate attention"
+      note: "Agent took too long to respond",
+      aiSummary: "Communication flow issue requiring attention"
+    },
+    {
+      id: "ann-2",
+      reviewId: "review-1",
+      enumId: "enum-da-001",
+      type: "Wrong Car Color",
+      description: "Agent provided incorrect vehicle color information",
+      severity: "HIGH",
+      timestamp: 45000,
+      transcriptText: "That blue sedan you're looking at",
+      createdAt: "2024-01-15T10:36:00Z",
+      callTsSec: 45,
+      note: "Customer was asking about a red car",
+      aiSummary: "Data accuracy issue with vehicle information"
+    },
+    {
+      id: "ann-3",
+      reviewId: "review-1", 
+      enumId: "enum-cs-005",
+      type: "Overly Friendly Tone",
+      description: "Agent used overly friendly language",
+      severity: "MEDIUM",
+      timestamp: 120000,
+      transcriptText: "Nice choice! That's a great pick!",
+      createdAt: "2024-01-15T10:37:00Z",
+      callTsSec: 120,
+      note: "Should maintain professional tone",
+      aiSummary: "Communication style needs adjustment"
     }
   ] as Annotation[],
   
@@ -239,4 +237,23 @@ export function formatDuration(duration: number): string {
   const minutes = Math.floor(duration / 60)
   const seconds = duration % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+export function getPreviousIssuesForCall(callId: string) {
+  // Find the review for this call
+  const review = MOCKS.reviews.find(r => r.callId === callId)
+  if (!review) return []
+
+  // Get all annotations for this review (which represents the call)
+  return MOCKS.annotations
+    .filter(annotation => annotation.reviewId === review.id)
+    .map(annotation => ({
+      id: annotation.id,
+      type: annotation.type,
+      severity: annotation.severity.toLowerCase(),
+      timestamp: annotation.callTsSec * 1000, // Convert to milliseconds
+      transcriptText: annotation.transcriptText,
+      createdAt: annotation.createdAt
+    }))
+    .sort((a, b) => b.timestamp - a.timestamp) // Sort latest to oldest
 }

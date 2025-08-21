@@ -214,6 +214,30 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
       };
     }, [showWaveform, wavesurfer, wavesurferIsPlaying]);
 
+    // Listen for pause audio events
+    useEffect(() => {
+      const handlePauseEvent = () => {
+        console.log('Audio player received pauseAudio event')
+        if (showWaveform) {
+          // For wavesurfer, pause if playing
+          if (wavesurferIsPlaying) {
+            wavesurfer?.pause();
+          }
+        } else {
+          // For HTML audio, pause if playing
+          if (audioPlayerRef.current && !audioPlayerRef.current.paused) {
+            audioPlayerRef.current.pause();
+          }
+        }
+      };
+
+      window.addEventListener('pauseAudio', handlePauseEvent);
+      
+      return () => {
+        window.removeEventListener('pauseAudio', handlePauseEvent);
+      };
+    }, [showWaveform, wavesurfer, wavesurferIsPlaying]);
+
     const handleSeek = (time: number) => {
       if (showWaveform) {
         wavesurfer?.setTime(time);
@@ -329,7 +353,7 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
           </span>
         </div>
         {showWaveform ? (
-          <div ref={wavesurferContainerRef} className="flex-1 bg-gray-50 rounded-lg p-2 h-16"></div>
+          <div ref={wavesurferContainerRef} className="flex-1 rounded-lg p-3 h-[100px]"></div>
         ) : (
           <div
             ref={progressRef}

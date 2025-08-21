@@ -39,6 +39,43 @@ export function CallsTable({ onCallSelect }: CallsTableProps) {
   const [error, setError] = React.useState<string | null>(null)
   const [selectedCallId, setSelectedCallId] = React.useState<string | null>(null)
 
+  // Helper function to generate pastel colors based on name
+  const getAvatarColor = (name: string) => {
+    if (!name) return { bg: 'bg-slate-200', text: 'text-slate-700' }
+    
+    const firstLetter = name.charAt(0).toLowerCase()
+    const colors = {
+      a: { bg: 'bg-red-200', text: 'text-red-800' },
+      b: { bg: 'bg-orange-200', text: 'text-orange-800' },
+      c: { bg: 'bg-amber-200', text: 'text-amber-800' },
+      d: { bg: 'bg-yellow-200', text: 'text-yellow-800' },
+      e: { bg: 'bg-lime-200', text: 'text-lime-800' },
+      f: { bg: 'bg-green-200', text: 'text-green-800' },
+      g: { bg: 'bg-emerald-200', text: 'text-emerald-800' },
+      h: { bg: 'bg-teal-200', text: 'text-teal-800' },
+      i: { bg: 'bg-cyan-200', text: 'text-cyan-800' },
+      j: { bg: 'bg-sky-200', text: 'text-sky-800' },
+      k: { bg: 'bg-blue-200', text: 'text-blue-800' },
+      l: { bg: 'bg-indigo-200', text: 'text-indigo-800' },
+      m: { bg: 'bg-violet-200', text: 'text-violet-800' },
+      n: { bg: 'bg-purple-200', text: 'text-purple-800' },
+      o: { bg: 'bg-fuchsia-200', text: 'text-fuchsia-800' },
+      p: { bg: 'bg-pink-200', text: 'text-pink-800' },
+      q: { bg: 'bg-rose-200', text: 'text-rose-800' },
+      r: { bg: 'bg-red-200', text: 'text-red-800' },
+      s: { bg: 'bg-orange-200', text: 'text-orange-800' },
+      t: { bg: 'bg-amber-200', text: 'text-amber-800' },
+      u: { bg: 'bg-yellow-200', text: 'text-yellow-800' },
+      v: { bg: 'bg-lime-200', text: 'text-lime-800' },
+      w: { bg: 'bg-green-200', text: 'text-green-800' },
+      x: { bg: 'bg-emerald-200', text: 'text-emerald-800' },
+      y: { bg: 'bg-teal-200', text: 'text-teal-800' },
+      z: { bg: 'bg-cyan-200', text: 'text-cyan-800' },
+    }
+    
+    return colors[firstLetter as keyof typeof colors] || { bg: 'bg-slate-200', text: 'text-slate-700' }
+  }
+
   // Fetch calls from API
   React.useEffect(() => {
     const loadCalls = async () => {
@@ -83,15 +120,18 @@ export function CallsTable({ onCallSelect }: CallsTableProps) {
     }
   }
 
+  // Loading state - Attio Style
   if (isLoading) {
     return (
-      <div className="space-y-4 p-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex items-center space-x-4 p-3">
-            <Skeleton className="h-10 w-10 rounded-full bg-gray-300" />
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-4 w-[200px] bg-gray-300" />
-              <Skeleton className="h-3 w-[150px] bg-gray-300" />
+      <div className="p-4 space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="attio-card p-4 animate-pulse">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-muted rounded-2xl"></div>
+              <div className="space-y-2 flex-1">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+              </div>
             </div>
           </div>
         ))}
@@ -99,66 +139,101 @@ export function CallsTable({ onCallSelect }: CallsTableProps) {
     )
   }
 
+  // Error state - Attio Style
   if (error) {
     return (
-      <div className="p-6 text-center text-red-600">
-        <h3 className="mt-2 text-sm font-medium">{error}</h3>
-        <p className="mt-1 text-sm text-gray-500">Please try again later.</p>
+      <div className="p-6 text-center">
+        <div className="w-16 h-16 bg-destructive/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+        <h3 className="attio-heading-3 mb-2">Failed to load calls</h3>
+        <p className="attio-body-small text-muted-foreground">{error}</p>
       </div>
     )
   }
 
+  // Empty state - Attio Style
   if (calls.length === 0) {
     return (
-      <div className="p-6 text-center text-gray-500">
-        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-        </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900">No calls found</h3>
-        <p className="mt-1 text-sm text-gray-500">No calls are available at the moment.</p>
+      <div className="p-6 text-center">
+        <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+          </svg>
+        </div>
+        <h3 className="attio-heading-3 mb-2">No calls found</h3>
+        <p className="attio-body-small text-muted-foreground">No calls are available at the moment.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-0">
       {calls.map((call) => {
         const isSelected = selectedCallId === call.id
 
         return (
           <div
             key={call.id}
-            className={`flex items-center space-x-4 p-4 cursor-pointer transition-colors ${
+            className={`px-5 py-4 transition-all duration-200 cursor-pointer border-b border-border/30 hover:bg-muted/40 ${
               isSelected 
-                ? "bg-purple-50 border-r-2 border-purple-500" 
-                : "hover:bg-gray-50"
+                ? 'bg-primary/10 border-l-4 border-l-primary shadow-sm' 
+                : ''
             }`}
             onClick={() => {
               setSelectedCallId(call.id)
               onCallSelect?.(call)
             }}
           >
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-purple-100 text-purple-600">
-                {call.customerInitials}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-900 truncate">
-                  {call.customerName}
-                </h3>
-                {getReviewStatusBadge(call.status)}
-              </div>
+            <div className="flex items-start space-x-3">
+              {/* Avatar */}
+              {(() => {
+                const avatarColor = getAvatarColor(call.customerName)
+                return (
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${avatarColor.bg}`}>
+                    <span className={`font-semibold text-sm ${avatarColor.text}`}>{call.customerInitials}</span>
+                  </div>
+                )
+              })()}
               
-              <div className="flex items-center space-x-4 mt-1">
-                <div className="flex items-center text-xs text-gray-500">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {call.callLength}
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                {/* Primary info - Name and Time */}
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-[15px] leading-tight text-foreground truncate pr-2">
+                    {call.customerName}
+                  </h3>
+                  <span className="text-[11px] text-muted-foreground/70 whitespace-nowrap font-medium">
+                    {call.timestamp}
+                  </span>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {call.timestamp}
+                
+                {/* Secondary info - Status */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    {getReviewStatusBadge(call.status)}
+                  </div>
+                  
+                  {/* Call type indicator */}
+                  <span className={`text-[10px] px-2 py-1 rounded-md font-semibold ${
+                    call.callType === 'Inbound' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {call.callType}
+                  </span>
+                </div>
+                
+                {/* Tertiary info - Phone number and Duration */}
+                <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60 truncate">
+                  <span className="font-mono" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>{call.phoneNumber}</span>
+                  <span className="text-muted-foreground/40">•</span>
+                  <div className="flex items-center gap-1 text-muted-foreground/80">
+                    <Clock className="h-3 w-3 opacity-60" />
+                    <span className="font-medium" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>{call.callLength}</span>
+                  </div>
                 </div>
               </div>
             </div>

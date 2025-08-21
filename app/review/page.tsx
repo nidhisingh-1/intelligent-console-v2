@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react'
 import { AppShell } from "@/components/app-shell"
 import { CallsTable } from "@/components/calls/calls-table"
 import AudioPlayer from "@/components/audio/audio-player"
-import { MarkIssueForm } from "@/components/transcript/mark-issue-form"
+import { MarkIssueForm, MarkIssueFormRef } from "@/components/transcript/mark-issue-form"
 import { fetchCallById } from "@/lib/api"
+
+import { Badge } from "@/components/ui/badge"
 
 export default function ReviewPage() {
   const [selectedCall, setSelectedCall] = React.useState<any>(null)
@@ -18,6 +20,7 @@ export default function ReviewPage() {
   const [markIssueData, setMarkIssueData] = React.useState<{
     transcriptText: string
     timestamp: number
+    transcriptIndex?: number
   } | null>(null)
   
   // Track manually selected transcript line
@@ -28,6 +31,26 @@ export default function ReviewPage() {
   const [lastUserScrollTime, setLastUserScrollTime] = useState(0)
   const [autoScrollPaused, setAutoScrollPaused] = useState(false)
   const [lastAutoScrollTime, setLastAutoScrollTime] = useState(0)
+  
+  // Track marked issues by transcript index
+  const [markedIssues, setMarkedIssues] = useState<Set<number>>(new Set())
+  
+  // Store detailed issue data for each call
+  const [callIssues, setCallIssues] = useState<Map<string, Array<{ 
+    issues: Array<{ type: string; severity: string }>; 
+    description: string; 
+    timestamp: number; 
+    transcriptText: string;
+    transcriptIndex?: number;
+  }>>>(new Map())
+  
+  // Form state for sticky actions
+  const [isFormValid, setIsFormValid] = useState(false)
+  const [selectedIssuesCount, setSelectedIssuesCount] = useState(0)
+  const formRef = React.useRef<MarkIssueFormRef>(null)
+  
+  // Tab state for Mark Issue panel
+  const [activeTab, setActiveTab] = useState<string>("new-issue")
 
   // Helper function to format customer name in proper case
   const formatCustomerName = (name: string) => {
@@ -37,13 +60,50 @@ export default function ReviewPage() {
     ).join(' ')
   }
 
+  // Helper function to generate pastel colors based on name
+  const getAvatarColor = (name: string) => {
+    if (!name) return { bg: 'bg-slate-200', text: 'text-slate-700' }
+    
+    const firstLetter = name.charAt(0).toLowerCase()
+    const colors = {
+      a: { bg: 'bg-red-200', text: 'text-red-800' },
+      b: { bg: 'bg-orange-200', text: 'text-orange-800' },
+      c: { bg: 'bg-amber-200', text: 'text-amber-800' },
+      d: { bg: 'bg-yellow-200', text: 'text-yellow-800' },
+      e: { bg: 'bg-lime-200', text: 'text-lime-800' },
+      f: { bg: 'bg-green-200', text: 'text-green-800' },
+      g: { bg: 'bg-emerald-200', text: 'text-emerald-800' },
+      h: { bg: 'bg-teal-200', text: 'text-teal-800' },
+      i: { bg: 'bg-cyan-200', text: 'text-cyan-800' },
+      j: { bg: 'bg-sky-200', text: 'text-sky-800' },
+      k: { bg: 'bg-blue-200', text: 'text-blue-800' },
+      l: { bg: 'bg-indigo-200', text: 'text-indigo-800' },
+      m: { bg: 'bg-violet-200', text: 'text-violet-800' },
+      n: { bg: 'bg-purple-200', text: 'text-purple-800' },
+      o: { bg: 'bg-fuchsia-200', text: 'text-fuchsia-800' },
+      p: { bg: 'bg-pink-200', text: 'text-pink-800' },
+      q: { bg: 'bg-rose-200', text: 'text-rose-800' },
+      r: { bg: 'bg-red-200', text: 'text-red-800' },
+      s: { bg: 'bg-orange-200', text: 'text-orange-800' },
+      t: { bg: 'bg-amber-200', text: 'text-amber-800' },
+      u: { bg: 'bg-yellow-200', text: 'text-yellow-800' },
+      v: { bg: 'bg-lime-200', text: 'text-lime-800' },
+      w: { bg: 'bg-green-200', text: 'text-green-800' },
+      x: { bg: 'bg-emerald-200', text: 'text-emerald-800' },
+      y: { bg: 'bg-teal-200', text: 'text-teal-800' },
+      z: { bg: 'bg-cyan-200', text: 'text-cyan-800' },
+    }
+    
+    return colors[firstLetter as keyof typeof colors] || { bg: 'bg-slate-200', text: 'text-slate-700' }
+  }
+
   // Function to scroll to current transcript line
   const scrollToCurrentTranscriptLine = (currentTime: number) => {
     if (!transcriptContainerRef.current || !detailedCall?.callDetails?.messages) return
 
     const messages = detailedCall.callDetails.messages
-    // Move 3 seconds earlier by subtracting 3 from currentTime
-    const adjustedTime = Math.max(0, currentTime - 3)
+    // Use exact current time for perfect sync accuracy
+    const adjustedTime = currentTime
 
     // Find the CURRENT message that's actively being spoken
     let currentMessageIndex = -1
@@ -129,25 +189,86 @@ export default function ReviewPage() {
   }
 
   // Mark Issue handlers
-  const handleMarkIssue = (transcriptText: string, timestamp: number) => {
+  const handleMarkIssue = (transcriptText: string, timestamp: number, transcriptIndex?: number) => {
     try {
       console.log('Marking issue for:', transcriptText, 'at timestamp:', timestamp)
-      setMarkIssueData({ transcriptText, timestamp })
+      setMarkIssueData({ transcriptText, timestamp, transcriptIndex })
+      // Reset to new issue tab when opening
+      setActiveTab('new-issue')
     } catch (error) {
       console.error('Error in handleMarkIssue:', error)
     }
   }
 
-  const handleIssueSubmit = (issue: { issues: Array<{ type: string; severity: string }>; description: string }) => {
+  const handleIssueSubmit = (issue: { issues: Array<{ type: string; severity: string }> }) => {
     // Here you would typically save the issue to your backend
     console.log('Issue submitted:', issue)
     
-    // Clear the mark issue form
-    setMarkIssueData(null)
+    // Store the issue data for this call
+    if (selectedCall?.id && markIssueData) {
+      const issueData = {
+        issues: issue.issues,
+        description: `${issue.issues.length} issue(s) marked at ${Math.floor(markIssueData.timestamp / 60)}:${Math.floor(markIssueData.timestamp % 60).toString().padStart(2, '0')}`,
+        timestamp: markIssueData.timestamp,
+        transcriptText: markIssueData.transcriptText,
+        transcriptIndex: markIssueData.transcriptIndex
+      }
+      
+      setCallIssues(prev => {
+        const newMap = new Map(prev)
+        const existingIssues = newMap.get(selectedCall.id) || []
+        newMap.set(selectedCall.id, [...existingIssues, issueData])
+        return newMap
+      })
+      
+      // Mark the transcript card as having an issue
+      if (markIssueData?.transcriptIndex !== undefined) {
+        setMarkedIssues(prev => new Set([...prev, markIssueData.transcriptIndex!]))
+      }
+    }
+    
+    // Switch to previous issues tab to show the newly added issue
+    setActiveTab('previous-issues')
+    
+    // Don't close the sidebar - keep it open so user can continue marking issues
   }
 
   const handleCancelMarkIssue = () => {
     setMarkIssueData(null)
+  }
+
+  const handleDeleteIssue = (issueIndex: number) => {
+    if (selectedCall?.id) {
+      setCallIssues(prev => {
+        const newMap = new Map(prev)
+        const existingIssues = newMap.get(selectedCall.id) || []
+        const updatedIssues = existingIssues.filter((_, index) => index !== issueIndex)
+        
+        if (updatedIssues.length === 0) {
+          newMap.delete(selectedCall.id)
+        } else {
+          newMap.set(selectedCall.id, updatedIssues)
+        }
+        
+        return newMap
+      })
+      
+      // Update marked issues set if needed
+      const issueToDelete = callIssues.get(selectedCall.id)?.[issueIndex]
+      if (issueToDelete?.transcriptIndex !== undefined) {
+        // Check if there are other issues for this transcript index
+        const remainingIssues = callIssues.get(selectedCall.id)?.filter((_, index) => index !== issueIndex)
+        const hasOtherIssuesForTranscript = remainingIssues?.some(issue => issue.transcriptIndex === issueToDelete.transcriptIndex)
+        
+        if (!hasOtherIssuesForTranscript) {
+          setMarkedIssues(prev => {
+            const newSet = new Set(prev)
+            newSet.delete(issueToDelete.transcriptIndex!)
+            return newSet
+          })
+        }
+      }
+    }
   }
 
 
@@ -156,6 +277,12 @@ export default function ReviewPage() {
   useEffect(() => {
     if (selectedCall?.id) {
       setIsLoadingCall(true)
+      
+      // Reset marked issues for the new call
+      const existingIssues = callIssues.get(selectedCall.id) || []
+      const markedIndices = new Set(existingIssues.map(issue => issue.transcriptIndex).filter(index => index !== undefined))
+      setMarkedIssues(markedIndices as Set<number>)
+      
       fetchCallById(selectedCall.id)
         .then((callData) => {
           if (callData) {
@@ -169,7 +296,7 @@ export default function ReviewPage() {
           setIsLoadingCall(false)
         })
     }
-  }, [selectedCall?.id])
+  }, [selectedCall?.id, callIssues])
 
   // Add scroll event listeners to detect user scroll intent
   useEffect(() => {
@@ -262,8 +389,9 @@ export default function ReviewPage() {
     const handleKeyPress = (event: KeyboardEvent) => {
       console.log('Key pressed:', event.code, 'Target:', (event.target as HTMLElement)?.tagName)
       
-      // Only handle shortcuts when not typing in input fields
-      if (!(event.target as HTMLElement)?.tagName?.toLowerCase().includes('input')) {
+      // Only handle shortcuts when not typing in input fields or textareas
+      const targetTag = (event.target as HTMLElement)?.tagName?.toLowerCase()
+      if (targetTag !== 'input' && targetTag !== 'textarea') {
         // Spacebar - Play/Pause audio
         if (event.code === 'Space') {
           event.preventDefault()
@@ -282,7 +410,7 @@ export default function ReviewPage() {
         
 
         
-        // Tab key - Toggle Mark Issue panel
+        // Tab key - Toggle Mark Issue panel and pause audio
         if (event.code === 'Tab') {
           event.preventDefault()
           
@@ -291,20 +419,42 @@ export default function ReviewPage() {
             console.log('Tab key pressed - closing Mark Issue panel')
             setMarkIssueData(null)
           } else {
-            // If Mark Issue panel is closed, open it
-            console.log('Tab key pressed - opening Mark Issue panel')
+            // If Mark Issue panel is closed, open it and pause audio
+            console.log('Tab key pressed - opening Mark Issue panel and pausing audio')
+            
+            // Pause the audio first
+            if (detailedCall?.callDetails?.recordingUrl) {
+              console.log('Pausing audio due to Tab key press')
+              window.dispatchEvent(new CustomEvent('pauseAudio'))
+            }
             
             // Open Mark Issue panel with current transcript context
             if (detailedCall?.callDetails?.messages && detailedCall.callDetails.messages.length > 0) {
-              // Get the current message being played or the first message
-              const currentMessage = detailedCall.callDetails.messages.find((msg: any) => 
-                msg.secondsFromStart && Math.abs(msg.secondsFromStart - currentPlaybackTime) < 2
-              ) || detailedCall.callDetails.messages[0]
+              // Get the current message being played - use exact current time for perfect accuracy
+              const adjustedTime = currentPlaybackTime
+              let currentMessageIndex = -1
+              
+              // Find the message that should be active at the current time
+              for (let i = 0; i < detailedCall.callDetails.messages.length; i++) {
+                const messageStart = detailedCall.callDetails.messages[i]?.secondsFromStart
+                const nextMessageStart = detailedCall.callDetails.messages[i + 1]?.secondsFromStart
+                
+                if (typeof messageStart === 'number' && messageStart <= adjustedTime) {
+                  if (typeof nextMessageStart !== 'number' || nextMessageStart > adjustedTime) {
+                    currentMessageIndex = i
+                    break
+                  }
+                }
+              }
+              
+              const messageIndex = currentMessageIndex !== -1 ? currentMessageIndex : 0
+              const currentMessage = detailedCall.callDetails.messages[messageIndex]
               
               if (currentMessage) {
                 handleMarkIssue(
                   currentMessage.message || currentMessage.text || 'Current transcript context', 
-                  currentMessage.secondsFromStart || 0
+                  currentMessage.secondsFromStart || currentPlaybackTime,
+                  messageIndex
                 )
               }
             } else if (detailedCall?.callDetails?.transcript) {
@@ -322,348 +472,537 @@ export default function ReviewPage() {
             }
           }
         }
+
+        // N key - When on "Previous Issues" tab, switch to "New Issue" tab
+        if (event.code === 'KeyN') {
+          if (markIssueData && activeTab === 'previous-issues') {
+            event.preventDefault()
+            console.log('N key pressed - switching to New Issue tab')
+            setActiveTab('new-issue')
+          }
+        }
       }
     }
 
     document.addEventListener('keydown', handleKeyPress)
     return () => document.removeEventListener('keydown', handleKeyPress)
-  }, [detailedCall?.callDetails?.recordingUrl, detailedCall?.callDetails?.messages, currentPlaybackTime, markIssueData])
+  }, [detailedCall?.callDetails?.recordingUrl, detailedCall?.callDetails?.messages, currentPlaybackTime, markIssueData, activeTab])
 
   return (
     <AppShell>
-      <div className="flex h-full">
-        {/* Central Panel - Call List */}
-        <div className="w-[307px] flex flex-col border-r">
-          {/* Call List */}
-          <div className="flex-1 overflow-auto">
+      <div className="flex h-full bg-background">
+        {/* Left Panel - Call List */}
+        <div className="w-96 flex flex-col border-r border-border bg-card">
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-border bg-muted/20 flex-shrink-0">
+            <h2 className="text-lg font-semibold text-foreground mb-1">Call Reviews</h2>
+            <p className="text-[13px] text-muted-foreground/80">Recent customer calls</p>
+          </div>
+          
+          {/* Call List - Independent scrolling */}
+          <div className="flex-1 overflow-y-auto min-h-0">
             <CallsTable onCallSelect={setSelectedCall} />
           </div>
         </div>
 
-        {/* Right Panel - Call Details */}
-        <div className={`bg-gray-50 border-l transition-all duration-300 ${
-          markIssueData ? 'w-[calc(100%-307px-384px)]' : 'w-[calc(100%-307px)]'
-        }`}>
-          <div className="p-6">
+        {/* Main Panel - Call Details */}
+        <div className="flex-1 transition-all duration-300">
+          <div className="h-full flex flex-col">
             {selectedCall ? (
-              <>
-                {/* Caller Information */}
-                <div className="mb-6">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
-                      <span className="text-white font-semibold text-lg">{selectedCall.customerInitials}</span>
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">{selectedCall.customerName}</h2>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 space-y-3">
-                    {/* Row 1: Phone number + Call length */}
-                    <div className="grid grid-cols-2 gap-8 text-sm">
-                      <div className="flex items-center">
-                        <span className="text-gray-900 font-bold w-28 flex-shrink-0">Phone number</span>
-                        <span className="text-gray-900">{selectedCall.phoneNumber}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-gray-900 font-bold w-20 flex-shrink-0">Call length</span>
-                        <span className="text-gray-900">{selectedCall.callLength}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Row 2: Call type + Timestamp */}
-                    <div className="grid grid-cols-2 gap-8 text-sm">
-                      <div className="flex items-center">
-                        <span className="text-gray-900 font-bold w-24 flex-shrink-0">Call type</span>
-                        <span className={`px-3 py-1.5 text-xs text-center ${selectedCall.callType === 'Inbound' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`} style={{ borderRadius: '8px' }}>
+              <div className="flex-1 flex flex-col">
+                {/* Call Header - Compact */}
+                <div className="px-6 py-5 border-b border-border bg-card">
+                  <div className="flex items-start gap-4">
+                    {(() => {
+                      const avatarColor = getAvatarColor(selectedCall.customerName)
+                      return (
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${avatarColor.bg}`}>
+                          <span className={`font-semibold text-lg ${avatarColor.text}`}>{selectedCall.customerInitials}</span>
+                        </div>
+                      )
+                    })()}
+                    <div className="flex-1 min-w-0">
+                      <h1 className="text-2xl font-semibold text-foreground mb-2">{selectedCall.customerName}</h1>
+                      <div className="flex flex-wrap items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Phone:</span>
+                          <span className="text-foreground">{selectedCall.phoneNumber}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Duration:</span>
+                          <span className="text-foreground">{selectedCall.callLength}</span>
+                        </div>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                          selectedCall.callType === 'Inbound' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
                           {selectedCall.callType}
                         </span>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                          selectedCall.callPriority === 'High' 
+                            ? 'bg-red-100 text-red-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {selectedCall.callPriority}
+                        </span>
                       </div>
-                      <div className="flex items-center">
-                        <span className="text-gray-900 font-bold w-20 flex-shrink-0">Timestamp</span>
-                        <span className="text-gray-900">{selectedCall.timestamp}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Row 3: Call Priority */}
-                    <div className="flex items-center text-sm">
-                      <span className="text-gray-900 font-bold w-24 flex-shrink-0">Call Priority</span>
-                      <span className={`px-3 py-1.5 text-xs ${selectedCall.callPriority === 'High' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`} style={{ borderRadius: '8px' }}>
-                        {selectedCall.callPriority}
-                      </span>
                     </div>
                   </div>
                 </div>
-              </>
-            ) : (
-              <div className="text-center text-gray-500">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No call selected</h3>
-                <p className="mt-1 text-sm text-gray-500">Select a call from the list to view details</p>
-              </div>
-            )}
 
-            {selectedCall && (
-              <>
-                {/* Combined Call Recording and Transcription Card */}
-                <div className="bg-gray-50 border border-gray-300 pt-4 px-6 pb-6 shadow-md" style={{ borderRadius: '16px' }}>
-                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-300">
-                    <h3 className="text-lg font-semibold text-gray-900">Call Recording</h3>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <kbd className="px-2 py-1 bg-gray-200 rounded text-xs font-mono">Space</kbd>
-                        Play/Pause
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <kbd className="px-2 py-1 bg-gray-200 rounded text-xs font-mono">Tab</kbd>
-                        Mark Issue
-                      </span>
+                {/* Call Content Header - Fixed */}
+                <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-card flex-shrink-0">
+                  <h3 className="text-[17px] font-semibold text-foreground">Call Recording & Transcript</h3>
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground/80">
+                    <div className="flex items-center gap-1">
+                      <kbd className="px-2 py-1 bg-muted rounded text-[10px] font-mono font-medium">Space</kbd>
+                      <span className="font-medium">Play/Pause</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <kbd className="px-2 py-1 bg-muted rounded text-[10px] font-mono font-medium">Tab</kbd>
+                      <span className="font-medium">Mark Issue</span>
                     </div>
                   </div>
-                  
-                  {isLoadingCall ? (
-                    <div className="space-y-6">
-                      {/* Audio Player Skeleton */}
-                      <div className="space-y-4">
-                        {/* Audio Controls Skeleton */}
-                        <div className="flex items-center space-x-2">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
-                            <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse"></div>
-                            <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
-                          </div>
-                          {/* Waveform Skeleton */}
-                          <div className="flex-1">
-                            <div className="flex items-center justify-center h-16 space-x-1">
-                              {Array.from({ length: 60 }).map((_, i) => (
-                                <div
-                                  key={i}
-                                  className="w-1 bg-gray-200 rounded-sm animate-pulse"
-                                  style={{
-                                    height: `${Math.random() * 40 + 10}px`,
-                                    animationDelay: `${i * 0.1}s`
-                                  }}
-                                />
-                              ))}
+                </div>
+
+                {/* Call Content - Fixed Layout */}
+                <div className="flex-1 flex flex-col bg-card">
+                  {/* Audio Player Section - Fixed */}
+                  <div className="flex-shrink-0 pt-6">
+                      {isLoadingCall ? (
+                        <div className="space-y-6 px-6">
+                          {/* Audio Player Skeleton - Attio Style */}
+                          <div className="bg-muted/50 rounded-xl p-6 animate-pulse">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-12 h-12 bg-muted rounded-full"></div>
+                              <div className="flex-1 h-20 bg-muted rounded-lg"></div>
+                              <div className="w-12 h-12 bg-muted rounded-full"></div>
+                            </div>
+                            <div className="flex justify-between mt-4">
+                              <div className="w-16 h-4 bg-muted rounded"></div>
+                              <div className="w-16 h-4 bg-muted rounded"></div>
                             </div>
                           </div>
                         </div>
-                        {/* Time Display Skeleton */}
-                        <div className="flex justify-between">
-                          <div className="w-12 h-4 bg-gray-200 rounded animate-pulse"></div>
-                          <div className="w-12 h-4 bg-gray-200 rounded animate-pulse"></div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : detailedCall?.callDetails?.recordingUrl ? (
-                    <>
-                      <AudioPlayer
-                        audioUrl={detailedCall.callDetails.recordingUrl}
-                        showWaveform={true}
-                        onTimeUpdate={(currentTime) => {
-                          setCurrentPlaybackTime(currentTime)
-                          scrollToCurrentTranscriptLine(currentTime)
-                          
-                          // Clear manual selection when audio continues playing
-                          // This allows highlighting to follow the audio again
-                          // Only clear if we're not in the middle of a message transition
-                          if (selectedTranscriptIndex !== null) {
-                            // Check if the manually selected message is still current
-                            const selectedMessage = detailedCall.callDetails.messages[selectedTranscriptIndex]
-                            if (selectedMessage?.secondsFromStart !== undefined) {
-                              const adjustedTime = Math.max(0, currentTime - 3)
-                              const messageEnd = detailedCall.callDetails.messages[selectedTranscriptIndex + 1]?.secondsFromStart || Infinity
-                              const isStillCurrent = adjustedTime >= selectedMessage.secondsFromStart && adjustedTime < messageEnd
+                      ) : detailedCall?.callDetails?.recordingUrl ? (
+                        <div className="px-6">
+                          <AudioPlayer
+                            audioUrl={detailedCall.callDetails.recordingUrl}
+                            showWaveform={true}
+                            onTimeUpdate={(currentTime) => {
+                              setCurrentPlaybackTime(currentTime)
+                              scrollToCurrentTranscriptLine(currentTime)
                               
-                              if (!isStillCurrent) {
-                                setSelectedTranscriptIndex(null)
-                              }
-                            }
-                          }
-                        }}
-                        onPlay={() => {
-                          // Audio started playing
-                        }}
-                        onPause={() => {
-                          // Audio paused - reset user scrolling to allow auto-scroll
-                          setIsUserScrolling(false)
-                        }}
-                      />
-                      
-
-                      
-
-                    </>
-                  ) : (
-                    <div className="text-center text-gray-500 py-8">
-                      <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                      </svg>
-                      <p>No recording available for this call</p>
-                    </div>
-                  )}
-
-                  {/* Transcription Content */}
-                  <div className="mt-8">
-
-                    
-                    {isLoadingCall ? (
-                      <div className="space-y-3">
-                        {/* Transcript Skeleton */}
-                        {Array.from({ length: 8 }).map((_, index) => (
-                          <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="w-16 h-4 bg-gray-200 rounded"></div>
-                              <div className="w-12 h-3 bg-gray-200 rounded"></div>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="w-full h-3 bg-gray-200 rounded"></div>
-                              <div className="w-3/4 h-3 bg-gray-200 rounded"></div>
-                              <div className="w-1/2 h-3 bg-gray-200 rounded"></div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : detailedCall?.callDetails?.messages && detailedCall.callDetails.messages.length > 0 ? (
-                      <div>
-                        <div ref={transcriptContainerRef} className="space-y-3 overflow-y-auto">
-                          {detailedCall.callDetails.messages.map((message: any, index: number) => {
-                            const isAI = message.role === 'bot'
-                            const speaker = isAI ? 'Agent' : formatCustomerName(detailedCall.callDetails.name || '')
-                            
-                            // Format timestamp from secondsFromStart to [MM:SS] format
-                            const timestamp = message.secondsFromStart 
-                              ? `[${Math.floor(message.secondsFromStart / 60)}:${Math.floor(message.secondsFromStart % 60).toString().padStart(2, '0')}]`
-                              : null
-                            
-                            // Determine if this is the currently active transcript line
-                            // Move 3 seconds earlier by subtracting 3 from currentPlaybackTime
-                            const adjustedPlaybackTime = Math.max(0, currentPlaybackTime - 3)
-                            const messageStart = message.secondsFromStart
-                            
-                            // Find the message that should be highlighted
-                            // We want the message that's currently being spoken
-                            // This ensures only one message is highlighted at a time
-                            let isCurrentLine = false
-                            
-                            if (messageStart !== undefined && messageStart !== null) {
-                              // Check if this message is currently being spoken
-                              // A message is "current" if:
-                              // 1. It has started (currentTime >= messageStart)
-                              // 2. It hasn't been replaced by the next message yet
-                              const messageEnd = detailedCall.callDetails.messages[index + 1]?.secondsFromStart || Infinity
-                              isCurrentLine = adjustedPlaybackTime >= messageStart && adjustedPlaybackTime < messageEnd
-                            }
-                            
-                            // Use manually selected index if available, otherwise use current line only
-                            // This ensures only one card is highlighted at any time
-                            const shouldHighlight = selectedTranscriptIndex !== null 
-                              ? selectedTranscriptIndex === index 
-                              : isCurrentLine
-                            
-                            return (
-                              <div 
-                                key={index} 
-                                className={`border rounded-lg p-4 transition-all duration-200 shadow-sm cursor-pointer relative ${
-                                  shouldHighlight 
-                                    ? 'bg-purple-100 border-purple-300 shadow-md' 
-                                    : 'bg-white border-gray-200 hover:bg-gray-50'
-                                }`}
-                                onClick={() => {
-                                  if (message.secondsFromStart) {
-                                    console.log(`🎯 Clicked transcript card ${index}: seeking to ${message.secondsFromStart}s`)
-                                    seekToTime(message.secondsFromStart)
-                                    
-                                    // Ensure audio starts playing immediately after seek
-                                    setTimeout(() => {
-                                      if (detailedCall?.callDetails?.recordingUrl) {
-                                        console.log('🚀 Ensuring audio plays after seek')
-                                        window.dispatchEvent(new CustomEvent('ensureAudioPlaying'))
-                                      }
-                                    }, 150) // Slightly longer delay to ensure seek completes
+                              // Clear manual selection when audio continues playing
+                              // This allows highlighting to follow the audio again
+                              // Only clear if we're not in the middle of a message transition
+                              if (selectedTranscriptIndex !== null) {
+                                // Check if the manually selected message is still current
+                                const selectedMessage = detailedCall.callDetails.messages[selectedTranscriptIndex]
+                                if (selectedMessage?.secondsFromStart !== undefined) {
+                                  const adjustedTime = currentTime
+                                  const messageEnd = detailedCall.callDetails.messages[selectedTranscriptIndex + 1]?.secondsFromStart || Infinity
+                                  const isStillCurrent = adjustedTime >= selectedMessage.secondsFromStart && adjustedTime < messageEnd
+                                  
+                                  if (!isStillCurrent) {
+                                    setSelectedTranscriptIndex(null)
                                   }
-                                  setSelectedTranscriptIndex(index)
-                                }}
-                                title="Click to jump to this point in audio"
-                              >
-                                <div className="flex items-start justify-between mb-2">
-                                  <div className={`text-sm font-medium ${
-                                    isAI 
-                                      ? 'text-[#4f45e6]' 
-                                      : 'text-green-800'
-                                  }`}>
-                                    {speaker}
-                                  </div>
-                                  {timestamp && (
-                                    <div className="text-xs text-gray-500">
-                                      {timestamp}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex-1 pb-8">
-                                  <p className="text-sm text-gray-900 leading-relaxed">
-                                    {message.message}
-                                  </p>
-                                </div>
-                                
-                                {/* Mark Issue Button - Bottom Right */}
-                                <div className="absolute bottom-3 right-3">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleMarkIssue(message.message, message.secondsFromStart || 0)
-                                    }}
-                                    className="text-xs text-gray-500 hover:text-gray-700 hover:underline font-medium"
-                                  >
-                                    Mark issue
-                                  </button>
-                                </div>
-                              </div>
-                            )
-                          })}
+                                }
+                              }
+                            }}
+                            onPlay={() => {
+                              // Audio started playing
+                            }}
+                            onPause={() => {
+                              // Audio paused - reset user scrolling to allow auto-scroll
+                              setIsUserScrolling(false)
+                            }}
+                          />
                         </div>
-                      </div>
-                    ) : (
-                      <div className="text-center text-gray-500 py-8">
-                        <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        <p>No transcription available for this call</p>
-                      </div>
-                    )}
-                  </div>
+                      ) : (
+                        <div className="text-center py-12 px-6">
+                          <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                            </svg>
+                          </div>
+                          <h3 className="attio-heading-3 mb-2">No recording available</h3>
+                          <p className="attio-body-small">This call doesn't have an associated recording file.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Transcript Section */}
+                    <div className="flex-1 flex flex-col min-h-0 mt-8">
+                      {isLoadingCall ? (
+                        <div className="space-y-4 px-6">
+                          <h3 className="attio-heading-3 mb-4">Transcript</h3>
+                          {/* Transcript Skeleton - Attio Style */}
+                          {Array.from({ length: 6 }).map((_, index) => (
+                            <div key={index} className="attio-card p-4 animate-pulse">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="w-20 h-4 bg-muted rounded"></div>
+                                <div className="w-16 h-3 bg-muted rounded"></div>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="w-full h-3 bg-muted rounded"></div>
+                                <div className="w-4/5 h-3 bg-muted rounded"></div>
+                                <div className="w-3/5 h-3 bg-muted rounded"></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : detailedCall?.callDetails?.messages && detailedCall.callDetails.messages.length > 0 ? (
+                        <div className="flex flex-col flex-1 min-h-0">
+                          <h4 className="text-[15px] font-semibold text-foreground mb-3 px-6 flex-shrink-0">Transcript</h4>
+                          <div ref={transcriptContainerRef} className="space-y-2 overflow-y-auto h-96 px-6 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+                            {detailedCall.callDetails.messages.map((message: any, index: number) => {
+                              const isAI = message.role === 'bot'
+                              const speaker = isAI ? 'Agent' : formatCustomerName(detailedCall.callDetails.name || '')
+                              
+                              // Format timestamp from secondsFromStart to [MM:SS] format
+                              const timestamp = message.secondsFromStart 
+                                ? `${Math.floor(message.secondsFromStart / 60)}:${Math.floor(message.secondsFromStart % 60).toString().padStart(2, '0')}`
+                                : null
+                              
+                              // Determine if this is the currently active transcript line
+                              // Use exact current time for perfect sync accuracy
+                              const adjustedPlaybackTime = currentPlaybackTime
+                              const messageStart = message.secondsFromStart
+                              
+                              let isCurrentLine = false
+                              if (messageStart !== undefined && messageStart !== null) {
+                                const messageEnd = detailedCall.callDetails.messages[index + 1]?.secondsFromStart || Infinity
+                                // Use exact timing for precise highlighting
+                                isCurrentLine = adjustedPlaybackTime >= messageStart && adjustedPlaybackTime < messageEnd
+                              }
+                              
+                              const shouldHighlight = selectedTranscriptIndex !== null 
+                                ? selectedTranscriptIndex === index 
+                                : isCurrentLine
+                              
+                              const hasIssue = markedIssues.has(index)
+                              
+                              // Count issues for this transcript index
+                              const issueCount = selectedCall?.id && callIssues.get(selectedCall.id) 
+                                ? callIssues.get(selectedCall.id)!.filter(issue => issue.transcriptIndex === index).length
+                                : 0
+                              
+                              return (
+                                <div 
+                                  key={index} 
+                                  className={`p-4 rounded-lg border cursor-pointer relative group transition-all duration-200 ${
+                                    hasIssue
+                                      ? 'bg-red-50 border-red-200 shadow-sm'
+                                      : shouldHighlight 
+                                      ? 'bg-primary/5 border-primary/20 shadow-sm' 
+                                      : 'bg-card border-border hover:bg-muted/50'
+                                  }`}
+                                  onClick={() => {
+                                    if (message.secondsFromStart) {
+                                      console.log(`🎯 Clicked transcript card ${index}: seeking to ${message.secondsFromStart}s`)
+                                      seekToTime(message.secondsFromStart)
+                                      
+                                      setTimeout(() => {
+                                        if (detailedCall?.callDetails?.recordingUrl) {
+                                          console.log('🚀 Ensuring audio plays after seek')
+                                          window.dispatchEvent(new CustomEvent('ensureAudioPlaying'))
+                                        }
+                                      }, 150)
+                                    }
+                                    setSelectedTranscriptIndex(index)
+                                  }}
+                                  title="Click to jump to this point in audio"
+                                >
+                                  <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
+                                        isAI 
+                                          ? 'bg-primary/12 text-primary' 
+                                          : 'bg-green-100 text-green-700'
+                                      }`}>
+                                        {isAI ? 'AI' : selectedCall?.customerInitials || 'CU'}
+                                      </div>
+                                      <div>
+                                        <div className="text-[13px] font-semibold text-foreground">{speaker}</div>
+                                        {timestamp && (
+                                          <div className="text-[11px] text-muted-foreground/70 font-medium">{timestamp}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Issue Indicator and Mark Issue Button */}
+                                    <div className="flex items-center gap-2">
+                                      {hasIssue && issueCount > 0 && (
+                                        <Badge 
+                                          variant="destructive" 
+                                          className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:bg-destructive/80 transition-colors"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleMarkIssue(message.message, message.secondsFromStart || 0, index)
+                                            // Switch to previous issues tab after opening
+                                            setTimeout(() => setActiveTab('previous-issues'), 100)
+                                          }}
+                                          title={`Click to view ${issueCount} issue${issueCount > 1 ? 's' : ''} for this transcript`}
+                                        >
+                                          {issueCount}
+                                        </Badge>
+                                      )}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleMarkIssue(message.message, message.secondsFromStart || 0, index)
+                                        }}
+                                        className={`transition-opacity text-[11px] px-2.5 py-1.5 rounded-md font-medium ${
+                                          hasIssue 
+                                            ? 'opacity-100 bg-red-100 hover:bg-red-200 text-red-700' 
+                                            : 'opacity-0 group-hover:opacity-100 bg-secondary hover:bg-muted text-secondary-foreground'
+                                        }`}
+                                      >
+                                        {hasIssue ? 'Mark more issues' : 'Mark issue'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="text-[14px] text-foreground/90 leading-relaxed font-normal mt-1">
+                                    {message.message}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 px-6">
+                          <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                          </div>
+                          <h3 className="attio-heading-3 mb-2">No transcript available</h3>
+                          <p className="attio-body-small">This call doesn't have transcript data.</p>
+                        </div>
+                      )}
+                    </div>
                 </div>
-              </>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-muted rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-10 h-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <h2 className="attio-heading-2 mb-2">No call selected</h2>
+                  <p className="attio-body">Select a call from the list to start reviewing</p>
+                </div>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Mark Issue Panel */}
+        {/* Mark Issue Panel - Wider */}
         {markIssueData && (
-          <div className="w-96 bg-white border-l border-gray-200 transition-all duration-300">
+          <div className="w-[480px] bg-card border-l-2 border-l-primary/20 transition-all duration-300 shadow-xl">
             <div className="flex flex-col h-full">
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h2 className="text-xl font-semibold">Mark Issue</h2>
+              <div className="px-6 py-5 border-b border-border bg-muted/20 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground mb-1">Mark Issue</h2>
+                      <p className="text-[13px] text-muted-foreground/80">Identify quality concerns</p>
+                    </div>
+                  </div>
                 <button 
                   onClick={handleCancelMarkIssue}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="w-8 h-8 rounded-lg border border-input hover:bg-muted hover:border-border flex items-center justify-center transition-all"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
+                </div>
               </div>
               
-              {/* Content */}
-              <div className="flex-1 overflow-auto p-6">
-                <MarkIssueForm
-                  transcriptText={markIssueData.transcriptText}
-                  timestamp={markIssueData.timestamp}
-                  onSubmit={handleIssueSubmit}
-                  onCancel={handleCancelMarkIssue}
-                />
+              {/* Tabs Navigation */}
+              <div className="pt-4 pb-0">
+                <div className="flex border-b border-border">
+                  <button
+                    onClick={() => setActiveTab('new-issue')}
+                    className={`flex-1 pb-3 px-6 text-sm font-medium transition-colors relative ${
+                      activeTab === 'new-issue'
+                        ? 'text-foreground border-b-2 border-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    New Issue
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('previous-issues')}
+                    className={`flex-1 pb-3 px-6 text-sm font-medium transition-colors relative flex items-center justify-center gap-2 ${
+                      activeTab === 'previous-issues'
+                        ? 'text-foreground border-b-2 border-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Previous Issues
+                    {selectedCall?.id && callIssues.get(selectedCall.id) && (() => {
+                      const totalIssuesCount = callIssues.get(selectedCall.id)!.length
+                      return totalIssuesCount > 0 ? (
+                        <span className="bg-muted text-muted-foreground text-xs px-1.5 py-0.5 rounded-full font-medium">
+                          {totalIssuesCount}
+                        </span>
+                      ) : null
+                    })()}
+                  </button>
+                </div>
               </div>
+
+              {/* Content - Independent scrolling */}
+              <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+                {activeTab === 'new-issue' && (
+                  <div className="p-6">
+                    <MarkIssueForm
+                      ref={formRef}
+                      transcriptText={markIssueData.transcriptText}
+                      timestamp={markIssueData.timestamp}
+                      onSubmit={handleIssueSubmit}
+                      onCancel={handleCancelMarkIssue}
+                      showActions={false}
+                      onFormChange={(isValid, count) => {
+                        setIsFormValid(isValid)
+                        setSelectedIssuesCount(count)
+                      }}
+                      onNewIssue={() => setActiveTab('new-issue')}
+                    />
+                  </div>
+                )}
+                
+                {activeTab === 'previous-issues' && (
+                  <div className="p-6">
+                    {selectedCall?.id && callIssues.get(selectedCall.id) ? (() => {
+                      // Aggregate all issues for the selected call and sort latest to oldest
+                      const allIssues = callIssues.get(selectedCall.id)!
+                        .slice()
+                        .sort((a, b) => b.timestamp - a.timestamp)
+
+                      return allIssues.length > 0 ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-medium text-foreground">All Issues in This Call</h3>
+                            <Badge variant="outline" className="text-xs">
+                              {allIssues.length} issue{allIssues.length !== 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+                          <div className="space-y-3">
+                            {allIssues.map((issue, index) => (
+                              <div key={index} className="bg-muted/30 border rounded-lg p-4 space-y-3 relative group">
+                                <div className="flex items-start justify-between gap-1">
+                                  <Badge variant="outline" className="text-xs" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
+                                    {Math.floor(issue.timestamp / 60)}:{(issue.timestamp % 60).toString().padStart(2, '0')}
+                                  </Badge>
+                                  <div className="flex items-start gap-2">
+                                    <div className="flex flex-wrap gap-1">
+                                      {issue.issues.map((iss, issIndex) => (
+                                        <Badge
+                                          key={issIndex}
+                                          variant={iss.severity === 'high' ? 'destructive' : iss.severity === 'medium' ? 'default' : 'secondary'}
+                                          className="text-xs"
+                                        >
+                                          {iss.type}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        // Find the original index in the full issues array
+                                        const fullIssues = callIssues.get(selectedCall.id) || []
+                                        const originalIndex = fullIssues.findIndex(fullIssue =>
+                                          fullIssue.timestamp === issue.timestamp &&
+                                          fullIssue.transcriptText === issue.transcriptText &&
+                                          fullIssue.description === issue.description
+                                        )
+                                        if (originalIndex !== -1) {
+                                          handleDeleteIssue(originalIndex)
+                                        }
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-sm hover:bg-destructive/10"
+                                      title="Delete issue"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-muted-foreground bg-background/50 rounded p-2 border-l-2 border-primary/20">
+                                  "{issue.transcriptText}"
+                                </div>
+                                <p className="text-sm text-foreground leading-relaxed">{issue.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                          <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+                            <svg className="w-8 h-8 text-muted-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <h3 className="text-lg font-medium text-foreground mb-2">No issues for this call</h3>
+                          <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+                            No issues have been marked for this call yet. Switch to the "New Issue" tab to add some.
+                          </p>
+                        </div>
+                      )
+                    })() : (
+                      <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+                          <svg className="w-8 h-8 text-muted-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-foreground mb-2">No call selected</h3>
+                        <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+                          Select a call from the list to view its issues.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Sticky Actions - Only show for New Issue tab */}
+              {activeTab === 'new-issue' && (
+                <div className="flex-shrink-0 p-6 border-t border-border bg-card">
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleCancelMarkIssue}
+                      className="flex-1 px-4 py-2 text-sm font-medium text-foreground border border-input bg-background hover:bg-muted rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => formRef.current?.submitForm()}
+                      disabled={!isFormValid}
+                      className="flex-1 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-lg transition-colors"
+                    >
+                      Mark {selectedIssuesCount > 0 ? `${selectedIssuesCount} Issue${selectedIssuesCount > 1 ? 's' : ''}` : 'Issues'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

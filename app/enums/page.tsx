@@ -4,13 +4,17 @@ import { EnumCatalogManager } from "@/components/enums/enum-catalog-manager"
 export default function EnumsPage() {
   return (
     <AppShell>
-      <div className="flex flex-col gap-6 p-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Enum Catalog Manager</h1>
-          <p className="text-muted-foreground">Manage and organize quality assurance enumeration codes.</p>
+      <div className="attio-container h-full flex flex-col">
+        {/* Page Header */}
+        <div className="attio-page-header">
+          <h1 className="attio-heading-1">Enum Catalog</h1>
+          <p className="attio-body mt-2">Manage and organize quality assurance enumeration codes</p>
         </div>
 
-        <EnumCatalogManager />
+        {/* Page Content */}
+        <div className="flex-1 overflow-auto">
+          <EnumCatalogManager />
+        </div>
       </div>
     </AppShell>
   )
