@@ -93,43 +93,28 @@ export function EnumCatalogManager() {
   const isIndeterminate = selectedEnums.length > 0 && selectedEnums.length < filteredEnums.length
 
   return (
-    <div className="space-y-6">
-      {/* Toolbar - Attio Style */}
-      <div className="attio-card p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-1 items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                placeholder="Search enums..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="attio-input pl-9 w-full"
-              />
-            </div>
-
-            {selectedEnums.length > 0 && (
-              <div className="flex items-center gap-3">
-                <span className="attio-body-small text-muted-foreground">{selectedEnums.length} selected</span>
-                <button 
-                  className="attio-button-secondary text-sm"
-                  onClick={() => handleBulkActivate(true)}
-                >
-                  Activate
-                </button>
-                <button 
-                  className="attio-button-secondary text-sm"
-                  onClick={() => handleBulkActivate(false)}
-                >
-                  Deactivate
-                </button>
-              </div>
-            )}
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header - Match Issues Tab */}
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Enum Catalog</h2>
+          <p className="text-sm text-muted-foreground">
+            Manage and organize quality assurance enumeration codes
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <input
+              placeholder="Search enums..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white/90 backdrop-blur-sm border-border/50 rounded-lg text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm hover:bg-white/95"
+            />
           </div>
-
           <button 
             onClick={() => setShowNewEnum(true)}
-            className="attio-button-primary flex items-center gap-2"
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md shrink-0"
           >
             <Plus className="h-4 w-4" />
             New Enum
@@ -137,37 +122,71 @@ export function EnumCatalogManager() {
         </div>
       </div>
 
-      {/* Enums Grid - Attio Style */}
+      {/* Actions Bar - Match Issues Tab */}
+      {selectedEnums.length > 0 && (
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-primary rounded-full" />
+            <span className="text-sm text-muted-foreground font-medium">
+              {selectedEnums.length} selected
+            </span>
+          </div>
+          <button 
+            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors dark:text-green-300 dark:bg-green-950 dark:border-green-800 dark:hover:bg-green-900"
+            onClick={() => handleBulkActivate(true)}
+          >
+            Activate
+          </button>
+          <button 
+            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors dark:text-red-300 dark:bg-red-950 dark:border-red-800 dark:hover:bg-red-900"
+            onClick={() => handleBulkActivate(false)}
+          >
+            Deactivate
+          </button>
+        </div>
+      )}
+
+      {/* Enums Grid Section */}
       <div>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="attio-heading-3">Enums ({filteredEnums.length})</h3>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <h3 className="text-xl font-semibold text-foreground">Quality Assurance Enums</h3>
+            <div className="flex items-center gap-2 px-3 py-1 bg-muted/50 rounded-full">
+              <span className="text-sm font-medium text-muted-foreground">{filteredEnums.length}</span>
+              <span className="text-xs text-muted-foreground">
+                {filteredEnums.length === 1 ? 'enum' : 'enums'}
+              </span>
+            </div>
+          </div>
           {filteredEnums.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 rounded-lg border border-border/50">
               <Checkbox 
                 checked={isAllSelected} 
                 onCheckedChange={handleSelectAll} 
                 aria-label="Select all enums"
                 {...(isIndeterminate && { "data-state": "indeterminate" })}
               />
-              <span className="attio-body-small">Select all</span>
+              <span className="text-sm text-muted-foreground font-medium">Select all</span>
             </div>
           )}
         </div>
 
         {filteredEnums.length === 0 ? (
-          <div className="attio-card p-12 text-center">
-            <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Settings className="h-8 w-8 text-muted-foreground" />
+          <div className="bg-card border border-border rounded-xl p-16 text-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-primary/10">
+              <Settings className="h-10 w-10 text-primary/60" />
             </div>
-            <h3 className="attio-heading-3 mb-2">
+            <h3 className="text-xl font-semibold text-foreground mb-3">
               {searchQuery ? "No enums found" : "No enums available"}
             </h3>
-            <p className="attio-body-small text-muted-foreground mb-4">
-              {searchQuery ? "Try adjusting your search criteria." : "Create your first enum to get started."}
+            <p className="text-base text-muted-foreground mb-6 max-w-md mx-auto leading-relaxed">
+              {searchQuery 
+                ? "We couldn't find any enums matching your search criteria. Try adjusting your search terms or filters." 
+                : "Get started by creating your first quality assurance enumeration code to categorize and track call quality issues."}
             </p>
             {!searchQuery && (
               <button 
-                className="attio-button-primary flex items-center gap-2 mx-auto"
+                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md"
                 onClick={() => setShowNewEnum(true)}
               >
                 <Plus className="h-4 w-4" />
@@ -176,70 +195,77 @@ export function EnumCatalogManager() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {filteredEnums.map((enum_) => (
-              <div key={enum_.id} className="attio-card p-6 group">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
+              <div key={enum_.id} className="group relative bg-card border border-border rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 flex flex-col h-full">
+                {/* Header Section */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3 flex-1">
                     <Checkbox
                       checked={selectedEnums.includes(enum_.id)}
                       onCheckedChange={(checked) => handleSelectEnum(enum_.id, checked as boolean)}
                       aria-label={`Select ${enum_.code}`}
+                      className="mt-0.5"
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <code className="bg-muted px-2 py-1 rounded text-xs font-mono">{enum_.code}</code>
-                        <span className={`attio-badge ${
-                          enum_.severity === 'HIGH' ? 'attio-badge-error' :
-                          enum_.severity === 'MEDIUM' ? 'attio-badge-warning' :
-                          'attio-badge-info'
-                        }`}>
-                          {enum_.severity}
-                        </span>
-                      </div>
-                      <h4 className="attio-body font-medium">{enum_.title}</h4>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-base font-semibold text-foreground leading-tight line-clamp-2 min-h-[3rem] mb-0">
+                        {enum_.title}
+                      </h4>
+                      <p className="text-sm text-muted-foreground leading-5 line-clamp-2 min-h-[2.5rem] mt-1">
+                        {enum_.description}
+                      </p>
                     </div>
                   </div>
                   
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center">
-                        <MoreHorizontal className="h-4 w-4" />
+                      <button className="opacity-0 group-hover:opacity-100 transition-all duration-200 w-8 h-8 rounded-lg hover:bg-muted/80 flex items-center justify-center shrink-0">
+                        <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                         <span className="sr-only">Open menu for {enum_.code}</span>
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem onClick={() => handleEdit(enum_)}>
                         <Edit className="h-4 w-4 mr-2" />
-                        Edit
+                        Edit Enum
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleMerge(enum_)}>
                         <Merge className="h-4 w-4 mr-2" />
-                        Merge
+                        Merge with Another
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
 
-                <p className="attio-body-small text-muted-foreground mb-4 line-clamp-2">
-                  {enum_.description}
-                </p>
+                {/* Spacer for footer positioning */}
+                <div className="mb-4 flex-1"></div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                {/* Footer Section - Always at bottom */}
+                <div className="flex items-center justify-between mt-auto">
+                  <div className="flex items-center gap-3">
                     <Switch
                       checked={enum_.isActive}
                       onCheckedChange={(checked) => handleToggleActive(enum_.id, checked)}
                       aria-label={`Toggle ${enum_.code} active status`}
+                      className="scale-90"
                     />
-                    <span className="attio-body-small text-muted-foreground">
+                    <span className={`text-sm font-medium ${
+                      enum_.isActive 
+                        ? 'text-green-600 dark:text-green-400' 
+                        : 'text-muted-foreground'
+                    }`}>
                       {enum_.isActive ? "Active" : "Inactive"}
                     </span>
                   </div>
-                  <span className="attio-caption">
-                    {format(new Date(enum_.updatedAt), "MMM d, yyyy")}
-                  </span>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <span>Updated</span>
+                    <span className="font-medium">
+                      {format(new Date(enum_.updatedAt), "MMM d")}
+                    </span>
+                  </div>
                 </div>
+
+
               </div>
             ))}
           </div>

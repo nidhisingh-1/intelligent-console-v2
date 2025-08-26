@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { ClipboardList, BarChart3, Settings, Menu } from "lucide-react"
+import { ClipboardList, BarChart3, Settings, Menu, Bug } from "lucide-react"
 
 const navigation = [
   {
