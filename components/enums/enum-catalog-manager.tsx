@@ -93,20 +93,20 @@ export function EnumCatalogManager() {
   const isIndeterminate = selectedEnums.length > 0 && selectedEnums.length < filteredEnums.length
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-12">
       {/* Header - Match Issues Tab */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Enum Catalog</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Issue Manager</h2>
           <p className="text-sm text-muted-foreground">
-            Manage and organize quality assurance enumeration codes
+            Create, organize and manage quality assurance issue types and categories
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative w-64">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
-              placeholder="Search enums..."
+              placeholder="Search issue types..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-white/90 backdrop-blur-sm border-border/50 rounded-lg text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm hover:bg-white/95"
@@ -117,59 +117,15 @@ export function EnumCatalogManager() {
             className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md shrink-0"
           >
             <Plus className="h-4 w-4" />
-            New Enum
+            New Issue Type
           </button>
         </div>
       </div>
 
-      {/* Actions Bar - Match Issues Tab */}
-      {selectedEnums.length > 0 && (
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full" />
-            <span className="text-sm text-muted-foreground font-medium">
-              {selectedEnums.length} selected
-            </span>
-          </div>
-          <button 
-            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors dark:text-green-300 dark:bg-green-950 dark:border-green-800 dark:hover:bg-green-900"
-            onClick={() => handleBulkActivate(true)}
-          >
-            Activate
-          </button>
-          <button 
-            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors dark:text-red-300 dark:bg-red-950 dark:border-red-800 dark:hover:bg-red-900"
-            onClick={() => handleBulkActivate(false)}
-          >
-            Deactivate
-          </button>
-        </div>
-      )}
+
 
       {/* Enums Grid Section */}
       <div>
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <h3 className="text-xl font-semibold text-foreground">Quality Assurance Enums</h3>
-            <div className="flex items-center gap-2 px-3 py-1 bg-muted/50 rounded-full">
-              <span className="text-sm font-medium text-muted-foreground">{filteredEnums.length}</span>
-              <span className="text-xs text-muted-foreground">
-                {filteredEnums.length === 1 ? 'enum' : 'enums'}
-              </span>
-            </div>
-          </div>
-          {filteredEnums.length > 0 && (
-            <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 rounded-lg border border-border/50">
-              <Checkbox 
-                checked={isAllSelected} 
-                onCheckedChange={handleSelectAll} 
-                aria-label="Select all enums"
-                {...(isIndeterminate && { "data-state": "indeterminate" })}
-              />
-              <span className="text-sm text-muted-foreground font-medium">Select all</span>
-            </div>
-          )}
-        </div>
 
         {filteredEnums.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-16 text-center">
@@ -177,12 +133,12 @@ export function EnumCatalogManager() {
               <Settings className="h-10 w-10 text-primary/60" />
             </div>
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              {searchQuery ? "No enums found" : "No enums available"}
+              {searchQuery ? "No issue types found" : "No issue types available"}
             </h3>
             <p className="text-base text-muted-foreground mb-6 max-w-md mx-auto leading-relaxed">
               {searchQuery 
-                ? "We couldn't find any enums matching your search criteria. Try adjusting your search terms or filters." 
-                : "Get started by creating your first quality assurance enumeration code to categorize and track call quality issues."}
+                ? "We couldn't find any issue types matching your search criteria. Try adjusting your search terms or filters." 
+                : "Get started by creating your first quality issue type to categorize and track call quality problems."}
             </p>
             {!searchQuery && (
               <button 
@@ -190,7 +146,7 @@ export function EnumCatalogManager() {
                 onClick={() => setShowNewEnum(true)}
               >
                 <Plus className="h-4 w-4" />
-                Create First Enum
+                Create First Issue Type
               </button>
             )}
           </div>
@@ -200,21 +156,13 @@ export function EnumCatalogManager() {
               <div key={enum_.id} className="group relative bg-card border border-border rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 flex flex-col h-full">
                 {/* Header Section */}
                 <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1">
-                    <Checkbox
-                      checked={selectedEnums.includes(enum_.id)}
-                      onCheckedChange={(checked) => handleSelectEnum(enum_.id, checked as boolean)}
-                      aria-label={`Select ${enum_.code}`}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-base font-semibold text-foreground leading-tight line-clamp-2 min-h-[3rem] mb-0">
-                        {enum_.title}
-                      </h4>
-                      <p className="text-sm text-muted-foreground leading-5 line-clamp-2 min-h-[2.5rem] mt-1">
-                        {enum_.description}
-                      </p>
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-base font-semibold text-foreground leading-tight line-clamp-2 min-h-[3rem] mb-0">
+                      {enum_.title}
+                    </h4>
+                    <p className="text-sm text-muted-foreground leading-5 line-clamp-2 min-h-[2.5rem] mt-1">
+                      {enum_.description}
+                    </p>
                   </div>
                   
                   <DropdownMenu>

@@ -16,10 +16,10 @@ const navigation = [
     description: "Review and analyze customer calls",
   },
   {
-    name: "Enum Management", 
+    name: "Issue Manager", 
     href: "/enums",
-    icon: Settings,
-    description: "Manage QA enumeration codes",
+    icon: Bug,
+    description: "Manage and categorize quality issues",
   },
   {
     name: "Analytics",

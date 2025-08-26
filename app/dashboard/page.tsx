@@ -502,11 +502,12 @@ function IssuesManagement() {
                   {filteredIssues.map((issue) => (
                     <TableRow 
                       key={issue.id} 
-                      className={`hover:bg-muted/50 border-b cursor-pointer transition-all duration-200 ${
+                      className={`hover:bg-muted/50 cursor-pointer transition-all duration-200 ${
                         isHighSeverityDominant(issue.severityBifurcation) 
                           ? 'bg-red-50/30 hover:bg-red-50/50 border-l-4 border-l-red-200/60' 
                           : 'hover:bg-white/80 backdrop-blur-sm hover:border-primary/20'
                       }`}
+                      style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.1)' }}
                       onClick={() => handleIssueClick(issue.id)}
                       title="Click to view calls with this issue"
                     >

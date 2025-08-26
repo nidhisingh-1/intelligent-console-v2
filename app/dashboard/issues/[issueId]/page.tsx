@@ -340,7 +340,8 @@ export default function IssueCallsPage() {
                         {filteredCalls.map((call) => (
                           <TableRow 
                             key={call.id}
-                            className="hover:bg-muted/50 border-b cursor-pointer transition-all duration-200 hover:bg-white/80 backdrop-blur-sm"
+                            className="hover:bg-muted/50 cursor-pointer transition-all duration-200 hover:bg-white/80 backdrop-blur-sm"
+                            style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.1)' }}
                             onClick={() => handleCallClick(call.id)}
                             title="Click to review this call"
                           >
