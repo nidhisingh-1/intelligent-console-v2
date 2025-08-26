@@ -443,7 +443,7 @@ function IssuesManagement() {
         )}
 
         <div className="relative w-64 ml-auto">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
           <Input 
             placeholder="Search issues..." 
             className="pl-10 bg-white/90 backdrop-blur-sm border-border/50 hover:bg-white/95 transition-all"

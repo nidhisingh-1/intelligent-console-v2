@@ -104,7 +104,7 @@ export function EnumCatalogManager() {
         </div>
         <div className="flex items-center gap-3">
           <div className="relative w-64">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
             <input
               placeholder="Search issue types..."
               value={searchQuery}

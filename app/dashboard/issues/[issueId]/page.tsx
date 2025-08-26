@@ -200,7 +200,7 @@ export default function IssueCallsPage() {
                 <p className="text-sm text-muted-foreground ml-11">{issueInfo.description}</p>
               </div>
               <div className="relative w-64">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
                 <Input 
                   placeholder="Search calls..." 
                   className="pl-10 bg-white/90 backdrop-blur-sm border-border/50"
