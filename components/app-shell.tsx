@@ -16,16 +16,16 @@ const navigation = [
     description: "Review and analyze customer calls",
   },
   {
+    name: "Issue Tracker",
+    href: "/dashboard", 
+    icon: BarChart3,
+    description: "Track and monitor quality issues",
+  },
+  {
     name: "Issue Manager", 
     href: "/enums",
     icon: Bug,
     description: "Manage and categorize quality issues",
-  },
-  {
-    name: "Analytics",
-    href: "/dashboard", 
-    icon: BarChart3,
-    description: "Performance insights and metrics",
   },
 ]
 
