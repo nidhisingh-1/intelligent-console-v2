@@ -162,7 +162,7 @@ export default function IssueCallsPage() {
           <div className="flex-1 overflow-auto py-8">
             <div className="max-w-7xl mx-auto">
               <EmptyState
-                icon={FileX as any}
+                icon={<FileX className="h-8 w-8 text-muted-foreground" />}
                 heading="Issue not found"
                 subheading="The requested issue could not be found."
                 ctaLabel="Back to Dashboard"

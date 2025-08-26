@@ -458,7 +458,7 @@ function IssuesManagement() {
         <CardContent>
           {filteredIssues.length === 0 ? (
             <EmptyState
-              icon={FileX as any}
+              icon={<FileX className="h-8 w-8 text-muted-foreground" />}
               heading="No issues found"
               subheading={
                 searchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all"

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Plus, Edit, Merge, MoreHorizontal, Settings } from "lucide-react"
+import { Search, Plus, Edit, Merge, MoreHorizontal, Settings, SearchX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -130,25 +130,48 @@ export function EnumCatalogManager() {
         {filteredEnums.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-16 text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-primary/10">
-              <Settings className="h-10 w-10 text-primary/60" />
+              {searchQuery ? (
+                <SearchX className="h-10 w-10 text-primary/60" />
+              ) : (
+                <Settings className="h-10 w-10 text-primary/60" />
+              )}
             </div>
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              {searchQuery ? "No issue types found" : "No issue types available"}
+              {searchQuery ? "No matching issue types found" : "No issue types available"}
             </h3>
             <p className="text-base text-muted-foreground mb-6 max-w-md mx-auto leading-relaxed">
               {searchQuery 
-                ? "We couldn't find any issue types matching your search criteria. Try adjusting your search terms or filters." 
+                ? `We couldn't find any issue types matching "${searchQuery}". Try adjusting your search terms or browse all available issue types.` 
                 : "Get started by creating your first quality issue type to categorize and track call quality problems."}
             </p>
-            {!searchQuery && (
-              <button 
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md"
-                onClick={() => setShowNewEnum(true)}
-              >
-                <Plus className="h-4 w-4" />
-                Create First Issue Type
-              </button>
-            )}
+            <div className="flex items-center justify-center gap-3">
+              {searchQuery ? (
+                <>
+                  <button 
+                    className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <SearchX className="h-4 w-4" />
+                    Clear Search
+                  </button>
+                  <button 
+                    className="inline-flex items-center gap-2 bg-secondary text-secondary-foreground px-6 py-3 rounded-lg font-medium text-sm hover:bg-secondary/80 transition-colors border border-border"
+                    onClick={() => setShowNewEnum(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create New Issue Type
+                  </button>
+                </>
+              ) : (
+                <button 
+                  className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md"
+                  onClick={() => setShowNewEnum(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create First Issue Type
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
@@ -158,10 +181,10 @@ export function EnumCatalogManager() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <h4 className="text-base font-semibold text-foreground leading-tight line-clamp-2 min-h-[3rem] mb-0">
-                      {enum_.title}
+                      {enum_.title || "Untitled"}
                     </h4>
                     <p className="text-sm text-muted-foreground leading-5 line-clamp-2 min-h-[2.5rem] mt-1">
-                      {enum_.description}
+                      {enum_.description || "No description available"}
                     </p>
                   </div>
                   
@@ -208,7 +231,7 @@ export function EnumCatalogManager() {
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <span>Updated</span>
                     <span className="font-medium">
-                      {format(new Date(enum_.updatedAt), "MMM d")}
+                      {enum_.updatedAt ? format(new Date(enum_.updatedAt), "MMM d") : "N/A"}
                     </span>
                   </div>
                 </div>
