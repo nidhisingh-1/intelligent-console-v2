@@ -98,10 +98,10 @@ export function AppShell({ children }: AppShellProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Navigation Bar - Attio Style */}
         <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="attio-container">
+          <div className="w-full pl-2 pr-6">
             <div className="flex h-16 items-center justify-between">
               {/* Left Side - Logo and Navigation */}
-              <div className="flex items-center gap-8">
+              <div className="flex items-center gap-2">
                 {/* Mobile Menu Button */}
                 <Button 
                   variant="ghost" 
@@ -123,7 +123,7 @@ export function AppShell({ children }: AppShellProps) {
                         key={item.name}
                         href={item.href}
                         className={cn(
-                          "flex items-center gap-2 px-6 h-16 -mb-px text-sm font-medium border-b-2 transition-colors",
+                          "flex items-center gap-2 px-4 h-16 -mb-px text-base font-medium border-b-2 transition-colors",
                           isActive
                             ? "text-foreground border-primary"
                             : "text-muted-foreground border-transparent hover:text-foreground"

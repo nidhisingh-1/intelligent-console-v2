@@ -341,15 +341,6 @@ function IssuesManagement() {
             High-level view of all issue types with occurrence statistics and resolution status.
           </p>
         </div>
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search issues..." 
-            className="pl-10 bg-white/90 backdrop-blur-sm border-border/50 hover:bg-white/95 transition-all"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
       </div>
 
       {/* Filters */}
@@ -450,6 +441,16 @@ function IssuesManagement() {
             Clear Filters
           </Button>
         )}
+
+        <div className="relative w-64 ml-auto">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search issues..." 
+            className="pl-10 bg-white/90 backdrop-blur-sm border-border/50 hover:bg-white/95 transition-all"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Issues Table */}
