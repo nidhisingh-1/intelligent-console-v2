@@ -17,7 +17,7 @@ class AudioStateStore {
 
   setState(newState: Partial<typeof this.state>) {
     this.state = { ...this.state, ...newState };
-    console.log('🔄 Audio state updated:', this.state);
+
   }
 
   getState() {
@@ -152,10 +152,10 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
         // Restore state for HTML audio
         if (audioStateStore.shouldRestore(audioUrl)) {
           const { currentTime, isPlaying } = audioStateStore.getState();
-          console.log('🔄 Restoring HTML audio position to:', currentTime);
+
           audio.currentTime = currentTime;
           if (isPlaying) {
-            console.log('▶️ Resuming HTML audio playback');
+
             audio.play();
           }
           audioStateStore.markRestored();
@@ -233,11 +233,11 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
       if (showWaveform && wavesurfer && audioStateStore.shouldRestore(audioUrl)) {
         const restoreState = () => {
           const { currentTime, isPlaying } = audioStateStore.getState();
-          console.log('🔄 Restoring wavesurfer audio position to:', currentTime);
+
           wavesurfer.setTime(currentTime);
           if (isPlaying) {
             setTimeout(() => {
-              console.log('▶️ Resuming wavesurfer playback');
+
               wavesurfer.play();
             }, 100);
           }
@@ -250,7 +250,7 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
         } else {
           // Wait for audio to be ready
           const handleReady = () => {
-            console.log('🎵 Wavesurfer ready, attempting to restore state');
+
             restoreState();
           };
           
@@ -280,12 +280,12 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
     // Listen for play/pause toggle events
     useEffect(() => {
       const handleToggleEvent = () => {
-        console.log('Audio player received toggleAudioPlayPause event')
+
         if (showWaveform) {
-          console.log('Toggling wavesurfer play/pause')
+
           wavesurfer?.playPause();
         } else {
-          console.log('Toggling HTML audio play/pause')
+
           if (!audioPlayerRef.current) return;
           if (audioPlayerRef.current.paused) {
             audioPlayerRef.current.play();
@@ -305,7 +305,7 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
     // Listen for ensure audio playing events (after seek)
     useEffect(() => {
       const handleEnsurePlayingEvent = () => {
-        console.log('Audio player received ensureAudioPlaying event')
+
         if (showWaveform) {
           // For wavesurfer, ensure it's playing
           if (!wavesurferIsPlaying) {
@@ -329,7 +329,7 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
     // Listen for pause audio events
     useEffect(() => {
       const handlePauseEvent = () => {
-        console.log('Audio player received pauseAudio event')
+
         if (showWaveform) {
           // For wavesurfer, pause if playing
           if (wavesurferIsPlaying) {

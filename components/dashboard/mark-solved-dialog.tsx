@@ -55,7 +55,7 @@ export function MarkSolvedDialog({ open, onOpenChange, enum_ }: MarkSolvedDialog
       note: note || undefined,
     }
 
-    console.log("Marking enum as solved:", resolution)
+
 
     toast({
       title: "Enum marked as solved",

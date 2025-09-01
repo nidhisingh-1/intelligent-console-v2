@@ -15,17 +15,17 @@ export function AnnotationCard({ annotation }: AnnotationCardProps) {
 
   const handleJumpToTime = () => {
     // In a real app, this would seek the audio player
-    console.log(`Jumping to ${annotation.callTsSec}s`)
+
   }
 
   const handleEdit = () => {
     // In a real app, this would open the edit annotation sheet
-    console.log(`Editing annotation ${annotation.id}`)
+
   }
 
   const handleDelete = () => {
     // In a real app, this would show a confirmation dialog and delete
-    console.log(`Deleting annotation ${annotation.id}`)
+
   }
 
   return (

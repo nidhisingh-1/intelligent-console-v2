@@ -22,11 +22,11 @@ export function ReviewSummaryCard({ callId, review }: ReviewSummaryCardProps) {
 
   const handleSave = () => {
     // In a real app, this would save to the backend
-    console.log("Saving review:", {
-      callId,
-      pass,
-      summary,
-    })
+    // Saving review: {
+    //   callId,
+    //   pass,
+    //   summary,
+    // }
 
     toast({
       title: "Review saved",

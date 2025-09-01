@@ -1,22 +1,25 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { AppShell } from "@/components/app-shell"
-import { CallsTable } from "@/components/calls/calls-table"
+import { CallsTable, CallsTableRef } from "@/components/calls/calls-table"
 import AudioPlayer, { AudioPlayerRef } from "@/components/audio/audio-player"
 import { MarkIssueForm, MarkIssueFormRef } from "@/components/transcript/mark-issue-form"
 import { fetchCallById } from "@/lib/api"
-import { callsApiService, CallIssuesResponse, CallIssueGroup } from "@/lib/calls-api"
+import { callsApiService, CallIssuesResponse, CallIssueGroup, type AssignQCRequest } from "@/lib/calls-api"
+import { useToast } from "@/hooks/use-toast"
 
 import { Badge } from "@/components/ui/badge"
 
 export default function ReviewPage() {
+  const { toast } = useToast()
   const [selectedCall, setSelectedCall] = React.useState<any>(null)
   const [detailedCall, setDetailedCall] = React.useState<any>(null)
   const [isLoadingCall, setIsLoadingCall] = React.useState(false)
   const [currentPlaybackTime, setCurrentPlaybackTime] = React.useState(0)
   const transcriptContainerRef = React.useRef<HTMLDivElement>(null)
   const audioPlayerRef = useRef<AudioPlayerRef>(null)
+  const callsTableRef = useRef<CallsTableRef>(null)
   
   // Mark Issue state
   const [markIssueData, setMarkIssueData] = React.useState<{
@@ -53,8 +56,27 @@ export default function ReviewPage() {
   
   // Form state for sticky actions
   const [isFormValid, setIsFormValid] = useState(false)
-  const [selectedIssuesCount, setSelectedIssuesCount] = useState(0)
+  const [totalChanges, setTotalChanges] = useState(0)
   const formRef = React.useRef<MarkIssueFormRef>(null)
+
+  // Memoized form change handler to prevent unnecessary re-renders
+  const handleFormChange = useCallback((isValid: boolean, changes: number) => {
+    setIsFormValid(isValid)
+    setTotalChanges(changes)
+  }, [])
+
+  // Memoized existing issues calculation to prevent unnecessary re-renders
+  const existingIssuesAtTimestamp = useMemo(() => {
+    if (!markIssueData) return []
+    return apiCallIssues.find(group => 
+      Math.abs(group.secondsFromStart - markIssueData.timestamp) < 1
+    )?.issues || []
+  }, [apiCallIssues, markIssueData?.timestamp])
+
+  // Memoized callback for new issue tab switch
+  const handleNewIssue = useCallback(() => {
+    setActiveTab('new-issue')
+  }, [])
   
   // Tab state for Mark Issue panel
   const [activeTab, setActiveTab] = useState<string>("new-issue")
@@ -193,7 +215,7 @@ export default function ReviewPage() {
   // Mark Issue handlers
   const handleMarkIssue = (transcriptText: string, timestamp: number, transcriptIndex?: number) => {
     try {
-      console.log('Marking issue for:', transcriptText, 'at timestamp:', timestamp)
+
       setMarkIssueData({ transcriptText, timestamp, transcriptIndex })
       // Reset to new issue tab when opening
       setActiveTab('new-issue')
@@ -202,37 +224,156 @@ export default function ReviewPage() {
     }
   }
 
-  const handleIssueSubmit = (issue: { issues: Array<{ type: string; severity: string }> }) => {
-    // Here you would typically save the issue to your backend
-    console.log('Issue submitted:', issue)
+  const handleIssueSubmit = async (issue: { 
+    addIssues: Array<{ issueId: string; severity: 'low' | 'medium' | 'high' }>;
+    deleteIssues: string[];
+  }) => {
+    if (!selectedCall?.id || !markIssueData) return
     
-    // Store the issue data for this call
-    if (selectedCall?.id && markIssueData) {
-      const issueData = {
-        issues: issue.issues,
-        description: `${issue.issues.length} issue(s) marked at ${Math.floor(markIssueData.timestamp / 60)}:${Math.floor(markIssueData.timestamp % 60).toString().padStart(2, '0')}`,
-        timestamp: markIssueData.timestamp,
-        transcriptText: markIssueData.transcriptText,
-        transcriptIndex: markIssueData.transcriptIndex
+    try {
+      // Call the POST API to mark issues
+      const markIssueRequest = {
+        callId: selectedCall.id,
+        secondsFromStart: markIssueData.timestamp,
+        transcript: markIssueData.transcriptText,
+        addIssues: issue.addIssues,
+        deleteIssues: issue.deleteIssues
       }
       
-      setCallIssues(prev => {
-        const newMap = new Map(prev)
-        const existingIssues = newMap.get(selectedCall.id) || []
-        newMap.set(selectedCall.id, [...existingIssues, issueData])
-        return newMap
+
+      
+      const response = await callsApiService.markCallIssues(markIssueRequest)
+      
+
+      
+      // Check if we have a successful response (200 status means success)
+      const isSuccess = response.success !== false
+      
+      if (isSuccess) {
+
+        
+        // Show success toast
+        const totalChanges = issue.addIssues.length + issue.deleteIssues.length
+        let description = ""
+        
+        if (issue.addIssues.length > 0 && issue.deleteIssues.length > 0) {
+          description = `${issue.addIssues.length} issue${issue.addIssues.length !== 1 ? 's' : ''} added, ${issue.deleteIssues.length} removed at ${Math.floor(markIssueData.timestamp / 60)}:${Math.floor(markIssueData.timestamp % 60).toString().padStart(2, '0')}`
+        } else if (issue.addIssues.length > 0) {
+          description = `${issue.addIssues.length} issue${issue.addIssues.length !== 1 ? 's' : ''} marked at ${Math.floor(markIssueData.timestamp / 60)}:${Math.floor(markIssueData.timestamp % 60).toString().padStart(2, '0')}`
+        } else if (issue.deleteIssues.length > 0) {
+          description = `${issue.deleteIssues.length} issue${issue.deleteIssues.length !== 1 ? 's' : ''} removed at ${Math.floor(markIssueData.timestamp / 60)}:${Math.floor(markIssueData.timestamp % 60).toString().padStart(2, '0')}`
+        } else {
+          description = `Issues updated at ${Math.floor(markIssueData.timestamp / 60)}:${Math.floor(markIssueData.timestamp % 60).toString().padStart(2, '0')}`
+        }
+        
+        toast({
+          title: "Issues Marked Successfully",
+          description: description,
+          variant: "default",
+        })
+        
+        // Reload call issues to get the updated data
+        await loadCallIssues(selectedCall.id)
+        
+        // Mark the transcript card as having an issue if we added any issues
+        if (issue.addIssues.length > 0 && markIssueData?.transcriptIndex !== undefined) {
+          setMarkedIssues(prev => new Set([...prev, markIssueData.transcriptIndex!]))
+        }
+        
+        // Update the issue count in the transcript data
+        if (markIssueData?.transcriptIndex !== undefined && detailedCall?.callDetails?.messages) {
+          const transcriptIndex = markIssueData.transcriptIndex
+          const netChange = issue.addIssues.length - issue.deleteIssues.length
+          
+          setDetailedCall((prev: any) => {
+            if (!prev?.callDetails?.messages) return prev
+            
+            const updatedMessages = [...prev.callDetails.messages]
+            if (updatedMessages[transcriptIndex]) {
+              updatedMessages[transcriptIndex] = {
+                ...updatedMessages[transcriptIndex],
+                issueCount: Math.max(0, (updatedMessages[transcriptIndex].issueCount || 0) + netChange)
+              }
+            }
+            
+            return {
+              ...prev,
+              callDetails: {
+                ...prev.callDetails,
+                messages: updatedMessages
+              }
+            }
+          })
+        }
+        
+        // Close the Mark Issue panel
+        setMarkIssueData(null)
+      } else {
+        const errorMessage = (response as any).message || "Failed to mark issues. Please try again."
+        console.error('Failed to mark issues:', errorMessage)
+        toast({
+          title: "Error Marking Issues",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error marking issues:', error)
+      toast({
+        title: "Error Marking Issues",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
       })
-      
-      // Mark the transcript card as having an issue
-      if (markIssueData?.transcriptIndex !== undefined) {
-        setMarkedIssues(prev => new Set([...prev, markIssueData.transcriptIndex!]))
-      }
     }
+  }
+
+  const handleAssignQC = async () => {
+    if (!selectedCall?.id) return
     
-    // Switch to previous issues tab to show the newly added issue
-    setActiveTab('previous-issues')
-    
-    // Don't close the sidebar - keep it open so user can continue marking issues
+    try {
+      const assignRequest: AssignQCRequest = {
+        callId: selectedCall.id,
+        qcStatus: 'in_progress'
+      }
+      
+      const response = await callsApiService.assignQC(assignRequest)
+      
+      // Check if we have a valid response with message and updatedFields
+      if (response.message && response.updatedFields) {
+        // Update the selectedCall to reflect the new assignment
+        setSelectedCall((prev: any) => ({
+          ...prev,
+          qcAssignedTo: response.updatedFields.qcAssignedTo,
+          qcStatus: response.updatedFields.qcStatus
+        }))
+        
+        // Update the calls list to reflect the status change
+        callsTableRef.current?.updateCallStatus(
+          selectedCall.id,
+          response.updatedFields.qcStatus,
+          response.updatedFields.qcAssignedTo
+        )
+        
+        toast({
+          title: "QC Assigned Successfully",
+          description: response.message,
+          variant: "default",
+        })
+      } else {
+        toast({
+          title: "Error Assigning QC",
+          description: "Failed to assign QC. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error assigning QC:', error)
+      toast({
+        title: "Error Assigning QC",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleCancelMarkIssue = () => {
@@ -410,7 +551,7 @@ export default function ReviewPage() {
   // Global keyboard shortcuts for audio control and mark issue
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      console.log('Key pressed:', event.code, 'Target:', (event.target as HTMLElement)?.tagName)
+
       
       // Only handle shortcuts when not typing in input fields or textareas
       const targetTag = (event.target as HTMLElement)?.tagName?.toLowerCase()
@@ -418,36 +559,36 @@ export default function ReviewPage() {
         // Spacebar - Play/Pause audio
         if (event.code === 'Space') {
           event.preventDefault()
-          console.log('Spacebar pressed - attempting to toggle audio')
+
           
           // Trigger play/pause if we have an audio player
           if (detailedCall?.callDetails?.recordingUrl) {
-            console.log('Dispatching toggleAudioPlayPause event')
+
             // We'll need to expose the audio player's play/pause function
             // For now, we can dispatch a custom event that the audio player can listen to
             window.dispatchEvent(new CustomEvent('toggleAudioPlayPause'))
           } else {
-            console.log('No recording URL found')
+
           }
         }
         
 
         
-        // Tab key - Toggle Mark Issue panel and pause audio
-        if (event.code === 'Tab') {
+        // Tab key - Toggle Mark Issue panel and pause audio (only if QC is assigned)
+        if (event.code === 'Tab' && selectedCall?.qcAssignedTo !== null) {
           event.preventDefault()
           
           // If Mark Issue panel is already open, close it
           if (markIssueData) {
-            console.log('Tab key pressed - closing Mark Issue panel')
+
             setMarkIssueData(null)
           } else {
             // If Mark Issue panel is closed, open it and pause audio
-            console.log('Tab key pressed - opening Mark Issue panel and pausing audio')
+
             
             // Pause the audio first
             if (detailedCall?.callDetails?.recordingUrl) {
-              console.log('Pausing audio due to Tab key press')
+
               window.dispatchEvent(new CustomEvent('pauseAudio'))
             }
             
@@ -500,7 +641,7 @@ export default function ReviewPage() {
         if (event.code === 'KeyN') {
           if (markIssueData && activeTab === 'previous-issues') {
             event.preventDefault()
-            console.log('N key pressed - switching to New Issue tab')
+
             setActiveTab('new-issue')
           }
         }
@@ -509,7 +650,7 @@ export default function ReviewPage() {
 
     document.addEventListener('keydown', handleKeyPress)
     return () => document.removeEventListener('keydown', handleKeyPress)
-  }, [detailedCall?.callDetails?.recordingUrl, detailedCall?.callDetails?.messages, currentPlaybackTime, markIssueData, activeTab])
+  }, [detailedCall?.callDetails?.recordingUrl, detailedCall?.callDetails?.messages, currentPlaybackTime, markIssueData, activeTab, selectedCall?.qcAssignedTo])
 
   return (
     <AppShell>
@@ -524,7 +665,7 @@ export default function ReviewPage() {
           
           {/* Call List - Independent scrolling */}
           <div className="flex-1 min-h-0 overflow-y-scroll scrollbar-hidden">
-            <CallsTable onCallSelect={setSelectedCall} />
+            <CallsTable ref={callsTableRef} onCallSelect={setSelectedCall} />
           </div>
         </div>
 
@@ -571,6 +712,18 @@ export default function ReviewPage() {
                         </span>
                       </div>
                     </div>
+                    
+                    {/* Assign QC Button */}
+                    {selectedCall.qcAssignedTo === null && (
+                      <div className="flex items-center">
+                        <button
+                          onClick={handleAssignQC}
+                          className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+                        >
+                          Assign
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -708,16 +861,14 @@ export default function ReviewPage() {
                               
                               const hasIssue = markedIssues.has(index)
                               
-                              // Count issues for this transcript index
-                              const issueCount = selectedCall?.id && callIssues.get(selectedCall.id) 
-                                ? callIssues.get(selectedCall.id)!.filter(issue => issue.transcriptIndex === index).length
-                                : 0
+                              // Get issue count from API response (prioritize API data over local calculation)
+                              const issueCount = message.issueCount || 0
                               
                               return (
                                 <div 
                                   key={index} 
                                   className={`p-4 rounded-lg border cursor-pointer relative group transition-all duration-200 ${
-                                    hasIssue
+                                    issueCount > 0
                                       ? 'bg-red-50 border-red-200 shadow-sm'
                                       : shouldHighlight 
                                       ? 'bg-primary/5 border-primary/20 shadow-sm' 
@@ -729,7 +880,7 @@ export default function ReviewPage() {
                                     const callDuration = detailedCall.duration || 300; // Default to 5 minutes if no duration
                                     const estimatedTime = Math.floor((index / Math.max(totalMessages - 1, 1)) * callDuration);
                                     
-                                    // Optional: console.log(`Seeking to ${estimatedTime}s (card ${index})`)
+
                                     seekToTime(estimatedTime)
                                     setSelectedTranscriptIndex(index)
                                   }}
@@ -754,7 +905,7 @@ export default function ReviewPage() {
                                     
                                     {/* Issue Indicator and Mark Issue Button */}
                                     <div className="flex items-center gap-2">
-                                      {hasIssue && issueCount > 0 && (
+                                      {issueCount > 0 && (
                                         <Badge 
                                           variant="destructive" 
                                           className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:bg-destructive/80 transition-colors"
@@ -769,19 +920,24 @@ export default function ReviewPage() {
                                           {issueCount}
                                         </Badge>
                                       )}
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          handleMarkIssue(message.message, message.secondsFromStart || 0, index)
-                                        }}
-                                        className={`transition-opacity text-[11px] px-2.5 py-1.5 rounded-md font-medium ${
-                                          hasIssue 
-                                            ? 'opacity-100 bg-red-100 hover:bg-red-200 text-red-700' 
-                                            : 'opacity-0 group-hover:opacity-100 bg-secondary hover:bg-muted text-secondary-foreground'
-                                        }`}
-                                      >
-                                        {hasIssue ? 'Mark more issues' : 'Mark issue'}
-                                      </button>
+                                      {/* Only show Mark Issue button when QC is assigned */}
+                                      {selectedCall?.qcAssignedTo !== null && (
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleMarkIssue(message.message, message.secondsFromStart || 0, index)
+                                            }}
+                                            className={`transition-opacity text-[11px] px-2.5 py-1.5 rounded-md font-medium ${
+                                              issueCount > 0
+                                                ? 'opacity-100 bg-red-100 hover:bg-red-200 text-red-700' 
+                                                : 'opacity-0 group-hover:opacity-100 bg-secondary hover:bg-muted text-secondary-foreground'
+                                            }`}
+                                          >
+                                            {issueCount > 0 ? 'Mark more issues' : 'Mark issue'}
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                   
@@ -897,11 +1053,9 @@ export default function ReviewPage() {
                       onSubmit={handleIssueSubmit}
                       onCancel={handleCancelMarkIssue}
                       showActions={false}
-                      onFormChange={(isValid, count) => {
-                        setIsFormValid(isValid)
-                        setSelectedIssuesCount(count)
-                      }}
-                      onNewIssue={() => setActiveTab('new-issue')}
+                      onFormChange={handleFormChange}
+                      existingIssuesAtTimestamp={existingIssuesAtTimestamp}
+                      onNewIssue={handleNewIssue}
                     />
                   </div>
                 )}
@@ -1018,7 +1172,7 @@ export default function ReviewPage() {
                       disabled={!isFormValid}
                       className="flex-1 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-lg transition-colors"
                     >
-                      Mark {selectedIssuesCount > 0 ? `${selectedIssuesCount} Issue${selectedIssuesCount > 1 ? 's' : ''}` : 'Issues'}
+                      Mark Issue
                     </button>
                   </div>
                 </div>

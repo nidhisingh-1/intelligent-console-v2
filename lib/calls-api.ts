@@ -61,16 +61,19 @@ export interface TransformedCall {
   intent: string
   actionItems: string[]
   qcStatus: string
+  qcAssignedTo: string | null
   rawApiData: ApiCall
 }
 
 // Additional API interfaces for issues
 export interface CallIssue {
   _id: string
+  issueId: string
   code: string
   title: string
   description: string
   severity: 'low' | 'medium' | 'high'
+  isActive: boolean
 }
 
 export interface CallIssueGroup {
@@ -82,6 +85,37 @@ export interface CallIssueGroup {
 export interface CallIssuesResponse {
   callId: string
   data: CallIssueGroup[]
+}
+
+// Interfaces for marking issues POST API
+export interface MarkIssueRequest {
+  callId: string
+  secondsFromStart: number
+  transcript: string
+  addIssues: Array<{
+    issueId: string
+    severity: 'low' | 'medium' | 'high'
+  }>
+  deleteIssues: string[]
+}
+
+export interface MarkIssueResponse {
+  success: boolean
+  message?: string
+}
+
+export interface AssignQCRequest {
+  callId: string
+  qcStatus: 'yet_to_start' | 'in_progress' | 'completed'
+}
+
+export interface AssignQCResponse {
+  message: string
+  callId: string
+  updatedFields: {
+    qcStatus: string
+    qcAssignedTo: string
+  }
 }
 
 class CallsApiService {
@@ -108,6 +142,26 @@ class CallsApiService {
 
   async getCallIssues(callId: string): Promise<CallIssuesResponse> {
     return this.apiClient.get<CallIssuesResponse>(`/conversation/converse-qc/issues?callId=${callId}`)
+  }
+
+  async markCallIssues(request: MarkIssueRequest): Promise<MarkIssueResponse> {
+    return this.apiClient.post<MarkIssueResponse>('/conversation/converse-qc/issues', request)
+  }
+
+  /**
+   * Assign QC status to a call
+   */
+  async assignQC(request: AssignQCRequest): Promise<AssignQCResponse> {
+    try {
+      const response = await this.apiClient.put<AssignQCResponse>(
+        '/conversation/converse-qc/call',
+        request
+      )
+      return response
+    } catch (error) {
+      console.error('Error assigning QC:', error)
+      throw error
+    }
   }
 
   transformCallData(apiCall: ApiCall): TransformedCall {
@@ -185,6 +239,7 @@ class CallsApiService {
       intent: 'General Inquiry', // Default value
       actionItems: [], // Default empty array
       qcStatus: apiCall.qcStatus,
+      qcAssignedTo: apiCall.qcAssignedTo,
       rawApiData: apiCall
     }
   }

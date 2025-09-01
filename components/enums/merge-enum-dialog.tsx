@@ -63,12 +63,12 @@ export function MergeEnumDialog({ open, onOpenChange, sourceEnum }: MergeEnumDia
     // 2. Update all occurrences to point to the target enum
     // 3. Create a resolution record for the source enum
     // 4. Deactivate or delete the source enum
-    console.log("Merging enum:", {
-      sourceEnumId: sourceEnum.id,
-      targetEnumId: targetEnum.id,
-      note: note || undefined,
-      sourceUsage,
-    })
+    // Merging enum: {
+    //   sourceEnumId: sourceEnum.id,
+    //   targetEnumId: targetEnum.id,
+    //   note: note || undefined,
+    //   sourceUsage,
+    // }
 
     toast({
       title: "Enum merged successfully",

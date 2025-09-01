@@ -116,7 +116,7 @@ export default function ReviewPage() {
 
   // Function to seek audio to a specific time
   const seekToTime = (seconds: number) => {
-    console.log('🎯 SEEKING to time:', seconds, 'seconds')
+
     
     // Dispatch a custom event that the audio player can listen to
     window.dispatchEvent(new CustomEvent('seekAudioToTime', { 
@@ -129,7 +129,7 @@ export default function ReviewPage() {
     // Ensure audio continues playing after seek with multiple attempts
     const ensurePlayback = () => {
       if (detailedCall?.callDetails?.recordingUrl) {
-        console.log('🚀 Ensuring audio plays after seek to', seconds, 's')
+
         window.dispatchEvent(new CustomEvent('ensureAudioPlaying'))
       }
     }
@@ -143,7 +143,7 @@ export default function ReviewPage() {
   // Mark Issue handlers
   const handleMarkIssue = (transcriptText: string, timestamp: number) => {
     try {
-      console.log('Marking issue for:', transcriptText, 'at timestamp:', timestamp)
+
       setMarkIssueData({ transcriptText, timestamp })
     } catch (error) {
       console.error('Error in handleMarkIssue:', error)
@@ -152,7 +152,7 @@ export default function ReviewPage() {
 
   const handleIssueSubmit = (issue: { issues: Array<{ type: string; severity: string }>; description: string }) => {
     // Here you would typically save the issue to your backend
-    console.log('Issue submitted:', issue)
+
     
     // Clear the mark issue form
     setMarkIssueData(null)
@@ -222,7 +222,7 @@ export default function ReviewPage() {
   // Global keyboard shortcuts for audio control and mark issue
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      console.log('Key pressed:', event.code, 'Target:', (event.target as HTMLElement)?.tagName)
+
       
       // Only handle shortcuts when not typing in input fields or textareas
       const targetTag = (event.target as HTMLElement)?.tagName?.toLowerCase()
@@ -230,16 +230,16 @@ export default function ReviewPage() {
         // Spacebar - Play/Pause audio
         if (event.code === 'Space') {
           event.preventDefault()
-          console.log('Spacebar pressed - attempting to toggle audio')
+
           
           // Trigger play/pause if we have an audio player
           if (detailedCall?.callDetails?.recordingUrl) {
-            console.log('Dispatching toggleAudioPlayPause event')
+
             // We'll need to expose the audio player's play/pause function
             // For now, we can dispatch a custom event that the audio player can listen to
             window.dispatchEvent(new CustomEvent('toggleAudioPlayPause'))
           } else {
-            console.log('No recording URL found')
+
           }
         }
         
@@ -249,11 +249,11 @@ export default function ReviewPage() {
           
           // If Mark Issue panel is already open, close it
           if (markIssueData) {
-            console.log('Tab key pressed - closing Mark Issue panel')
+
             setMarkIssueData(null)
           } else {
             // If Mark Issue panel is closed, open it
-            console.log('Tab key pressed - opening Mark Issue panel')
+
             
             // Open Mark Issue panel with current transcript context
             if (detailedCall?.callDetails?.messages && detailedCall.callDetails.messages.length > 0) {
@@ -536,13 +536,13 @@ export default function ReviewPage() {
                                 }`}
                                 onClick={() => {
                                   if (message.secondsFromStart) {
-                                    console.log(`🎯 Clicked transcript card ${index}: seeking to ${message.secondsFromStart}s`)
+
                                     seekToTime(message.secondsFromStart)
                                     
                                     // Ensure audio starts playing immediately after seek
                                     setTimeout(() => {
                                       if (detailedCall?.callDetails?.recordingUrl) {
-                                        console.log('🚀 Ensuring audio plays after seek')
+
                                         window.dispatchEvent(new CustomEvent('ensureAudioPlaying'))
                                       }
                                     }, 150) // Slightly longer delay to ensure seek completes

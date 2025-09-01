@@ -41,13 +41,13 @@ export function AddAnnotationSheet({ open, onOpenChange, callId, initialTimestam
     }
 
     // In a real app, this would save to the backend
-    console.log("Saving annotation:", {
-      callId,
-      timestamp,
-      note,
-      severity,
-      enumId: enumId || undefined,
-    })
+    // Saving annotation: {
+    //   callId,
+    //   timestamp,
+    //   note,
+    //   severity,
+    //   enumId: enumId || undefined,
+    // }
 
     toast({
       title: "Annotation saved",
@@ -78,12 +78,12 @@ export function AddAnnotationSheet({ open, onOpenChange, callId, initialTimestam
     // In a real app, this would create the enum and return its ID
     const newEnumId = `enum-new-${Date.now()}`
 
-    console.log("Creating new enum:", {
-      code: newEnumCode,
-      title: newEnumTitle,
-      description: newEnumDescription,
-      defaultSeverity: severity,
-    })
+    // Creating new enum: {
+    //   code: newEnumCode,
+    //   title: newEnumTitle,
+    //   description: newEnumDescription,
+    //   defaultSeverity: severity,
+    // }
 
     setEnumId(newEnumId)
     setShowNewEnum(false)

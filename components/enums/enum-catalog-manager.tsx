@@ -160,7 +160,7 @@ export function EnumCatalogManager() {
     }
 
     // In a real app, this would update the backend
-    console.log(`Bulk ${activate ? "activating" : "deactivating"} enums:`, selectedEnums)
+
     toast({
       title: `Issue types ${activate ? "activated" : "deactivated"}`,
       description: `${selectedEnums.length} issue type(s) have been ${activate ? "activated" : "deactivated"}`,

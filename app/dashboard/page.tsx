@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef, useCallback } from "react"
+import { useDebounce } from "@/hooks/use-debounce"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -13,136 +13,20 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Search, ChevronUp, ChevronDown, FileX } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { dashboardApiService, type DashboardIssueStats, type DashboardFilters } from "@/lib/dashboard-api"
+import { DashboardShimmer } from "@/components/dashboard/dashboard-shimmer"
+import { useToast } from "@/hooks/use-toast"
+import { getEnumCategoryLabel } from "@/lib/enum-api"
 
-// Comprehensive automotive AI agent issues data structure
-const issueTypes = [
-  // Communication & Conversation Flow Issues
-  {
-    id: "long-awkward-pauses",
-    name: "Long/awkward pauses or random breaks",
-    occurrence: 23,
-    severityBifurcation: { High: 8, Medium: 10, Low: 5 },
-    liveCallOccurrence: 18,
-    testCallOccurrence: 5,
-    firstOccurrenceDate: "2024-01-03",
-    resolved: false,
-    occurrenceAfterResolve: 0,
-    category: "Communication Issues"
-  },
-  {
-    id: "lag-in-reply",
-    name: "Lag in agent reply",
-    occurrence: 31,
-    severityBifurcation: { High: 12, Medium: 13, Low: 6 },
-    liveCallOccurrence: 24,
-    testCallOccurrence: 7,
-    firstOccurrenceDate: "2024-01-02",
-    resolved: false,
-    occurrenceAfterResolve: 0,
-    category: "Communication Issues"
-  },
-  {
-    id: "call-collision",
-    name: "Call collision (agent & customer talk over each other)",
-    occurrence: 19,
-    severityBifurcation: { High: 7, Medium: 8, Low: 1 },
-    liveCallOccurrence: 15,
-    testCallOccurrence: 4,
-    firstOccurrenceDate: "2024-01-04",
-    resolved: false,
-    occurrenceAfterResolve: 0,
-    category: "Communication Issues"
-  },
-  {
-    id: "agent-cuts-customer",
-    name: "Agent cuts customer mid-speech",
-    occurrence: 17,
-    severityBifurcation: { High: 8, Medium: 5, Low: 0 },
-    liveCallOccurrence: 13,
-    testCallOccurrence: 4,
-    firstOccurrenceDate: "2024-01-05",
-    resolved: false,
-    occurrenceAfterResolve: 0,
-    category: "Communication Issues"
-  },
-  {
-    id: "sounds-robotic",
-    name: "Sounds robotic",
-    occurrence: 42,
-    severityBifurcation: { High: 8, Medium: 20, Low: 13 },
-    liveCallOccurrence: 32,
-    testCallOccurrence: 10,
-    firstOccurrenceDate: "2024-01-01",
-    resolved: false,
-    occurrenceAfterResolve: 0,
-    category: "Communication Issues"
-  },
-  {
-    id: "wrong-car-color",
-    name: "Wrong car color informed",
-    occurrence: 13,
-    severityBifurcation: { High: 4, Medium: 1, Low: 0 },
-    liveCallOccurrence: 11,
-    testCallOccurrence: 2,
-    firstOccurrenceDate: "2024-01-18",
-    resolved: false,
-    occurrenceAfterResolve: 0,
-    category: "Data Issues"
-  },
-  {
-    id: "inventory-search-failed",
-    name: "Inventory search failed (no data returned)",
-    occurrence: 26,
-    severityBifurcation: { High: 11, Medium: 5, Low: 1 },
-    liveCallOccurrence: 20,
-    testCallOccurrence: 6,
-    firstOccurrenceDate: "2024-01-21",
-    resolved: false,
-    occurrenceAfterResolve: 0,
-    category: "Technical Issues"
-  },
-  {
-    id: "dealer-crm-not-linked",
-    name: "Dealer CRM not linked",
-    occurrence: 37,
-    severityBifurcation: { High: 15, Medium: 11, Low: 3 },
-    liveCallOccurrence: 29,
-    testCallOccurrence: 8,
-    firstOccurrenceDate: "2024-02-15",
-    resolved: false,
-    occurrenceAfterResolve: 0,
-    category: "Technical Issues"
-  },
-  {
-    id: "customer-name-not-asked",
-    name: "Customer name not asked",
-    occurrence: 33,
-    severityBifurcation: { High: 4, Medium: 18, Low: 11 },
-    liveCallOccurrence: 25,
-    testCallOccurrence: 8,
-    firstOccurrenceDate: "2024-01-30",
-    resolved: false,
-    occurrenceAfterResolve: 0,
-    category: "Business Logic"
-  },
-  {
-    id: "out-door-price-missing",
-    name: "Out-the-door price missing",
-    occurrence: 41,
-    severityBifurcation: { High: 12, Medium: 19, Low: 7 },
-    liveCallOccurrence: 32,
-    testCallOccurrence: 9,
-    firstOccurrenceDate: "2024-02-14",
-    resolved: false,
-    occurrenceAfterResolve: 0,
-    category: "Business Logic"
-  }
-]
+
 
 
 
 function IssuesManagement() {
   const router = useRouter()
+  const { toast } = useToast()
+  
+  // Filter states
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [selectedDateRange, setSelectedDateRange] = useState("all")
@@ -150,106 +34,267 @@ function IssuesManagement() {
   const [customDateTo, setCustomDateTo] = useState<Date | undefined>(undefined)
   const [selectedSeverity, setSelectedSeverity] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
-  const [issues, setIssues] = useState(issueTypes)
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  
+  // Debounced search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 500)
+  
+  // API data states
+  const [issues, setIssues] = useState<DashboardIssueStats[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  
+  // Infinite scroll ref
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const lastElementRef = useRef<HTMLTableRowElement | null>(null)
 
+  // Helper function to calculate date range
+  const getDateRangeParams = useCallback(() => {
+    const now = new Date()
+    let startDate: string | undefined
+    let endDate: string | undefined
 
-  // Helper function to check if date matches selected range
-  const matchesDateRange = (dateString: string, range: string) => {
-    if (range === "all") return true
-    
-    const issueDate = new Date(dateString)
-    
-    // Handle custom date range
-    if (range === "custom") {
-      if (!customDateFrom && !customDateTo) return true
-      
-      if (customDateFrom && customDateTo) {
-        // Set time to start/end of day for proper comparison
-        const fromDate = new Date(customDateFrom)
-        fromDate.setHours(0, 0, 0, 0)
-        const toDate = new Date(customDateTo)
-        toDate.setHours(23, 59, 59, 999)
-        return issueDate >= fromDate && issueDate <= toDate
-      } else if (customDateFrom) {
-        const fromDate = new Date(customDateFrom)
-        fromDate.setHours(0, 0, 0, 0)
-        return issueDate >= fromDate
-      } else if (customDateTo) {
-        const toDate = new Date(customDateTo)
-        toDate.setHours(23, 59, 59, 999)
-        return issueDate <= toDate
-      }
-      return true
-    }
-    
-    const today = new Date()
-    const daysDiff = Math.floor((today.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24))
-    
-    switch (range) {
+    switch (selectedDateRange) {
       case "7d":
-        return daysDiff <= 7
+        const start7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        start7d.setHours(0, 0, 0, 0) // Start of day
+        startDate = start7d.toISOString()
+        endDate = now.toISOString()
+        break
       case "30d":
-        return daysDiff <= 30
+        const start30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        start30d.setHours(0, 0, 0, 0) // Start of day
+        startDate = start30d.toISOString()
+        endDate = now.toISOString()
+        break
       case "90d":
-        return daysDiff <= 90
+        const start90d = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+        start90d.setHours(0, 0, 0, 0) // Start of day
+        startDate = start90d.toISOString()
+        endDate = now.toISOString()
+        break
+      case "custom":
+        if (customDateFrom) {
+          const startOfDay = new Date(customDateFrom)
+          startOfDay.setHours(0, 0, 0, 0) // Start of day
+          startDate = startOfDay.toISOString()
+        }
+        if (customDateTo) {
+          // Set to end of day for the "to" date
+          const endOfDay = new Date(customDateTo)
+          endOfDay.setHours(23, 59, 59, 999)
+          endDate = endOfDay.toISOString()
+        }
+        break
+      case "all":
       default:
-        return true
+        // No date filtering
+        break
     }
-  }
+
+    return { startDate, endDate }
+  }, [selectedDateRange, customDateFrom, customDateTo])
+
+  // Load issues from API
+  const loadIssues = useCallback(async (page: number = 1, resetData: boolean = true) => {
+    try {
+      // For custom date range, don't call API until both dates are selected
+      if (selectedDateRange === "custom" && (!customDateFrom || !customDateTo)) {
+        return
+      }
+
+      if (page === 1) {
+        setIsLoading(true)
+      } else {
+        setIsLoadingMore(true)
+      }
+
+      const filters: DashboardFilters = {
+        page,
+        limit: 25,
+        isActive: true, // Only show active issues
+      }
+
+      // Apply filters
+      if (selectedStatus !== "all") {
+        filters.status = selectedStatus as 'resolved' | 'unresolved'
+      }
+      if (selectedSeverity !== "all") {
+        filters.severity = selectedSeverity.toLowerCase() as 'high' | 'medium' | 'low'
+      }
+      if (debouncedSearchTerm.trim()) {
+        filters.search = debouncedSearchTerm.trim()
+      }
+
+      // Apply date range filters
+      const { startDate, endDate } = getDateRangeParams()
+      if (startDate) {
+        filters.startDate = startDate
+      }
+      if (endDate) {
+        filters.endDate = endDate
+      }
+
+      const response = await dashboardApiService.getIssueStats(filters)
+      
+      if (resetData || page === 1) {
+        setIssues(response.data)
+      } else {
+        setIssues(prev => [...prev, ...response.data])
+      }
+      
+      setHasNextPage(response.pagination.hasNextPage)
+      setCurrentPage(response.pagination.currentPage)
+      setTotalItems(response.pagination.totalItems)
+      
+    } catch (error) {
+      console.error('Error loading issues:', error)
+      toast({
+        title: "Error Loading Issues",
+        description: "Failed to load dashboard data. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+      setIsLoadingMore(false)
+    }
+  }, [selectedStatus, selectedSeverity, debouncedSearchTerm, getDateRangeParams, toast])
+
+  // Load more issues for infinite scroll
+  const loadMoreIssues = useCallback(async () => {
+    if (!hasNextPage || isLoadingMore) return
+    await loadIssues(currentPage + 1, false)
+  }, [hasNextPage, isLoadingMore, currentPage, loadIssues])
+
+  // Setup intersection observer for infinite scroll
+  const setupObserver = useCallback(() => {
+    if (observerRef.current) observerRef.current.disconnect()
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0]
+        if (target.isIntersecting && hasNextPage && !isLoadingMore) {
+          loadMoreIssues()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    if (lastElementRef.current) {
+      observerRef.current.observe(lastElementRef.current)
+    }
+  }, [hasNextPage, isLoadingMore, loadMoreIssues])
+
+  // Initial load and filter changes
+  useEffect(() => {
+    loadIssues(1, true)
+  }, [loadIssues])
+
+  // Setup observer when issues change
+  useEffect(() => {
+    setupObserver()
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+      }
+    }
+  }, [setupObserver, issues])
+
+
 
   // Helper function to get dominant severity
-  const getDominantSeverity = (severityBifurcation: Record<string, number>) => {
-    const high = severityBifurcation.High || 0
-    const medium = severityBifurcation.Medium || 0
-    const low = severityBifurcation.Low || 0
+  const getDominantSeverity = (severityOccurrence: { high: number; medium: number; low: number }) => {
+    const { high, medium, low } = severityOccurrence
     
     if (high >= medium && high >= low) return "High"
     if (medium >= low) return "Medium"
     return "Low"
   }
 
-  // Filter and sort issues based on selected filters
-  const filteredIssues = useMemo(() => {
-    let filtered = issues.filter(issue => {
-      const matchesCategory = selectedCategory === "all" || issue.category === selectedCategory
-      const matchesStatus = selectedStatus === "all" || 
-        (selectedStatus === "resolved" && issue.resolved) ||
-        (selectedStatus === "unresolved" && !issue.resolved)
-      const matchesDate = matchesDateRange(issue.firstOccurrenceDate, selectedDateRange)
-      const matchesSeverity = selectedSeverity === "all" || 
-        getDominantSeverity(issue.severityBifurcation) === selectedSeverity
-      const matchesSearch = searchTerm === "" || 
-        issue.name.toLowerCase().includes(searchTerm.toLowerCase())
-      
-      return matchesCategory && matchesStatus && matchesDate && matchesSeverity && matchesSearch
+  // Helper function to get category from code
+  const getCategoryFromCode = (code: string) => {
+    try {
+      return getEnumCategoryLabel(code as any) || 'Other'
+    } catch (error) {
+      console.warn('Failed to get category for code:', code, error)
+      return 'Other'
+    }
+  }
+
+  // Get available categories from loaded issues
+  const availableCategories = useMemo(() => {
+    const categories = new Set<string>()
+    issues.forEach(issue => {
+      const category = getCategoryFromCode(issue.code)
+      categories.add(category)
     })
+    return Array.from(categories).sort()
+  }, [issues])
+
+  // Client-side filtering and sorting for local data (API already handles most filters)
+  const filteredIssues = useMemo(() => {
+    let filtered = [...issues]
+
+    // Apply client-side category filtering if needed
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(issue => {
+        const category = getCategoryFromCode(issue.code)
+        return category === selectedCategory
+      })
+    }
+
+    // Date filtering is now handled server-side via API parameters
 
     // Apply sorting
     if (sortField) {
       filtered.sort((a, b) => {
-        let aValue: any = a[sortField as keyof typeof a]
-        let bValue: any = b[sortField as keyof typeof b]
+        let aValue: any
+        let bValue: any
         
         // Handle special cases
-        if (sortField === 'name') {
-          aValue = a.name.toLowerCase()
-          bValue = b.name.toLowerCase()
-        } else if (sortField === 'firstOccurrenceDate') {
-          aValue = new Date(a.firstOccurrenceDate)
-          bValue = new Date(b.firstOccurrenceDate)
+        if (sortField === 'title') {
+          aValue = a.title.toLowerCase()
+          bValue = b.title.toLowerCase()
+        } else if (sortField === 'createdAt') {
+          aValue = new Date(a.createdAt)
+          bValue = new Date(b.createdAt)
+        } else if (sortField === 'firstMarkDate') {
+          aValue = a.firstMarkDate ? new Date(a.firstMarkDate) : new Date(0)
+          bValue = b.firstMarkDate ? new Date(b.firstMarkDate) : new Date(0)
+        } else if (sortField === 'lastMarkDate') {
+          aValue = a.lastMarkDate ? new Date(a.lastMarkDate) : new Date(0)
+          bValue = b.lastMarkDate ? new Date(b.lastMarkDate) : new Date(0)
+        } else if (sortField === 'occurrence') {
+          aValue = a.occurrence.total
+          bValue = b.occurrence.total
         } else if (sortField === 'severity') {
           // Sort by severity priority (High > Medium > Low)
-          const getSeverityPriority = (severityBifurcation: Record<string, number>) => {
-            const high = severityBifurcation.High || 0
-            const medium = severityBifurcation.Medium || 0
-            const low = severityBifurcation.Low || 0
+          const getSeverityPriority = (severityOccurrence: { high: number; medium: number; low: number }) => {
+            const { high, medium, low } = severityOccurrence
             // Calculate weighted score: High=3, Medium=2, Low=1
             return (high * 3 + medium * 2 + low * 1)
           }
-          aValue = getSeverityPriority(a.severityBifurcation)
-          bValue = getSeverityPriority(b.severityBifurcation)
+          aValue = getSeverityPriority(a.severityOccurrence)
+          bValue = getSeverityPriority(b.severityOccurrence)
+        } else if (sortField === 'liveCall') {
+          aValue = a.occurrence.liveCall
+          bValue = b.occurrence.liveCall
+        } else if (sortField === 'demoCall') {
+          aValue = a.occurrence.demoCall
+          bValue = b.occurrence.demoCall
+        } else if (sortField === 'status') {
+          aValue = a.status === 'resolved' ? 1 : 0
+          bValue = b.status === 'resolved' ? 1 : 0
+        } else if (sortField === 'afterResolve') {
+          aValue = a.occurrence.afterLastResolved
+          bValue = b.occurrence.afterLastResolved
+        } else {
+          aValue = a[sortField as keyof DashboardIssueStats]
+          bValue = b[sortField as keyof DashboardIssueStats]
         }
         
         if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
@@ -259,31 +304,31 @@ function IssuesManagement() {
     }
 
     return filtered
-  }, [issues, selectedCategory, selectedStatus, selectedDateRange, customDateFrom, customDateTo, selectedSeverity, searchTerm, sortField, sortDirection])
+  }, [issues, selectedCategory, selectedDateRange, customDateFrom, customDateTo, sortField, sortDirection])
 
-  const getSeverityBadges = (severityBifurcation: Record<string, number>) => {
-    const severities = ["High", "Medium", "Low"]
+  const getSeverityBadges = (severityOccurrence: { high: number; medium: number; low: number }) => {
+    const severities = [
+      { name: "High", count: severityOccurrence.high },
+      { name: "Medium", count: severityOccurrence.medium },
+      { name: "Low", count: severityOccurrence.low }
+    ]
+    
     return severities.map(severity => {
-      const count = severityBifurcation[severity] || 0
-      if (count === 0) return null
-      
-      const colorClass = severity === "High" ? "bg-red-100 text-red-700 border-red-200" :
-                        severity === "Medium" ? "bg-amber-100 text-amber-700 border-amber-200" :
+      const colorClass = severity.name === "High" ? "bg-red-100 text-red-700 border-red-200" :
+                        severity.name === "Medium" ? "bg-amber-100 text-amber-700 border-amber-200" :
                         "bg-green-100 text-green-700 border-green-200"
       
       return (
-        <Badge key={severity} className={`${colorClass} text-xs mr-1 border`}>
-          {severity}: {count}
+        <Badge key={severity.name} className={`${colorClass} text-xs mr-1 border`}>
+          {severity.name}: {severity.count}
         </Badge>
       )
-    }).filter(Boolean)
+    })
   }
 
-  const isHighSeverityDominant = (severityBifurcation: Record<string, number>) => {
-    const highCount = severityBifurcation.High || 0
-    const mediumCount = severityBifurcation.Medium || 0
-    const lowCount = severityBifurcation.Low || 0
-    return highCount > (mediumCount + lowCount)
+  const isHighSeverityDominant = (severityOccurrence: { high: number; medium: number; low: number }) => {
+    const { high, medium, low } = severityOccurrence
+    return high > (medium + low)
   }
 
   const handleSort = (field: string) => {
@@ -322,14 +367,48 @@ function IssuesManagement() {
     router.push(`/dashboard/issues/${issueId}`)
   }
 
-  const toggleResolved = (issueId: string) => {
-    setIssues(prevIssues => 
-      prevIssues.map(issue => 
-        issue.id === issueId 
-          ? { ...issue, resolved: !issue.resolved }
-          : issue
+  const toggleResolved = async (issueId: string, newStatus: 'resolved' | 'unresolved') => {
+    try {
+      await dashboardApiService.updateIssueStatus(issueId, newStatus)
+      
+      // Update local state
+      setIssues(prevIssues => 
+        prevIssues.map(issue => 
+          issue._id === issueId 
+            ? { ...issue, status: newStatus }
+            : issue
+        )
       )
-    )
+      
+      toast({
+        title: `Issue ${newStatus === 'resolved' ? 'Resolved' : 'Unresolved'}`,
+        description: `Issue has been marked as ${newStatus}.`,
+        variant: "default",
+      })
+      
+    } catch (error) {
+      console.error('Error updating issue status:', error)
+      toast({
+        title: "Error",
+        description: `Failed to mark issue as ${newStatus}. Please try again.`,
+        variant: "destructive",
+      })
+    }
+  }
+
+  const clearFilters = () => {
+    setSelectedCategory("all")
+    setSelectedStatus("all")
+    setSelectedDateRange("all")
+    setCustomDateFrom(undefined)
+    setCustomDateTo(undefined)
+    setSelectedSeverity("all")
+    setSearchTerm("")
+  }
+
+  // Show loading shimmer on initial load
+  if (isLoading && issues.length === 0) {
+    return <DashboardShimmer />
   }
 
   return (
@@ -353,10 +432,11 @@ function IssuesManagement() {
           </SelectTrigger>
           <SelectContent className="bg-white/95 backdrop-blur-md border-border/50">
             <SelectItem value="all" className="text-foreground hover:bg-muted/50">All Categories</SelectItem>
-            <SelectItem value="Communication Issues" className="text-foreground hover:bg-muted/50">Communication Issues</SelectItem>
-            <SelectItem value="Data Issues" className="text-foreground hover:bg-muted/50">Data Issues</SelectItem>
-            <SelectItem value="Technical Issues" className="text-foreground hover:bg-muted/50">Technical Issues</SelectItem>
-            <SelectItem value="Business Logic" className="text-foreground hover:bg-muted/50">Business Logic</SelectItem>
+            {availableCategories.map(category => (
+              <SelectItem key={category} value={category} className="text-foreground hover:bg-muted/50">
+                {category}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -424,18 +504,10 @@ function IssuesManagement() {
           </SelectContent>
         </Select>
 
-        {(selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all" || searchTerm !== "") && (
+        {(selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all" || debouncedSearchTerm !== "") && (
           <Button
             variant="outline"
-            onClick={() => {
-              setSelectedCategory("all")
-              setSelectedStatus("all")
-              setSelectedDateRange("all")
-              setCustomDateFrom(undefined)
-              setCustomDateTo(undefined)
-              setSelectedSeverity("all")
-              setSearchTerm("")
-            }}
+            onClick={clearFilters}
             className="text-sm"
           >
             Clear Filters
@@ -461,26 +533,18 @@ function IssuesManagement() {
               icon={<FileX className="h-8 w-8 text-muted-foreground" />}
               heading="No issues found"
               subheading={
-                searchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all"
+                debouncedSearchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all"
                   ? "No issues match your current search criteria or filters. Try adjusting your filters or search term to see more results."
                   : "No issues are currently available in the system."
               }
               ctaLabel={
-                searchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all"
+                debouncedSearchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all"
                   ? "Clear Filters"
                   : undefined
               }
               onCtaClick={
-                searchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all"
-                  ? () => {
-                      setSelectedCategory("all")
-                      setSelectedStatus("all")
-                      setSelectedDateRange("all")
-                      setCustomDateFrom(undefined)
-                      setCustomDateTo(undefined)
-                      setSelectedSeverity("all")
-                      setSearchTerm("")
-                    }
+                debouncedSearchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all"
+                  ? clearFilters
                   : undefined
               }
             />
@@ -489,94 +553,118 @@ function IssuesManagement() {
               <Table className="min-w-full">
                 <TableHeader>
                   <TableRow className="bg-secondary/60 backdrop-blur-sm">
-                    <SortableHeader field="name" className="min-w-[300px]">Issue Name</SortableHeader>
+                    <SortableHeader field="title" className="min-w-[300px]">Issue Name</SortableHeader>
                     <SortableHeader field="occurrence" className="min-w-[100px]">Occurrence</SortableHeader>
                     <SortableHeader field="severity" className="min-w-[200px]">Severity</SortableHeader>
-                    <SortableHeader field="liveCallOccurrence" className="min-w-[100px]">Live Call</SortableHeader>
-                    <SortableHeader field="testCallOccurrence" className="min-w-[100px]">Demo Call</SortableHeader>
-                    <SortableHeader field="firstOccurrenceDate" className="min-w-[120px]">First Date</SortableHeader>
-                    <SortableHeader field="resolved" className="min-w-[100px]">Resolved?</SortableHeader>
-                    <SortableHeader field="occurrenceAfterResolve" className="min-w-[120px]">After Resolve</SortableHeader>
+                    <SortableHeader field="liveCall" className="min-w-[100px]">Live Call</SortableHeader>
+                    <SortableHeader field="demoCall" className="min-w-[100px]">Demo Call</SortableHeader>
+                    <SortableHeader field="firstMarkDate" className="min-w-[140px]">First Raised Date</SortableHeader>
+                    <SortableHeader field="lastMarkDate" className="min-w-[140px]">Last Raised Date</SortableHeader>
+                    <SortableHeader field="status" className="min-w-[120px]">Status</SortableHeader>
+                    <SortableHeader field="afterResolve" className="min-w-[120px]">After Resolve</SortableHeader>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredIssues.map((issue) => (
-                    <TableRow 
-                      key={issue.id} 
-                      className={`hover:bg-muted/50 cursor-pointer transition-all duration-200 ${
-                        isHighSeverityDominant(issue.severityBifurcation) 
-                          ? 'bg-red-50/30 hover:bg-red-50/50 border-l-4 border-l-red-200/60' 
-                          : 'hover:bg-white/80 backdrop-blur-sm hover:border-primary/20'
-                      }`}
-                      style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.1)' }}
-                      onClick={() => handleIssueClick(issue.id)}
-                      title="Click to view calls with this issue"
-                    >
-                      <TableCell className="py-3 px-4">
-                        <div className="max-w-[300px]">
-                          <div className="font-medium text-foreground line-clamp-2 leading-tight">{issue.name}</div>
-                          <div className="text-sm mt-1" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>{issue.category}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center py-3 px-4">
-                        <Badge variant="outline" className="text-sm font-medium">
-                          {issue.occurrence}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {getSeverityBadges(issue.severityBifurcation)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center py-3 px-4">
-                        <Badge variant="outline" className="text-sm font-medium">
-                          {issue.liveCallOccurrence}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center py-3 px-4">
-                        <Badge variant="outline" className="text-sm font-medium">
-                          {issue.testCallOccurrence}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center py-3 px-4">
-                        <span className="text-sm">{issue.firstOccurrenceDate}</span>
-                      </TableCell>
-                      <TableCell className="text-center py-3 px-4">
-                        <Select 
-                          value={issue.resolved ? "yes" : "no"} 
-                          onValueChange={(value) => {
-                            if ((value === "yes") !== issue.resolved) {
-                              toggleResolved(issue.id);
-                            }
-                          }}
-                        >
-                          <SelectTrigger 
-                            className="w-20 h-8 bg-white/90 backdrop-blur-sm border-border/50"
-                            onClick={(e) => e.stopPropagation()}
+                  {filteredIssues.map((issue, index) => {
+                    const isLastElement = index === filteredIssues.length - 1
+                    const category = getCategoryFromCode(issue.code)
+                    
+                    return (
+                      <TableRow 
+                        key={issue._id}
+                        ref={isLastElement ? lastElementRef : null}
+                        className={`hover:bg-muted/50 cursor-pointer transition-all duration-200 ${
+                          isHighSeverityDominant(issue.severityOccurrence) 
+                            ? 'bg-red-50/30 hover:bg-red-50/50 border-l-4 border-l-red-200/60' 
+                            : 'hover:bg-white/80 backdrop-blur-sm hover:border-primary/20'
+                        }`}
+                        style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.1)' }}
+                        onClick={() => handleIssueClick(issue._id)}
+                        title="Click to view calls with this issue"
+                      >
+                        <TableCell className="py-3 px-4">
+                          <div className="max-w-[300px]">
+                            <div className="font-medium text-foreground line-clamp-2 leading-tight">{issue.title}</div>
+                            <div className="text-sm mt-1" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>{category}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center py-3 px-4">
+                          <Badge variant="outline" className="text-sm font-medium">
+                            {issue.occurrence.total}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {getSeverityBadges(issue.severityOccurrence)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center py-3 px-4">
+                          <Badge variant="outline" className="text-sm font-medium">
+                            {issue.occurrence.liveCall}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center py-3 px-4">
+                          <Badge variant="outline" className="text-sm font-medium">
+                            {issue.occurrence.demoCall}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center py-3 px-4">
+                          <span className="text-sm">
+                            {issue.firstMarkDate ? new Date(issue.firstMarkDate).toLocaleDateString() : '-'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center py-3 px-4">
+                          <span className="text-sm">
+                            {issue.lastMarkDate ? new Date(issue.lastMarkDate).toLocaleDateString() : '-'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center py-3 px-4">
+                          <Select 
+                            value={issue.status} 
+                            onValueChange={(value) => {
+                              if (value !== issue.status) {
+                                toggleResolved(issue._id, value as 'resolved' | 'unresolved');
+                              }
+                            }}
                           >
-                            <SelectValue>
-                              {issue.resolved ? "Yes" : "No"}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-white/95 backdrop-blur-md border-border/50">
-                            <SelectItem value="yes" className="text-foreground hover:bg-muted/50">Yes</SelectItem>
-                            <SelectItem value="no" className="text-foreground hover:bg-muted/50">No</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-center py-3 px-4">
-                        <span className="text-sm font-medium">
-                          {issue.occurrenceAfterResolve > 0 ? (
-                            <Badge className="bg-orange-100 text-orange-700 border border-orange-200">
-                              {issue.occurrenceAfterResolve}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">0</span>
-                          )}
-                        </span>
+                            <SelectTrigger 
+                              className="w-28 h-8 bg-white/90 backdrop-blur-sm border-border/50"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <SelectValue>
+                                {issue.status === 'resolved' ? "Resolved" : "Unresolved"}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-white/95 backdrop-blur-md border-border/50">
+                              <SelectItem value="resolved" className="text-foreground hover:bg-muted/50">Resolved</SelectItem>
+                              <SelectItem value="unresolved" className="text-foreground hover:bg-muted/50">Unresolved</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-center py-3 px-4">
+                          <span className="text-sm font-medium">
+                            {issue.occurrence.afterLastResolved > 0 ? (
+                              <Badge className="bg-orange-100 text-orange-700 border border-orange-200">
+                                {issue.occurrence.afterLastResolved}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">0</span>
+                            )}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {isLoadingMore && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-4">
+                        <div className="flex items-center justify-center space-x-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                          <span className="text-sm text-muted-foreground">Loading more issues...</span>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>

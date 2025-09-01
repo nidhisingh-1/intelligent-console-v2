@@ -61,7 +61,7 @@ export function TranscriptView({ transcript, callId, currentTime = 0, onMarkIssu
     window.dispatchEvent(new CustomEvent('seekAudioToTime', { 
       detail: { time: adjustedTimestamp } 
     }))
-    console.log(`Seeking to ${adjustedTimestamp}s (adjusted from ${timestamp}s)`)
+
   }
 
   const handleMarkIssue = (transcriptText: string, timestamp: number) => {

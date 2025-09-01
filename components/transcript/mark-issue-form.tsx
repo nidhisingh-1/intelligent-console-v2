@@ -16,11 +16,14 @@ import { getAuthParamsOrDefaults } from "@/lib/auth-utils"
 interface MarkIssueFormProps {
   transcriptText: string
   timestamp: number
-  onSubmit: (issue: { issues: Array<{ type: string; severity: string }> }) => void
+  onSubmit: (issue: { 
+    addIssues: Array<{ issueId: string; severity: 'low' | 'medium' | 'high' }>;
+    deleteIssues: string[];
+  }) => void
   onCancel: () => void
   showActions?: boolean
   onFormChange?: (isValid: boolean, selectedCount: number) => void
-  existingIssues?: Array<{ issues: Array<{ type: string; severity: string }>; timestamp: number; transcriptText: string }>
+  existingIssuesAtTimestamp?: Array<{ _id: string; issueId: string; code: string; title: string; description: string; severity: 'low' | 'medium' | 'high'; isActive: boolean }>
   onNewIssue?: () => void
 }
 
@@ -42,6 +45,7 @@ interface SelectedIssue {
   text: string
   category: string
   severity: string
+  originalId?: string // For tracking the original _id from issues API for deletion
 }
 
 export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormProps>(({ 
@@ -51,14 +55,19 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
   onCancel,
   showActions = true,
   onFormChange,
-  existingIssues = [],
+  existingIssuesAtTimestamp = [],
   onNewIssue
 }, ref) => {
+
   const [selectedIssues, setSelectedIssues] = React.useState<SelectedIssue[]>([])
   const [searchQuery, setSearchQuery] = React.useState("")
   const [selectedCategory, setSelectedCategory] = React.useState<string>("")
   const [isTranscriptExpanded, setIsTranscriptExpanded] = React.useState(false)
   const [selectedIssueIndex, setSelectedIssueIndex] = React.useState<number>(-1)
+  
+  // Track original existing issues to calculate deletes
+  const [originalExistingIssues, setOriginalExistingIssues] = React.useState<Array<{ id: string; severity: string; originalId?: string }>>([])
+  const [initializedExistingIssues, setInitializedExistingIssues] = React.useState(false)
   
   // API state
   const [issueTypes, setIssueTypes] = React.useState<IssueType[]>([])
@@ -80,17 +89,22 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
         setIsLoading(true)
         setError(null)
         
-        const response = await enumApiService.getIssueMasters()
+        const response = await enumApiService.getIssueMasters({ isActive: true })
         
-        // Transform API data to IssueType format
-        const transformedIssues: IssueType[] = response.data.map(issue => ({
-          id: issue._id,
-          text: issue.title,
-          category: getEnumCategoryLabel(issue.code),
-          severity: issue.defaultSeverity,
-          code: issue.code
-        }))
+        // Transform API data to IssueType format and filter out inactive issues
+        const transformedIssues: IssueType[] = response.data
+          .filter(issue => {
+            return issue.isActive === true
+          })
+          .map(issue => ({
+            id: (issue as any).id || issue._id, // Handle both id and _id field names
+            text: issue.title,
+            category: getEnumCategoryLabel(issue.code),
+            severity: issue.defaultSeverity,
+            code: issue.code
+          }))
         
+
         setIssueTypes(transformedIssues)
       } catch (error) {
         console.error('Error loading enums:', error)
@@ -102,6 +116,59 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
 
     loadEnums()
   }, [])
+
+  // Initialize existing issues when component mounts or existing issues change
+  React.useEffect(() => {
+    // Always reinitialize when existingIssuesAtTimestamp changes
+    if (existingIssuesAtTimestamp.length > 0) {
+      // Filter out inactive issues - only show active issues
+      const activeExistingIssues = existingIssuesAtTimestamp.filter(issue => {
+        // Only include issues that are explicitly active (isActive === true)
+        // If isActive is undefined, assume it's active (for backward compatibility)
+        return issue.isActive === true || issue.isActive === undefined
+      })
+      
+      const existingSelectedIssues: SelectedIssue[] = activeExistingIssues.map(issue => {
+        let category = 'Other'
+        try {
+          category = getEnumCategoryLabel(issue.code as any) || 'Other'
+        } catch (error) {
+          console.warn('Failed to get category label for code:', issue.code, error)
+        }
+        
+
+        
+        return {
+          id: issue.issueId, // Use issueId to match with issue-master _id
+          text: issue.title,
+          category,
+          severity: issue.severity,
+          originalId: issue._id // Store the original _id for deletion
+        }
+      })
+      
+      const originalIssues = activeExistingIssues.map(issue => ({
+        id: issue.issueId, // Use issueId to match with issue-master _id
+        severity: issue.severity,
+        originalId: issue._id // Store the original _id for deletion
+      }))
+      
+      setSelectedIssues(existingSelectedIssues)
+      setOriginalExistingIssues(originalIssues)
+      setInitializedExistingIssues(true)
+    } else {
+      // No existing issues at this timestamp
+      setSelectedIssues([])
+      setOriginalExistingIssues([])
+      setInitializedExistingIssues(true)
+    }
+  }, [existingIssuesAtTimestamp])
+
+  // Reset initialization flag when timestamp changes (new issue marking session)
+  React.useEffect(() => {
+    setInitializedExistingIssues(false)
+    // Don't clear originalExistingIssues here - let the initialization effect handle it
+  }, [timestamp])
 
   // Filter issues based on search query and category
   const filteredIssues = React.useMemo(() => {
@@ -243,31 +310,57 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [filteredIssues, selectedIssues, selectedIssueIndex])
 
+  // Memoize form validation calculations to prevent unnecessary re-renders
+  const formValidation = React.useMemo(() => {
+    // Calculate if there are any changes to be made
+    const currentIssues = selectedIssues.map(issue => ({
+      id: issue.id,
+      severity: issue.severity
+    }))
+    
+    // Count additions (newly selected issues OR existing issues with changed severity)
+    const additions = currentIssues.filter(current => {
+      const original = originalExistingIssues.find(orig => orig.id === current.id)
+      return !original || original.severity !== current.severity
+    }).length
+    
+    // Count deletions (originally selected issues that are no longer selected)
+    const deletions = originalExistingIssues.filter(original => {
+      const current = currentIssues.find(curr => curr.id === original.id)
+      return !current
+    }).length
+    
+    // Form is valid if there are any changes to be made (additions or deletions)
+    const isValid = additions > 0 || deletions > 0
+    const totalChanges = additions + deletions
+    
+    return { isValid, totalChanges }
+  }, [selectedIssues, originalExistingIssues])
+
   // Notify parent about form changes
   React.useEffect(() => {
-    const isValid = selectedIssues.length > 0
-    onFormChange?.(isValid, selectedIssues.length)
-  }, [selectedIssues, onFormChange])
+    onFormChange?.(formValidation.isValid, formValidation.totalChanges)
+  }, [formValidation.isValid, formValidation.totalChanges, onFormChange])
 
-  const addIssue = (issue: IssueType) => {
+  const addIssue = React.useCallback((issue: IssueType) => {
     const newSelectedIssue: SelectedIssue = {
       id: issue.id,
       text: issue.text,
       category: issue.category,
-      severity: "medium" // Default severity
+      severity: issue.severity // Use the issue's default severity from API
     }
     setSelectedIssues(prev => [...prev, newSelectedIssue])
-  }
+  }, [])
 
-  const removeIssue = (issueId: string) => {
+  const removeIssue = React.useCallback((issueId: string) => {
     setSelectedIssues(prev => prev.filter(issue => issue.id !== issueId))
-  }
+  }, [])
 
-  const updateIssueSeverity = (issueId: string, severity: string) => {
+  const updateIssueSeverity = React.useCallback((issueId: string, severity: string) => {
     setSelectedIssues(prev => prev.map(issue => 
       issue.id === issueId ? { ...issue, severity } : issue
     ))
-  }
+  }, [])
 
   const addCustomIssue = () => {
     if (customIssueText.trim()) {
@@ -275,14 +368,14 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
         id: `custom-${Date.now()}`,
         text: customIssueText.trim(),
         category: customIssueCategory,
-        severity: "medium" // Default severity
+        severity: "medium" as const // Default severity for custom issues
       }
       
       const newSelectedIssue: SelectedIssue = {
         id: customIssue.id,
         text: customIssue.text,
         category: customIssue.category,
-        severity: "medium"
+        severity: customIssue.severity
       }
       
       setSelectedIssues(prev => [...prev, newSelectedIssue])
@@ -296,14 +389,45 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault()
-    if (selectedIssues.length > 0) {
-      onSubmit({
-        issues: selectedIssues.map(issue => ({
-          type: issue.text,
-          severity: issue.severity
-        }))
-      })
-    }
+    
+    // Calculate addIssues and deleteIssues based on actual changes
+    const currentIssues = selectedIssues.map(issue => ({
+      id: issue.id,
+      severity: issue.severity
+    }))
+    
+    // Issues to add: newly selected issues OR existing issues with changed severity
+    const addIssues: Array<{ issueId: string; severity: 'low' | 'medium' | 'high' }> = []
+    
+    currentIssues.forEach(current => {
+      const original = originalExistingIssues.find(orig => orig.id === current.id)
+      
+      if (!original) {
+        // Newly selected issue
+        addIssues.push({
+          issueId: current.id,
+          severity: current.severity as 'low' | 'medium' | 'high'
+        })
+      } else if (original.severity !== current.severity) {
+        // Existing issue with changed severity
+        addIssues.push({
+          issueId: current.id,
+          severity: current.severity as 'low' | 'medium' | 'high'
+        })
+      }
+      // If original exists and severity is same, no change needed
+    })
+    
+    // Issues to delete: originally selected issues that are no longer selected
+    const deleteIssues = originalExistingIssues.filter(original => {
+      const current = currentIssues.find(curr => curr.id === original.id)
+      return !current // Only delete if completely removed
+    }).map(issue => issue.originalId).filter((id): id is string => id !== undefined) // Use originalId (the _id from issues API) for deletion
+    
+    onSubmit({
+      addIssues,
+      deleteIssues
+    })
   }
 
   // Expose submit method to parent

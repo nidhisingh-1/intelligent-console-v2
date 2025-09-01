@@ -14,7 +14,11 @@ interface CallsTableProps {
   onCallSelect?: (call: TransformedCall) => void
 }
 
-export function CallsTable({ onCallSelect }: CallsTableProps) {
+export interface CallsTableRef {
+  updateCallStatus: (callId: string, qcStatus: string, qcAssignedTo: string | null) => void
+}
+
+export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect }, ref) => {
   const [calls, setCalls] = React.useState<TransformedCall[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isLoadingMore, setIsLoadingMore] = React.useState(false)
@@ -170,6 +174,19 @@ export function CallsTable({ onCallSelect }: CallsTableProps) {
     }
   }, [hasMore, isLoadingMore, isLoading, loadMoreCalls])
 
+  // Expose methods to parent component
+  React.useImperativeHandle(ref, () => ({
+    updateCallStatus: (callId: string, qcStatus: string, qcAssignedTo: string | null) => {
+      setCalls(prevCalls => 
+        prevCalls.map(call => 
+          call.id === callId 
+            ? { ...call, qcStatus, qcAssignedTo, status: qcStatus === 'in_progress' ? 'In Progress' : call.status }
+            : call
+        )
+      )
+    }
+  }))
+
   const getReviewStatusBadge = (status: string) => {
     switch (status) {
       case 'Pass':
@@ -321,4 +338,4 @@ export function CallsTable({ onCallSelect }: CallsTableProps) {
       {hasMore && <div ref={loadMoreRef} className="h-4 w-full" />}
     </div>
   )
-}
+})
