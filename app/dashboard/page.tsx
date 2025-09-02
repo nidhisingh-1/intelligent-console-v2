@@ -268,6 +268,9 @@ function IssuesManagement() {
         } else if (sortField === 'lastMarkDate') {
           aValue = a.lastMarkDate ? new Date(a.lastMarkDate) : new Date(0)
           bValue = b.lastMarkDate ? new Date(b.lastMarkDate) : new Date(0)
+        } else if (sortField === 'lastResolvedAt') {
+          aValue = a.lastResolvedAt ? new Date(a.lastResolvedAt) : new Date(0)
+          bValue = b.lastResolvedAt ? new Date(b.lastResolvedAt) : new Date(0)
         } else if (sortField === 'occurrence') {
           aValue = a.occurrence.total
           bValue = b.occurrence.total
@@ -560,6 +563,7 @@ function IssuesManagement() {
                     <SortableHeader field="demoCall" className="min-w-[100px]">Demo Call</SortableHeader>
                     <SortableHeader field="firstMarkDate" className="min-w-[140px]">First Raised Date</SortableHeader>
                     <SortableHeader field="lastMarkDate" className="min-w-[140px]">Last Raised Date</SortableHeader>
+                    <SortableHeader field="lastResolvedAt" className="min-w-[140px]">Last Resolved At</SortableHeader>
                     <SortableHeader field="status" className="min-w-[120px]">Status</SortableHeader>
                     <SortableHeader field="afterResolve" className="min-w-[120px]">After Resolve</SortableHeader>
                   </TableRow>
@@ -616,6 +620,11 @@ function IssuesManagement() {
                         <TableCell className="text-center py-3 px-4">
                           <span className="text-sm">
                             {issue.lastMarkDate ? new Date(issue.lastMarkDate).toLocaleDateString() : '-'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center py-3 px-4">
+                          <span className="text-sm">
+                            {issue.lastResolvedAt ? new Date(issue.lastResolvedAt).toLocaleDateString() : '-'}
                           </span>
                         </TableCell>
                         <TableCell className="text-center py-3 px-4">
