@@ -16,6 +16,7 @@ interface CallsTableProps {
 
 export interface CallsTableRef {
   updateCallStatus: (callId: string, qcStatus: string, qcAssignedTo: string | null) => void
+  refreshCalls: () => Promise<void>
 }
 
 export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect }, ref) => {
@@ -80,7 +81,8 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         enterpriseId: authParams.enterpriseId,
         teamId: authParams.teamId,
         limit: 10,
-        page: page + 1
+        page: page + 1,
+        qcStatus: 'yet_to_start,in_progress' // Only show calls that need QC
       })
       
       
@@ -106,45 +108,51 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     }
   }, [page, hasMore, isLoadingMore, isLoading])
 
-  // Fetch initial calls from API
-  React.useEffect(() => {
-    const loadCalls = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-        
-        const authParams = getAuthParamsOrDefaults()
-        const response = await callsApiService.getCalls({
-          enterpriseId: authParams.enterpriseId,
-          teamId: authParams.teamId,
-          limit: 10,
-          page: 1
-        })
-        
-        const transformedCalls = response.calls.map(call => 
-          callsApiService.transformCallData(call)
-        )
-        setCalls(transformedCalls)
-        setPage(1)
-        setHasMore(transformedCalls.length === 10) // Has more if we got full page
-      } catch (error) {
-        console.error('Error loading calls:', error)
-        setError('Failed to load calls from the server.')
-        setCalls([])
-      } finally {
-        setIsLoading(false)
-      }
+  // Reusable function to load calls
+  const loadCalls = React.useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      const authParams = getAuthParamsOrDefaults()
+      const response = await callsApiService.getCalls({
+        enterpriseId: authParams.enterpriseId,
+        teamId: authParams.teamId,
+        limit: 10,
+        page: 1,
+        qcStatus: 'yet_to_start,in_progress' // Only show calls that need QC
+      })
+      
+      const transformedCalls = response.calls.map(call => 
+        callsApiService.transformCallData(call)
+      )
+      setCalls(transformedCalls)
+      setPage(1)
+      setHasMore(transformedCalls.length === 10) // Has more if we got full page
+    } catch (error) {
+      console.error('Error loading calls:', error)
+      setError('Failed to load calls from the server.')
+      setCalls([])
+    } finally {
+      setIsLoading(false)
     }
-
-    loadCalls()
   }, [])
 
-  // Auto-select first contact on first load
+  // Fetch initial calls from API
   React.useEffect(() => {
-    if (calls.length > 0 && !selectedCallId) {
-      const firstCall = calls[0]
-      setSelectedCallId(firstCall.id)
-      onCallSelect?.(firstCall)
+    loadCalls()
+  }, [loadCalls])
+
+  // Auto-select first contact on first load and after refresh
+  React.useEffect(() => {
+    if (calls.length > 0) {
+      // If no call is selected or the selected call is no longer in the list, select the first one
+      const selectedCallExists = calls.some(call => call.id === selectedCallId)
+      if (!selectedCallId || !selectedCallExists) {
+        const firstCall = calls[0]
+        setSelectedCallId(firstCall.id)
+        onCallSelect?.(firstCall)
+      }
     }
   }, [calls, selectedCallId, onCallSelect])
 
@@ -184,7 +192,8 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
             : call
         )
       )
-    }
+    },
+    refreshCalls: loadCalls
   }))
 
   const getReviewStatusBadge = (status: string) => {

@@ -110,7 +110,7 @@ export interface MarkIssueResponse {
 
 export interface AssignQCRequest {
   callId: string
-  qcStatus: 'yet_to_start' | 'in_progress' | 'completed'
+  qcStatus: 'yet_to_start' | 'in_progress' | 'done'
 }
 
 export interface AssignQCResponse {

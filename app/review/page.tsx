@@ -10,6 +10,7 @@ import { callsApiService, CallIssuesResponse, CallIssueGroup, type AssignQCReque
 import { useToast } from "@/hooks/use-toast"
 
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export default function ReviewPage() {
   const { toast } = useToast()
@@ -315,8 +316,8 @@ export default function ReviewPage() {
           })
         }
         
-        // Close the Mark Issue panel
-        setMarkIssueData(null)
+        // Switch to Previous Issues tab instead of closing the panel
+        setActiveTab('previous-issues')
       } else {
         const errorMessage = (response as any).message || "Failed to mark issues. Please try again."
         console.error('Failed to mark issues:', errorMessage)
@@ -379,6 +380,49 @@ export default function ReviewPage() {
       console.error('Error assigning QC:', error)
       toast({
         title: "Error Assigning QC",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleQCDone = async () => {
+    if (!selectedCall?.id) return
+    
+    try {
+      const qcDoneRequest: AssignQCRequest = {
+        callId: selectedCall.id,
+        qcStatus: 'done'
+      }
+      
+      const response = await callsApiService.assignQC(qcDoneRequest)
+      
+      if (response.message && response.updatedFields) {
+        toast({
+          title: "QC Completed Successfully",
+          description: response.message,
+          variant: "default",
+        })
+        
+        // Clear the current call selection since it's now completed
+        setSelectedCall(null)
+        setDetailedCall(null)
+        
+        // Refresh the calls list to remove the completed call (API will filter out done calls)
+        if (callsTableRef.current) {
+          await callsTableRef.current.refreshCalls()
+        }
+      } else {
+        toast({
+          title: "Error Completing QC",
+          description: "Failed to complete QC. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error completing QC:', error)
+      toast({
+        title: "Error Completing QC",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
@@ -654,12 +698,24 @@ export default function ReviewPage() {
             setActiveTab('new-issue')
           }
         }
+
+        // Ctrl+A - Assign QC (only when call is selected and not assigned)
+        if (event.ctrlKey && event.code === 'KeyA' && selectedCall && selectedCall.qcAssignedTo === null) {
+          event.preventDefault()
+          handleAssignQC()
+        }
+
+        // Ctrl+Q - QC Done (only when call is selected and assigned)
+        if (event.ctrlKey && event.code === 'KeyQ' && selectedCall && selectedCall.qcAssignedTo !== null) {
+          event.preventDefault()
+          handleQCDone()
+        }
       }
     }
 
     document.addEventListener('keydown', handleKeyPress)
     return () => document.removeEventListener('keydown', handleKeyPress)
-  }, [detailedCall?.callDetails?.recordingUrl, detailedCall?.callDetails?.messages, currentPlaybackTime, markIssueData, activeTab, selectedCall?.qcAssignedTo])
+  }, [detailedCall?.callDetails?.recordingUrl, detailedCall?.callDetails?.messages, currentPlaybackTime, markIssueData, activeTab, selectedCall?.qcAssignedTo, selectedCall, handleAssignQC, handleQCDone])
 
   return (
     <AppShell>
@@ -722,15 +778,45 @@ export default function ReviewPage() {
                       </div>
                     </div>
                     
-                    {/* Assign QC Button */}
-                    {selectedCall.qcAssignedTo === null && (
+                    {/* QC Status and Actions */}
+                    {selectedCall.qcAssignedTo === null ? (
                       <div className="flex items-center">
-                        <button
-                          onClick={handleAssignQC}
-                          className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
-                        >
-                          Assign
-                        </button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={handleAssignQC}
+                                className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+                              >
+                                Assign QC
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Assign QC (Ctrl+A)</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <Badge variant="secondary" className="text-sm">
+                          Assigned
+                        </Badge>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={handleQCDone}
+                                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
+                              >
+                                QC Done
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Complete QC (Ctrl+Q)</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     )}
                   </div>
@@ -877,10 +963,10 @@ export default function ReviewPage() {
                                 <div 
                                   key={index} 
                                   className={`p-4 rounded-lg border cursor-pointer relative group transition-all duration-200 ${
-                                    issueCount > 0
-                                      ? 'bg-red-50 border-red-200 shadow-sm'
-                                      : shouldHighlight 
+                                    shouldHighlight 
                                       ? 'bg-primary/5 border-primary/20 shadow-sm' 
+                                      : issueCount > 0
+                                      ? 'bg-red-50 border-red-200 shadow-sm'
                                       : 'bg-card border-border hover:bg-muted/50'
                                   }`}
                                   onClick={() => {

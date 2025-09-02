@@ -4,6 +4,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -12,6 +13,7 @@ import { Search, X, Filter, ArrowRight, ArrowLeft, Clock, Loader2 } from "lucide
 import { cn } from "@/lib/utils"
 import { enumApiService, getAllEnumCategories, getEnumCategoryLabel, getSeverityColor } from "@/lib/enum-api"
 import { getAuthParamsOrDefaults } from "@/lib/auth-utils"
+import { useToast } from "@/hooks/use-toast"
 
 interface MarkIssueFormProps {
   transcriptText: string
@@ -78,10 +80,16 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
   // Custom issue state
   const [showCustomIssueForm, setShowCustomIssueForm] = React.useState(false)
   const [customIssueText, setCustomIssueText] = React.useState("")
-  const [customIssueCategory, setCustomIssueCategory] = React.useState("Other")
+  const [customIssueDescription, setCustomIssueDescription] = React.useState("")
+  const [customIssueCategory, setCustomIssueCategory] = React.useState("communication_call_quality")
+  const [customIssueSeverity, setCustomIssueSeverity] = React.useState<"low" | "medium" | "high">("medium")
+  const [isCreatingCustomIssue, setIsCreatingCustomIssue] = React.useState(false)
   
   // Reference to the search input for auto-focusing
   const searchInputRef = React.useRef<HTMLInputElement>(null)
+  
+  // Toast hook for notifications
+  const { toast } = useToast()
 
   // Fetch enums from API
   React.useEffect(() => {
@@ -129,40 +137,23 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
         return issue.isActive === true || issue.isActive === undefined
       })
       
-      const existingSelectedIssues: SelectedIssue[] = activeExistingIssues.map(issue => {
-        let category = 'Other'
-        try {
-          category = getEnumCategoryLabel(issue.code as any) || 'Other'
-        } catch (error) {
-          console.warn('Failed to get category label for code:', issue.code, error)
-        }
-        
-
-        
-        return {
-          id: issue.issueId, // Use issueId to match with issue-master _id
-          text: issue.title,
-          category,
-          severity: issue.severity,
-          originalId: issue._id // Store the original _id for deletion
-        }
-      })
-      
+      // Store original existing issues for comparison but don't show them in selected issues
+      // They are already visible in the "Previous Issues" tab
       const originalIssues = activeExistingIssues.map(issue => ({
         id: issue.issueId, // Use issueId to match with issue-master _id
         severity: issue.severity,
         originalId: issue._id // Store the original _id for deletion
       }))
       
-      setSelectedIssues(existingSelectedIssues)
       setOriginalExistingIssues(originalIssues)
-      setInitializedExistingIssues(true)
     } else {
       // No existing issues at this timestamp
-      setSelectedIssues([])
       setOriginalExistingIssues([])
-      setInitializedExistingIssues(true)
     }
+    
+    // Always start with empty selected issues - existing issues are shown in Previous Issues tab
+    setSelectedIssues([])
+    setInitializedExistingIssues(true)
   }, [existingIssuesAtTimestamp])
 
   // Reset initialization flag when timestamp changes (new issue marking session)
@@ -171,7 +162,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
     // Don't clear originalExistingIssues here - let the initialization effect handle it
   }, [timestamp])
 
-  // Filter issues based on search query and category
+  // Filter issues based on search query and category, excluding already marked issues
   const filteredIssues = React.useMemo(() => {
     let filtered = issueTypes
 
@@ -187,25 +178,41 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
       filtered = filtered.filter(issue => issue.category === selectedCategory)
     }
 
-    // Keep all issues visible, selected ones will show as checked
-    return filtered
-  }, [issueTypes, searchQuery, selectedCategory])
-
-  // Get unique categories for filter
-  const categories = React.useMemo(() => {
-    const uniqueCategories = [...new Set(issueTypes.map(issue => issue.category))]
-    return uniqueCategories.sort()
-  }, [issueTypes])
-
-  // Auto-focus the search input when component mounts
-  React.useEffect(() => {
-    if (searchInputRef.current) {
-      // Small delay to ensure the component is fully rendered
-      setTimeout(() => {
-        searchInputRef.current?.focus()
-      }, 100)
+    // Exclude issues that are already marked at this timestamp
+    if (existingIssuesAtTimestamp && existingIssuesAtTimestamp.length > 0) {
+      const existingIssueIds = existingIssuesAtTimestamp
+        .filter(issue => issue.isActive !== false) // Only consider active issues
+        .map(issue => issue.issueId)
+      
+      filtered = filtered.filter(issue => !existingIssueIds.includes(issue.id))
     }
-  }, [])
+
+    return filtered
+  }, [issueTypes, searchQuery, selectedCategory, existingIssuesAtTimestamp])
+
+  // Get available issues (excluding already marked ones) for category filtering
+  const availableIssues = React.useMemo(() => {
+    let available = issueTypes
+
+    // Exclude issues that are already marked at this timestamp
+    if (existingIssuesAtTimestamp && existingIssuesAtTimestamp.length > 0) {
+      const existingIssueIds = existingIssuesAtTimestamp
+        .filter(issue => issue.isActive !== false) // Only consider active issues
+        .map(issue => issue.issueId)
+      
+      available = available.filter(issue => !existingIssueIds.includes(issue.id))
+    }
+
+    return available
+  }, [issueTypes, existingIssuesAtTimestamp])
+
+  // Get unique categories for filter - only from available issues
+  const categories = React.useMemo(() => {
+    const uniqueCategories = [...new Set(availableIssues.map(issue => issue.category))]
+    return uniqueCategories.sort()
+  }, [availableIssues])
+
+  // Note: Auto-focus removed as per user request
 
   // Keyboard event handler for issue selection and severity
   React.useEffect(() => {
@@ -215,19 +222,12 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
       const tag = target?.tagName?.toLowerCase()
       const isTypingContext = tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable
 
-      // N key to trigger new issue (focus search) - only when not typing
+      // N key to trigger new issue - only when not typing
       if ((e.key === 'n' || e.key === 'N') && !isTypingContext) {
         e.preventDefault()
         if (onNewIssue) {
           onNewIssue()
         }
-        // Also focus the search input
-        setTimeout(() => {
-          const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement
-          if (searchInput) {
-            searchInput.focus()
-          }
-        }, 100)
         return
       }
 
@@ -243,8 +243,8 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
         return
       }
 
-      // Number keys for issue selection (1-9) - works when search input is focused
-      if (e.target instanceof HTMLInputElement && /^[1-9]$/.test(e.key)) {
+      // Number keys for issue selection (1-9) - works globally when not typing
+      if (!isTypingContext && /^[1-9]$/.test(e.key)) {
         e.preventDefault()
         const index = parseInt(e.key) - 1
         if (index < filteredIssues.length) {
@@ -252,8 +252,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
           const isSelected = selectedIssues.some(selected => selected.id === issue.id)
           
           if (!isSelected) {
-            // Clear previous selections and add only this issue
-            setSelectedIssues([])
+            // Use addIssue which handles single selection logic and toast
             addIssue(issue)
             setTimeout(() => {
               setSelectedIssueIndex(0) // Always the first (and only) item
@@ -271,17 +270,16 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
         return
       }
 
-      // Shift + number keys for issues 10-18 (Shift+1-9)
-      if (e.target instanceof HTMLInputElement && e.shiftKey && /^[1-9]$/.test(e.key)) {
+      // Shift + number keys for issues 10-18 (Shift+1-9) - works globally when not typing
+      if (!isTypingContext && e.shiftKey && /^[1-9]$/.test(e.key)) {
         e.preventDefault()
-        const index = parseInt(e.key) - 1 + 9 // 10-18
+        const index = parseInt(e.key) - 1 + 9 // Issues 10-18 (indices 9-17)
         if (index < filteredIssues.length) {
           const issue = filteredIssues[index]
           const isSelected = selectedIssues.some(selected => selected.id === issue.id)
           
           if (!isSelected) {
-            // Clear previous selections and add only this issue
-            setSelectedIssues([])
+            // Use addIssue which handles single selection logic and toast
             addIssue(issue)
             setTimeout(() => {
               setSelectedIssueIndex(0) // Always the first (and only) item
@@ -344,14 +342,24 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
   }, [formValidation.isValid, formValidation.totalChanges, onFormChange])
 
   const addIssue = React.useCallback((issue: IssueType) => {
+    // Check if there's already a selected issue
+    if (selectedIssues.length > 0) {
+      toast({
+        title: "Single Issue Selection",
+        description: "Only one issue can be marked at a time. Please deselect the current issue first.",
+        variant: "default",
+      })
+      return
+    }
+
     const newSelectedIssue: SelectedIssue = {
       id: issue.id,
       text: issue.text,
       category: issue.category,
       severity: issue.severity // Use the issue's default severity from API
     }
-    setSelectedIssues(prev => [...prev, newSelectedIssue])
-  }, [])
+    setSelectedIssues([newSelectedIssue]) // Replace array instead of adding to it
+  }, [selectedIssues.length, toast])
 
   const removeIssue = React.useCallback((issueId: string) => {
     setSelectedIssues(prev => prev.filter(issue => issue.id !== issueId))
@@ -363,28 +371,68 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
     ))
   }, [])
 
-  const addCustomIssue = () => {
-    if (customIssueText.trim()) {
-      const customIssue = {
-        id: `custom-${Date.now()}`,
-        text: customIssueText.trim(),
-        category: customIssueCategory,
-        severity: "medium" as const // Default severity for custom issues
+  const addCustomIssue = async () => {
+    if (!customIssueText.trim() || !customIssueDescription.trim()) return
+    
+    // Check if there's already a selected issue
+    if (selectedIssues.length > 0) {
+      toast({
+        title: "Single Issue Selection",
+        description: "Only one issue can be marked at a time. Please deselect the current issue first.",
+        variant: "default",
+      })
+      return
+    }
+    
+    try {
+      setIsCreatingCustomIssue(true)
+      
+      // Create the issue using the API
+      const createRequest = {
+        code: customIssueCategory as any, // Cast to EnumCategoryCode
+        title: customIssueText.trim(),
+        description: customIssueDescription.trim(),
+        defaultSeverity: customIssueSeverity,
+        isActive: true
       }
       
+      const createdIssue = await enumApiService.createIssueMaster(createRequest)
+      
+      // Add the created issue to selected issues
       const newSelectedIssue: SelectedIssue = {
-        id: customIssue.id,
-        text: customIssue.text,
-        category: customIssue.category,
-        severity: customIssue.severity
+        id: createdIssue._id,
+        text: createdIssue.title,
+        category: getEnumCategoryLabel(createdIssue.code as any),
+        severity: createdIssue.defaultSeverity
       }
       
-      setSelectedIssues(prev => [...prev, newSelectedIssue])
+      setSelectedIssues([newSelectedIssue]) // Replace array instead of adding to it
       
       // Reset custom issue form
       setCustomIssueText("")
-      setCustomIssueCategory("Other")
+      setCustomIssueDescription("")
+      setCustomIssueCategory("communication_call_quality")
+      setCustomIssueSeverity("medium")
       setShowCustomIssueForm(false)
+      
+      // Reload the issue types to include the new issue
+      const response = await enumApiService.getIssueMasters({ isActive: true })
+      const transformedIssues: IssueType[] = response.data
+        .filter(issue => issue.isActive === true)
+        .map(issue => ({
+          id: issue._id,
+          text: issue.title,
+          category: getEnumCategoryLabel(issue.code as any),
+          severity: issue.defaultSeverity,
+          code: issue.code
+        }))
+      setIssueTypes(transformedIssues)
+      
+    } catch (error) {
+      console.error('Failed to create custom issue:', error)
+      setError('Failed to create custom issue. Please try again.')
+    } finally {
+      setIsCreatingCustomIssue(false)
     }
   }
 
@@ -424,11 +472,9 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
       // If original exists and severity is same, no change needed
     })
     
-    // Issues to delete: originally selected issues that are no longer selected
-    const deleteIssues = originalExistingIssues.filter(original => {
-      const current = currentIssues.find(curr => curr.id === original.id)
-      return !current // Only delete if completely removed
-    }).map(issue => issue.originalId).filter((id): id is string => id !== undefined) // Use originalId (the _id from issues API) for deletion
+    // Since existing issues are not shown in Selected Issues section anymore,
+    // we should never delete them when marking new issues. Only send empty deleteIssues array.
+    const deleteIssues: string[] = []
     
     onSubmit({
       addIssues,
@@ -466,7 +512,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
           )}
           <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {Math.floor(timestamp / 60)}:{(timestamp % 60).toString().padStart(2, '0')}
+            {Math.floor(timestamp / 60)}:{Math.floor(timestamp % 60).toString().padStart(2, '0')}
           </p>
         </div>
       </div>
@@ -524,10 +570,10 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
                   : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
               }`}
             >
-              All ({issueTypes.length})
+              All ({availableIssues.length})
             </button>
             {categories.map((category) => {
-              const count = issueTypes.filter(issue => issue.category === category).length
+              const count = availableIssues.filter(issue => issue.category === category).length
               return (
                 <button
                   key={category}
@@ -546,7 +592,8 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
           </div>
         )}
 
-        {/* Issues Grid */}
+        {/* Issues Grid - Hide when custom issue form is open */}
+        {!showCustomIssueForm && (
         <div className="grid gap-2">
           {isLoading ? (
             // Loading skeleton
@@ -615,9 +662,11 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
           })
         )}
         </div>
+        )}
 
-        {/* Custom Issue Section */}
-        {/* <div className="space-y-3">
+        {/* Custom Issue Section - Only show when no search results or when form is open */}
+        {(filteredIssues.length === 0 && searchQuery.trim() && !isLoading && !error) || showCustomIssueForm ? (
+        <div className="space-y-3">
           {!showCustomIssueForm ? (
             <button
               type="button"
@@ -638,7 +687,9 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
                   onClick={() => {
                     setShowCustomIssueForm(false)
                     setCustomIssueText("")
-                    setCustomIssueCategory("Other")
+                    setCustomIssueDescription("")
+                    setCustomIssueCategory("communication_call_quality")
+                    setCustomIssueSeverity("medium")
                   }}
                   className="text-muted-foreground hover:text-foreground"
                 >
@@ -646,41 +697,96 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
                 </button>
               </div>
               
-              <div className="space-y-2">
-                <Input
-                  placeholder="Describe the issue..."
-                  value={customIssueText}
-                  onChange={(e) => setCustomIssueText(e.target.value)}
-                  className="text-sm"
-                />
-                
-                <div className="flex gap-2">
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="custom-issue-category">Category *</Label>
                   <Select value={customIssueCategory} onValueChange={setCustomIssueCategory}>
-                    <SelectTrigger className="flex-1">
+                    <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Other">Other</SelectItem>
-                      {categories.map(category => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      {getAllEnumCategories().map(({ code, label }) => (
+                        <SelectItem key={code} value={code}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="custom-issue-title">Title *</Label>
+                  <Input
+                    id="custom-issue-title"
+                    placeholder="e.g., Missing Professional Greeting"
+                    value={customIssueText}
+                    onChange={(e) => setCustomIssueText(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="custom-issue-description">Description *</Label>
+                  <Textarea
+                    id="custom-issue-description"
+                    placeholder="Detailed description of this quality issue..."
+                    value={customIssueDescription}
+                    onChange={(e) => setCustomIssueDescription(e.target.value)}
+                    rows={3}
+                    className="text-sm resize-none max-h-[120px] overflow-y-auto"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="custom-issue-severity">Default Severity *</Label>
+                  <Select value={customIssueSeverity} onValueChange={(value: "low" | "medium" | "high") => setCustomIssueSeverity(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getSeverityColor("low") as "default" | "destructive" | "secondary" | "outline"}>LOW</Badge>
+                          <span>Low</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="medium">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getSeverityColor("medium") as "default" | "destructive" | "secondary" | "outline"}>MEDIUM</Badge>
+                          <span>Medium</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="high">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getSeverityColor("high") as "default" | "destructive" | "secondary" | "outline"}>HIGH</Badge>
+                          <span>High</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex gap-2">
                   <Button
                     type="button"
                     onClick={addCustomIssue}
-                    disabled={!customIssueText.trim()}
+                    disabled={!customIssueText.trim() || !customIssueDescription.trim() || isCreatingCustomIssue}
                     size="sm"
-                    className="px-4"
+                    className="px-4 flex-1"
                   >
-                    Add
+                    {isCreatingCustomIssue ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        Adding...
+                      </>
+                    ) : (
+                      'Add'
+                    )}
                   </Button>
                 </div>
               </div>
             </div>
           )}
-        </div> */}
+        </div>
+        ) : null}
 
       </div>
 
@@ -688,7 +794,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
       {selectedIssues.length > 0 && (
         <div className="space-y-3" data-selected-issues-form>
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Selected Issues ({selectedIssues.length})</Label>
+            <Label className="text-sm font-medium">Selected Issue ({selectedIssues.length})</Label>
             <button
               type="button"
               onClick={() => setSelectedIssues([])}
