@@ -41,7 +41,7 @@ export function EnumCatalogManager() {
       const response = await enumApiService.getIssueMasters(params)
       setEnums(response.data || [])
     } catch (error) {
-      console.error('Failed to load enums:', error)
+      
       setError(error instanceof Error ? error.message : 'Failed to load issue types')
       setEnums([])
     } finally {
