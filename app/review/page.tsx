@@ -92,12 +92,17 @@ export default function ReviewPage() {
     if (statusFilter === 'completed') {
       setSelectedCall(null)
       setDetailedCall(null)
+      setMarkIssueData(null) // Clear any open mark issue panel
     }
   }, [statusFilter])
 
   // Auto-switch to Previous Issues tab for completed calls and load issues
   React.useEffect(() => {
     if (selectedCall) {
+      // Close mark issue panel if call is completed
+      if (selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') {
+        setMarkIssueData(null)
+      }
       console.log('Selected call changed:', selectedCall)
       console.log('Call status:', selectedCall.qcStatus)
       
@@ -288,19 +293,17 @@ export default function ReviewPage() {
   // Mark Issue handlers
   const handleMarkIssue = (transcriptText: string, timestamp: number, transcriptIndex?: number) => {
     try {
-      // Allow marking additional issues on completed calls for further review
-      setMarkIssueData({ transcriptText, timestamp, transcriptIndex })
-      
-      // For completed calls, show a different message and keep issues panel open
+      // Don't allow marking issues on completed calls
       if (selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') {
         toast({
-          title: "Adding Issue to Completed Call",
-          description: "You can add additional issues to this completed review.",
+          title: "Cannot Mark Issues",
+          description: "This call has already been reviewed and completed.",
           variant: "default",
         })
-        // Keep the issues panel open so user can see existing issues while adding new ones
-        setShowIssuesPanel(true)
+        return
       }
+      
+      setMarkIssueData({ transcriptText, timestamp, transcriptIndex })
       
       // Reset to new issue tab when opening
       setActiveTab('new-issue')
@@ -820,8 +823,8 @@ export default function ReviewPage() {
         
 
         
-        // Tab key - Toggle Mark Issue panel and pause audio (only if QC is assigned)
-        if (event.code === 'Tab' && selectedCall?.qcAssignedTo !== null) {
+        // Tab key - Toggle Mark Issue panel and pause audio (only if QC is assigned and call is not completed)
+        if (event.code === 'Tab' && selectedCall?.qcAssignedTo !== null && !(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed')) {
           event.preventDefault()
           
           // If Mark Issue panel is already open, close it
@@ -1196,11 +1199,11 @@ export default function ReviewPage() {
         </div>
         
         {/* Main Content Area */}
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Call List Panel */}
-          <div className="w-96 flex flex-col border-r border-border bg-card">
+          <div className="w-80 lg:w-96 flex flex-col border-r border-border bg-card flex-shrink-0">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-border bg-muted/20 flex-shrink-0">
+            <div className="px-4 lg:px-6 py-4 border-b border-border bg-muted/20 flex-shrink-0">
               <div>
                 <h2 className="text-lg font-semibold text-foreground mb-1">Call Reviews</h2>
                 <p className="text-[13px] text-muted-foreground/80">Recent customer calls</p>
@@ -1221,16 +1224,14 @@ export default function ReviewPage() {
           </div>
 
         {/* Main Panel - Call Details */}
-        <div className={`transition-all duration-300 ${
-          showIssuesPanel && (selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
-            ? 'flex-1' 
-            : 'flex-1'
+        <div className={`transition-all duration-300 flex-1 min-w-0 ${
+          markIssueData ? 'overflow-hidden' : ''
         }`}>
           <div className="h-full flex flex-col">
             {selectedCall ? (
               <div className="flex-1 flex flex-col">
                 {/* Call Header - Compact */}
-                <div className="px-6 py-5 border-b border-border bg-card">
+                <div className="px-4 lg:px-6 py-4 lg:py-5 border-b border-border bg-card">
                   <div className="flex items-start gap-4">
                     {(() => {
                       const avatarColor = getAvatarColor(selectedCall.customerName)
@@ -1241,29 +1242,14 @@ export default function ReviewPage() {
                       )
                     })()}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-3 mb-1">
                         <h1 className="text-2xl font-semibold text-foreground">{selectedCall.customerName}</h1>
-                        {(selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
-                          <div className="flex items-center gap-2">
-                            <Badge variant="default" className="bg-green-100 text-green-800">
-                              Completed Review
-                            </Badge>
-                            <button
-                              onClick={() => setShowIssuesPanel(!showIssuesPanel)}
-                              className="text-xs px-2 py-1 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
-                            >
-                              {showIssuesPanel ? 'Hide Issues' : 'Show Issues'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-4 text-sm">
-                        <div className="flex items-center gap-1">
-                          <span className="text-muted-foreground">Phone:</span>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <span>Phone:</span>
                           <span className="text-foreground">{selectedCall.phoneNumber}</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-muted-foreground">Duration:</span>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <span>Duration:</span>
                           <span className="text-foreground">{selectedCall.callLength}</span>
                         </div>
                         <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
@@ -1281,6 +1267,20 @@ export default function ReviewPage() {
                           {selectedCall.callPriority}
                         </span>
                       </div>
+                      {/* Completed Review Status on separate line */}
+                      {(selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="default" className="bg-green-100 text-green-800">
+                            ✓ Review Completed
+                          </Badge>
+                          <button
+                            onClick={() => setShowIssuesPanel(!showIssuesPanel)}
+                            className="text-xs px-2 py-1 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
+                          >
+                            {showIssuesPanel ? 'Hide Issues' : 'Show Issues'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                     
                     {/* QC Status and Actions */}
@@ -1308,16 +1308,7 @@ export default function ReviewPage() {
                         </div>
                       </div>
                     ) : selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed' ? (
-                      <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-sm text-sm font-semibold">
-                            ✓ Review Completed
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            This call has been reviewed
-                          </div>
-                        </div>
-                      </div>
+                      null
                     ) : (
                       <div className="flex items-center gap-3">
                         <div className="flex flex-col items-center gap-2">
@@ -1382,25 +1373,25 @@ export default function ReviewPage() {
                       </div>
                     </div>
                   )}
-                  {/* Audio Player Section - Fixed */}
-                  <div className="flex-shrink-0 pt-6">
+                  {/* Audio Player Section - Compact */}
+                  <div className="flex-shrink-0 pt-3">
                       {isLoadingCall ? (
-                        <div className="space-y-6 px-6">
-                          {/* Audio Player Skeleton - Attio Style */}
-                          <div className="bg-muted/50 rounded-xl p-6 animate-pulse">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-muted rounded-full"></div>
-                              <div className="flex-1 h-20 bg-muted rounded-lg"></div>
-                              <div className="w-12 h-12 bg-muted rounded-full"></div>
+                        <div className="space-y-3 px-6">
+                          {/* Audio Player Skeleton - Compact */}
+                          <div className="bg-muted/50 rounded-xl p-4 animate-pulse">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-muted rounded-full"></div>
+                              <div className="flex-1 h-12 bg-muted rounded-lg"></div>
+                              <div className="w-8 h-8 bg-muted rounded-full"></div>
                             </div>
-                            <div className="flex justify-between mt-4">
-                              <div className="w-16 h-4 bg-muted rounded"></div>
-                              <div className="w-16 h-4 bg-muted rounded"></div>
+                            <div className="flex justify-between mt-2">
+                              <div className="w-12 h-3 bg-muted rounded"></div>
+                              <div className="w-12 h-3 bg-muted rounded"></div>
                             </div>
                           </div>
                         </div>
                       ) : detailedCall?.callDetails?.recordingUrl ? (
-                        <div className="px-6">
+                        <div className="px-4 lg:px-6">
                           <AudioPlayer
                             ref={audioPlayerRef}
                             audioUrl={detailedCall.callDetails.recordingUrl}
@@ -1436,22 +1427,22 @@ export default function ReviewPage() {
                           />
                         </div>
                       ) : (
-                        <div className="text-center py-12 px-6">
-                          <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="text-center py-6 px-4 lg:px-6">
+                          <div className="w-12 h-12 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-3">
+                            <svg className="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                             </svg>
                           </div>
-                          <h3 className="attio-heading-3 mb-2">No recording available</h3>
-                          <p className="attio-body-small">This call doesn't have an associated recording file.</p>
+                          <h3 className="text-sm font-medium mb-1">No recording available</h3>
+                          <p className="text-xs text-muted-foreground">This call doesn't have an associated recording file.</p>
                         </div>
                       )}
                     </div>
 
                     {/* Transcript Section */}
-                    <div className="flex-1 flex flex-col min-h-0 mt-8">
+                    <div className="flex-1 flex flex-col min-h-0 mt-4">
                       {isLoadingCall ? (
-                        <div className="space-y-4 px-6">
+                        <div className="space-y-4 px-4 lg:px-6">
                           <h3 className="attio-heading-3 mb-4">Transcript</h3>
                           {/* Transcript Skeleton - Attio Style */}
                           {Array.from({ length: 6 }).map((_, index) => (
@@ -1470,8 +1461,8 @@ export default function ReviewPage() {
                         </div>
                       ) : detailedCall?.callDetails?.messages && detailedCall.callDetails.messages.length > 0 ? (
                         <div className="flex flex-col flex-1 min-h-0">
-                          <h4 className="text-[15px] font-semibold text-foreground mb-3 px-6 flex-shrink-0">Transcript</h4>
-                          <div ref={transcriptContainerRef} className="space-y-2 overflow-y-auto max-h-[calc(100vh-400px)] px-6 pb-16 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+                          <h4 className="text-[15px] font-semibold text-foreground mb-3 px-4 lg:px-6 flex-shrink-0">Transcript</h4>
+                          <div ref={transcriptContainerRef} className="space-y-2 overflow-y-auto max-h-[calc(100vh-400px)] px-4 lg:px-6 pb-16 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
                             {detailedCall.callDetails.messages.map((message: any, index: number) => {
                               const isAI = message.role === 'bot'
                               const speaker = isAI ? 'Agent' : formatCustomerName(detailedCall.callDetails.name || '')
@@ -1620,8 +1611,8 @@ export default function ReviewPage() {
                                         
                                         return null
                                       })()}
-                                      {/* Only show Mark Issue button when QC is assigned */}
-                                      {selectedCall?.qcAssignedTo !== null && (
+                                      {/* Only show Mark Issue button when QC is assigned and call is not completed */}
+                                      {selectedCall?.qcAssignedTo !== null && !(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
                                         <div className="flex items-center gap-1.5">
                                           <button
                                             onClick={(e) => {
@@ -1688,32 +1679,24 @@ export default function ReviewPage() {
 
         {/* Issues Panel for Completed Calls - Collapsible */}
         {showIssuesPanel && selectedCall && (selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
-          <div className="w-[480px] bg-card border-l-2 border-l-green-500/20 transition-all duration-300 shadow-xl">
+          <div className="w-full sm:w-[380px] md:w-[400px] lg:w-[480px] xl:w-[520px] bg-card border-l-2 border-l-green-500/20 transition-all duration-300 shadow-xl flex-shrink-0">
             <div className="flex flex-col h-full">
               {/* Header */}
-              <div className="px-6 py-5 border-b border-border bg-muted/20 flex-shrink-0">
-                                 <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                       <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="px-4 lg:px-6 py-4 lg:py-6 border-b border-border bg-muted/20 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-4">
+                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                       <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                        </svg>
                      </div>
                      <div>
-                       <h3 className="text-lg font-semibold text-foreground">QC Review Issues</h3>
-                       <p className="text-sm text-muted-foreground">Issues found during quality review</p>
+                       <h3 className="text-xl font-semibold text-foreground">QC Review Issues</h3>
+                       <p className="text-sm text-muted-foreground mt-1">Issues found during quality review</p>
                      </div>
                    </div>
                    <div className="flex items-center gap-2">
-                     <button
-                       onClick={() => {
-                         setActiveTab('new-issue')
-                         handleMarkIssue('Additional issue review', currentPlaybackTime || 0)
-                       }}
-                       className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
-                     >
-                       Add More Issues
-                     </button>
+                     {/* Removed Add More Issues button for completed calls */}
                      <button
                        onClick={() => setShowIssuesPanel(false)}
                        className="p-2 hover:bg-muted rounded-lg transition-colors"
@@ -1728,7 +1711,7 @@ export default function ReviewPage() {
 
               {/* Issues Content */}
               <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
-                <div className="p-6">
+                <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
                   {isLoadingIssues ? (
                     // Loading state
                     <div className="space-y-4">
@@ -1779,92 +1762,93 @@ export default function ReviewPage() {
                       
                       {/* Enhanced summary for completed calls */}
                       {apiCallIssues.length > 0 && (
-                        <div className="bg-card border rounded-lg p-4 mb-4">
-                          <h4 className="text-sm font-medium text-foreground mb-3">QC Review Summary</h4>
-                          <div className="grid grid-cols-3 gap-4 text-center">
-                            <div>
-                              <div className="text-lg font-semibold text-destructive">
+                        <div className="bg-gradient-to-br from-card to-muted/20 border rounded-xl p-6 shadow-sm">
+                          <h4 className="text-lg font-semibold text-foreground mb-5 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            QC Review Summary
+                          </h4>
+                          <div className="grid grid-cols-3 gap-6 text-center mb-5">
+                            <div className="bg-background/50 rounded-lg p-4 border">
+                              <div className="text-2xl font-bold text-destructive mb-1">
                                 {apiCallIssues.reduce((total, group) => 
                                   total + group.issues.filter(issue => issue.severity === 'high').length, 0
                                 )}
                               </div>
-                              <div className="text-xs text-muted-foreground">High Severity</div>
+                              <div className="text-sm text-muted-foreground font-medium">High</div>
+                              <div className="text-xs text-muted-foreground">Severity</div>
                             </div>
-                            <div>
-                              <div className="text-lg font-semibold text-orange-600">
+                            <div className="bg-background/50 rounded-lg p-4 border">
+                              <div className="text-2xl font-bold text-orange-600 mb-1">
                                 {apiCallIssues.reduce((total, group) => 
                                   total + group.issues.filter(issue => issue.severity === 'medium').length, 0
                                 )}
                               </div>
-                              <div className="text-xs text-muted-foreground">Medium Severity</div>
+                              <div className="text-sm text-muted-foreground font-medium">Medium</div>
+                              <div className="text-xs text-muted-foreground">Severity</div>
                             </div>
-                            <div>
-                              <div className="text-lg font-semibold text-muted-foreground">
+                            <div className="bg-background/50 rounded-lg p-4 border">
+                              <div className="text-2xl font-bold text-muted-foreground mb-1">
                                 {apiCallIssues.reduce((total, group) => 
                                   total + group.issues.filter(issue => issue.severity === 'low').length, 0
                                 )}
                               </div>
-                              <div className="text-xs text-muted-foreground">Low Severity</div>
+                              <div className="text-sm text-muted-foreground font-medium">Low</div>
+                              <div className="text-xs text-muted-foreground">Severity</div>
                             </div>
                           </div>
-                          <div className="mt-3 pt-3 border-t border-border text-center">
-                            <div className="text-sm text-muted-foreground">
-                              QC completed by: <span className="font-medium text-foreground">{selectedCall?.qcAssignedTo || 'Unknown'}</span>
-                            </div>
-                          </div>
+
                         </div>
                       )}
                       
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {apiCallIssues
                           .slice()
                           .sort((a, b) => b.secondsFromStart - a.secondsFromStart)
                           .map((issueGroup, groupIndex) => (
-                          <div key={groupIndex} className="bg-muted/30 border rounded-lg p-4 space-y-3 relative group">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
-                                  {Math.floor(issueGroup.secondsFromStart / 60)}:{Math.floor(issueGroup.secondsFromStart % 60).toString().padStart(2, '0')}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  {issueGroup.issues.length} issue{issueGroup.issues.length > 1 ? 's' : ''}
-                                </span>
-                              </div>
-                              <div className="flex flex-wrap gap-1 justify-end">
-                                {issueGroup.issues.map((issue, issueIndex) => (
-                                  <Badge
-                                    key={issueIndex}
-                                    variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
-                                    className="text-xs"
-                                  >
-                                    {issue.severity.toUpperCase()} - {issue.title}
+                          <div key={groupIndex} className="bg-gradient-to-br from-background to-muted/20 border rounded-xl p-5 space-y-4 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-primary/10 rounded-lg px-3 py-2">
+                                  <Badge variant="outline" className="text-sm font-mono bg-background" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
+                                    {Math.floor(issueGroup.secondsFromStart / 60)}:{Math.floor(issueGroup.secondsFromStart % 60).toString().padStart(2, '0')}
                                   </Badge>
-                                ))}
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium text-foreground">
+                                    {issueGroup.issues.length} Issue{issueGroup.issues.length > 1 ? 's' : ''}
+                                  </span>
+                                  <div className="text-xs text-muted-foreground">Found at this timestamp</div>
+                                </div>
                               </div>
                             </div>
-                            <div className="text-xs text-muted-foreground bg-background/50 rounded p-2 border-l-2 border-primary/20">
-                              <strong>Transcript:</strong> "{issueGroup.transcript}"
+                            <div className="text-sm text-muted-foreground bg-primary/5 rounded-lg p-4 border-l-4 border-primary/30">
+                              <div className="font-medium text-foreground mb-1">Transcript:</div>
+                              <div className="italic">"{issueGroup.transcript}"</div>
                             </div>
                             {/* Enhanced issue details for completed calls */}
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               {issueGroup.issues.map((issue, issueIndex) => (
-                                <div key={issueIndex} className="bg-background/70 rounded p-3 border">
-                                  <div className="flex items-start justify-between gap-2 mb-2">
+                                <div key={issueIndex} className="bg-background border rounded-lg p-4 hover:bg-muted/20 transition-colors">
+                                  <div className="flex items-start justify-between gap-3 mb-3">
                                     <div className="flex-1">
-                                      <h4 className="text-sm font-medium text-foreground">{issue.title}</h4>
+                                      <h4 className="text-base font-semibold text-foreground mb-1">{issue.title}</h4>
                                       {issue.code && (
-                                        <p className="text-xs text-muted-foreground mt-1">Code: {issue.code}</p>
+                                        <p className="text-sm text-muted-foreground font-mono bg-muted/50 px-2 py-1 rounded">
+                                          Code: {issue.code}
+                                        </p>
                                       )}
                                     </div>
                                     <Badge
                                       variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
-                                      className="text-xs"
+                                      className="text-sm px-3 py-1"
                                     >
                                       {issue.severity.toUpperCase()}
                                     </Badge>
                                   </div>
                                   {issue.description && (
-                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                    <p className="text-sm text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-lg">
                                       {issue.description}
                                     </p>
                                   )}
@@ -1902,12 +1886,12 @@ export default function ReviewPage() {
           </div>
         )}
 
-        {/* Mark Issue Panel - Wider */}
-        {markIssueData && (
-          <div className="w-[480px] bg-card border-l-2 border-l-primary/20 transition-all duration-300 shadow-xl">
+        {/* Mark Issue Panel - Responsive - Only show for non-completed calls */}
+        {markIssueData && selectedCall && !(selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
+          <div className="w-full sm:w-[380px] md:w-[400px] lg:w-[480px] xl:w-[520px] bg-card border-l-2 border-l-primary/20 transition-all duration-300 shadow-xl flex-shrink-0">
             <div className="flex flex-col h-full">
               {/* Header */}
-              <div className="px-6 py-5 border-b border-border bg-muted/20 flex-shrink-0">
+              <div className="px-4 lg:px-6 py-4 lg:py-5 border-b border-border bg-muted/20 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
@@ -1916,8 +1900,8 @@ export default function ReviewPage() {
                       </svg>
                     </div>
                     <div>
-                      <h2 className="text-lg font-semibold text-foreground mb-1">Mark Issue</h2>
-                      <p className="text-[13px] text-muted-foreground/80">Identify quality concerns</p>
+                      <h2 className="text-base lg:text-lg font-semibold text-foreground mb-1">Mark Issue</h2>
+                      <p className="text-xs lg:text-[13px] text-muted-foreground/80">Identify quality concerns</p>
                     </div>
                   </div>
                 <button 
@@ -1937,7 +1921,7 @@ export default function ReviewPage() {
                   {/* Always show New Issue tab - but with different label for completed calls */}
                   <button
                     onClick={() => setActiveTab('new-issue')}
-                    className={`flex-1 pb-3 px-6 text-sm font-medium transition-colors relative ${
+                    className={`flex-1 pb-3 px-3 lg:px-6 text-xs lg:text-sm font-medium transition-colors relative ${
                       activeTab === 'new-issue'
                         ? 'text-foreground border-b-2 border-primary'
                         : 'text-muted-foreground hover:text-foreground'
@@ -1951,7 +1935,7 @@ export default function ReviewPage() {
                   
                   <button
                     onClick={() => setActiveTab('previous-issues')}
-                    className={`flex-1 pb-3 px-6 text-sm font-medium transition-colors relative flex items-center justify-center gap-2 ${
+                    className={`flex-1 pb-3 px-3 lg:px-6 text-xs lg:text-sm font-medium transition-colors relative flex items-center justify-center gap-2 ${
                       activeTab === 'previous-issues'
                         ? 'text-foreground border-b-2 border-primary'
                         : 'text-muted-foreground hover:text-foreground'
@@ -1976,7 +1960,7 @@ export default function ReviewPage() {
               {/* Content - Independent scrolling */}
               <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
                 {activeTab === 'new-issue' && (
-                  <div className="p-6">
+                  <div className="p-4 lg:p-6">
                     <MarkIssueForm
                       ref={formRef}
                       transcriptText={markIssueData.transcriptText}
@@ -1992,7 +1976,7 @@ export default function ReviewPage() {
                 )}
                 
                 {activeTab === 'previous-issues' && (
-                  <div className="p-6">
+                  <div className="p-4 lg:p-6">
                     {isLoadingIssues ? (
                       // Loading state
                       <div className="space-y-4">
@@ -2079,11 +2063,7 @@ export default function ReviewPage() {
                                 <div className="text-xs text-muted-foreground">Low Severity</div>
                               </div>
                             </div>
-                            <div className="mt-3 pt-3 border-t border-border text-center">
-                              <div className="text-sm text-muted-foreground">
-                                QC completed by: <span className="font-medium text-foreground">{selectedCall?.qcAssignedTo || 'Unknown'}</span>
-                              </div>
-                            </div>
+
                           </div>
                         )}
                         
@@ -2184,12 +2164,12 @@ export default function ReviewPage() {
               
               {/* Sticky Actions - Only show for New Issue tab */}
               {activeTab === 'new-issue' && (
-                <div className="flex-shrink-0 p-6 border-t border-border bg-card">
+                <div className="flex-shrink-0 p-4 lg:p-6 border-t border-border bg-card">
                   <div className="flex gap-3">
                     <button
                       type="button"
                       onClick={handleCancelMarkIssue}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-foreground border border-input bg-background hover:bg-muted rounded-lg transition-colors"
+                      className="flex-1 px-3 lg:px-4 py-2 text-sm font-medium text-foreground border border-input bg-background hover:bg-muted rounded-lg transition-colors"
                     >
                       Cancel
                     </button>
@@ -2197,7 +2177,7 @@ export default function ReviewPage() {
                       type="button"
                       onClick={() => formRef.current?.submitForm()}
                       disabled={!isFormValid}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-lg transition-colors"
+                      className="flex-1 px-3 lg:px-4 py-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-lg transition-colors"
                     >
                       Mark Issue
                     </button>

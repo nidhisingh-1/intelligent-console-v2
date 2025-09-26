@@ -462,16 +462,7 @@ function IssuesManagement() {
           <p className="text-sm text-muted-foreground">
             High-level view of all issue types with occurrence statistics and resolution status.
           </p>
-          {(urlEnterpriseId || urlTeamId) && (
-            <div className="mt-2 text-sm text-green-600 font-medium">
-              ✅ Dashboard is working! Connected with Enterprise: {urlEnterpriseId} | Team: {urlTeamId}
-            </div>
-          )}
-          {!urlEnterpriseId && !urlTeamId && (
-            <div className="mt-2 text-sm text-blue-600 font-medium">
-              ✅ Dashboard is working! (No URL parameters detected)
-            </div>
-          )}
+
           <div className="mt-1 text-xs text-muted-foreground">
             Total Issues Loaded: {issues.length} | Loading: {isLoading ? 'Yes' : 'No'}
           </div>

@@ -92,7 +92,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
       if (statusFilter === 'pending') {
         qcStatusParam = 'yet_to_start,in_progress'
       } else if (statusFilter === 'completed') {
-        qcStatusParam = 'done,completed'
+        qcStatusParam = 'done'  // Only show calls with qc_status = 'done'
       }
 
               const response = await callsApiService.getCalls({
@@ -154,7 +154,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         if (statusFilter === 'pending') {
           qcStatusParam = 'yet_to_start,in_progress'
         } else if (statusFilter === 'completed') {
-          qcStatusParam = 'done,completed'
+          qcStatusParam = 'done'  // Only show calls with qc_status = 'done'
         }
         // If statusFilter === 'all', don't set qcStatus parameter to get all calls
 
