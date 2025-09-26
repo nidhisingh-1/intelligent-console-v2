@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, X, Filter, ArrowRight, ArrowLeft, Clock, Loader2 } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Search, X, Filter, ArrowRight, ArrowLeft, Clock, Loader2, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { enumApiService, getAllEnumCategories, getEnumCategoryLabel, getSeverityColor } from "@/lib/enum-api"
 
@@ -77,6 +78,16 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   
+  // New issue creation state
+  const [showNewIssueDialog, setShowNewIssueDialog] = React.useState(false)
+  const [isCreatingNewIssue, setIsCreatingNewIssue] = React.useState(false)
+  const [newIssueForm, setNewIssueForm] = React.useState({
+    title: '',
+    description: '',
+    category: '',
+    severity: 'medium' as 'low' | 'medium' | 'high'
+  })
+  
   // Custom issue state
   const [showCustomIssueForm, setShowCustomIssueForm] = React.useState(false)
   const [customIssueText, setCustomIssueText] = React.useState("")
@@ -90,6 +101,74 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
   
   // Toast hook for notifications
   const { toast } = useToast()
+
+  // Handle creating a new issue type
+  const handleCreateNewIssue = async () => {
+    if (!newIssueForm.title.trim() || !newIssueForm.description.trim() || !newIssueForm.category) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsCreatingNewIssue(true)
+    try {
+      const newIssue = await enumApiService.createIssueMaster({
+        title: newIssueForm.title.trim(),
+        description: newIssueForm.description.trim(),
+        code: newIssueForm.category as any,
+        defaultSeverity: newIssueForm.severity,
+        isActive: true
+      })
+
+      // Add the new issue to the list and select it
+      const newIssueType: IssueType = {
+        id: newIssue._id,
+        text: newIssue.title,
+        category: newIssue.code,
+        severity: newIssue.defaultSeverity,
+        code: newIssue.code
+      }
+
+      setIssueTypes(prev => [...prev, newIssueType])
+      
+      // Auto-select the newly created issue
+      const newSelectedIssue: SelectedIssue = {
+        id: newIssue._id,
+        text: newIssue.title,
+        category: newIssue.code,
+        severity: newIssue.defaultSeverity,
+        originalId: undefined
+      }
+      setSelectedIssues(prev => [...prev, newSelectedIssue])
+
+      // Reset form and close dialog
+      setNewIssueForm({
+        title: '',
+        description: '',
+        category: '',
+        severity: 'medium'
+      })
+      setShowNewIssueDialog(false)
+
+      toast({
+        title: "Issue Created",
+        description: `"${newIssue.title}" has been created and added to your selection.`,
+      })
+
+    } catch (error) {
+      console.error('Error creating new issue:', error)
+      toast({
+        title: "Creation Failed",
+        description: "Failed to create new issue. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreatingNewIssue(false)
+    }
+  }
 
   // Fetch enums from API
   React.useEffect(() => {
@@ -223,7 +302,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
       // Exception: Allow number shortcuts (1-9 and Ctrl+1-9) to work in search inputs
       const target = e.target as HTMLElement | null
       const tag = target?.tagName?.toLowerCase()
-      const isSearchInput = target?.placeholder?.includes('Search by issue name')
+      const isSearchInput = (target as HTMLInputElement)?.placeholder?.includes('Search by issue name')
       const isNumberShortcut = /^[1-9]$/.test(e.key) || (e.ctrlKey && /^[1-9]$/.test(e.key))
       const isTypingContext = (tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable) && !(isSearchInput && isNumberShortcut)
 
@@ -589,6 +668,93 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
             </button>
           )}
         </div>
+
+        {/* Create New Issue Type Button */}
+        <Dialog open={showNewIssueDialog} onOpenChange={setShowNewIssueDialog}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground border-dashed">
+              <Plus className="h-4 w-4" />
+              Create New Issue Type
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Create New Issue Type</DialogTitle>
+              <DialogDescription>
+                Create a new issue type that will be available for future QC reviews.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="issue-title">Issue Title *</Label>
+                <Input
+                  id="issue-title"
+                  placeholder="e.g., Poor Audio Quality"
+                  value={newIssueForm.title}
+                  onChange={(e) => setNewIssueForm(prev => ({ ...prev, title: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="issue-description">Description *</Label>
+                <Textarea
+                  id="issue-description"
+                  placeholder="Describe when this issue should be marked..."
+                  value={newIssueForm.description}
+                  onChange={(e) => setNewIssueForm(prev => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="issue-category">Category *</Label>
+                <Select
+                  value={newIssueForm.category}
+                  onValueChange={(value) => setNewIssueForm(prev => ({ ...prev, category: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAllEnumCategories().map((category) => (
+                      <SelectItem key={category.code} value={category.code}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="issue-severity">Default Severity</Label>
+                <Select
+                  value={newIssueForm.severity}
+                  onValueChange={(value: 'low' | 'medium' | 'high') => setNewIssueForm(prev => ({ ...prev, severity: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowNewIssueDialog(false)} disabled={isCreatingNewIssue}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateNewIssue} disabled={isCreatingNewIssue}>
+                {isCreatingNewIssue && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Issue Type
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         
         {/* Quick Category Filters */}
         {isLoading ? (

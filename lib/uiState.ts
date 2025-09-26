@@ -74,11 +74,11 @@ export const useFiltersStore = () => ({
 export const useGlobalSearch = (searchQuery?: string) => ({
   isOpen: false,
   query: "",
-  results: [],
+  results: [] as any[],
   data: {
-    calls: [],
-    enums: [],
-    annotations: [],
+    calls: [] as any[],
+    enums: [] as any[],
+    annotations: [] as any[],
   },
   open: () => {},
   close: () => {},

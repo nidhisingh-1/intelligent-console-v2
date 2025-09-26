@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useRef, useCallback } from "react"
+import { useState, useMemo, useEffect, useRef, useCallback, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { useDebounce } from "@/hooks/use-debounce"
 import { AppShell } from "@/components/app-shell"
@@ -737,13 +737,28 @@ function IssuesManagement() {
   )
 }
 
+function IssuesManagementWithSuspense() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-8 p-6">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold">Loading Dashboard...</h2>
+          <p className="text-muted-foreground">Please wait while we load the data.</p>
+        </div>
+      </div>
+    }>
+      <IssuesManagement />
+    </Suspense>
+  )
+}
+
 export default function DashboardPage() {
   return (
     <AppShell>
       <div className="w-full px-6 h-full flex flex-col">
         {/* Page Content - Direct Issues Management */}
         <div className="flex-1 overflow-auto py-8">
-          <IssuesManagement />
+          <IssuesManagementWithSuspense />
         </div>
       </div>
     </AppShell>

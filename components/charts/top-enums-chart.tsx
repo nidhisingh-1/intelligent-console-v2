@@ -27,8 +27,8 @@ export function TopEnumsChart() {
       }
 
       // Apply dealership/agent filters
-      if (filters.dealerships.length > 0 && !filters.dealerships.includes(call.dealershipId)) return false
-      if (filters.agents.length > 0 && !filters.agents.includes(call.agentId)) return false
+      if (filters.dealerships.length > 0 && call.dealershipId && !filters.dealerships.includes(call.dealershipId)) return false
+      if (filters.agents.length > 0 && call.agentId && !filters.agents.includes(call.agentId)) return false
 
       if (filters.aiOnly) {
         const agent = MOCKS.agents.find((a) => a.id === call.agentId)
