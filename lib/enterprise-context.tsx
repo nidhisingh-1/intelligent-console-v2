@@ -31,6 +31,7 @@ interface EnterpriseContextType {
   setSelectedEnterprise: (enterprise: Enterprise | null) => void
   setSelectedTeam: (team: Team | null) => void
   loadMoreEnterprises: () => Promise<void>
+  loadAllEnterprises: () => Promise<void>
       refreshEnterprises: () => Promise<void>
     refreshTeams: () => Promise<void>
     searchEnterprises: (searchTerm: string) => Promise<void>
@@ -130,7 +131,7 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
       setEnterprisesError(null)
       
       const response = await enterpriseApiService.getEnterprises({
-        limit: 20,
+        limit: 100,
         page: page,
         search: searchTerm !== undefined ? searchTerm : enterpriseSearchTerm || undefined,
       })
@@ -143,10 +144,16 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
         ...enterprise,
         id: enterprise.enterpriseId // Add id as alias for enterpriseId
       }))
+      
+      // Sort enterprises by name in ascending order
+      enterpriseData.sort((a, b) => a.name.localeCompare(b.name))
         
         // Set the enterprises data
         if (append) {
-          setEnterprises(prev => [...prev, ...enterpriseData])
+          // When appending, we need to sort the combined list
+          const combinedEnterprises = [...enterprises, ...enterpriseData]
+          combinedEnterprises.sort((a, b) => a.name.localeCompare(b.name))
+          setEnterprises(combinedEnterprises)
         } else {
           setEnterprises(enterpriseData)
         }
@@ -264,6 +271,103 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
     }
   }
 
+  // Load ALL enterprises by fetching all pages
+  const loadAllEnterprises = async () => {
+    try {
+      setIsLoadingEnterprises(true)
+      setEnterprisesError(null)
+      
+      console.log('Loading all enterprises...')
+      
+      // First, get the first page to know total pages
+      const firstResponse = await enterpriseApiService.getEnterprises({
+        limit: 100,
+        page: 1,
+        search: enterpriseSearchTerm || undefined,
+      })
+      
+      const firstPageEnterprises = firstResponse.data?.enterprises || []
+      const totalPages = firstResponse.data?.pagination?.totalPages || 1
+      const totalCount = firstResponse.data?.pagination?.totalCount || firstPageEnterprises.length
+      
+      console.log(`Found ${totalCount} total enterprises across ${totalPages} pages`)
+      
+      // If there's only one page, we're done
+      if (totalPages <= 1) {
+        const enterpriseData: Enterprise[] = firstPageEnterprises.map(enterprise => ({
+          ...enterprise,
+          id: enterprise.enterpriseId
+        }))
+        
+        // Sort enterprises by name in ascending order
+        enterpriseData.sort((a, b) => a.name.localeCompare(b.name))
+        
+        setEnterprises(enterpriseData)
+        setEnterprisePage(1)
+        setHasMoreEnterprises(false)
+        return
+      }
+      
+      // Fetch all remaining pages in parallel
+      const pagePromises = []
+      for (let page = 2; page <= totalPages; page++) {
+        pagePromises.push(
+          enterpriseApiService.getEnterprises({
+            limit: 100,
+            page: page,
+            search: enterpriseSearchTerm || undefined,
+          })
+        )
+      }
+      
+      console.log(`Fetching ${pagePromises.length} additional pages...`)
+      const additionalResponses = await Promise.all(pagePromises)
+      
+      // Combine all enterprises
+      let allEnterprises = [...firstPageEnterprises]
+      additionalResponses.forEach(response => {
+        if (response.data?.enterprises) {
+          allEnterprises = [...allEnterprises, ...response.data.enterprises]
+        }
+      })
+      
+      // Transform enterprises to add id field
+      const enterpriseData: Enterprise[] = allEnterprises.map(enterprise => ({
+        ...enterprise,
+        id: enterprise.enterpriseId
+      }))
+      
+      // Sort enterprises by name in ascending order
+      enterpriseData.sort((a, b) => a.name.localeCompare(b.name))
+      
+      console.log(`Loaded ${enterpriseData.length} total enterprises (sorted by name)`)
+      
+      setEnterprises(enterpriseData)
+      setEnterprisePage(totalPages)
+      setHasMoreEnterprises(false) // All loaded
+      
+      // Only show toast if this was manually triggered (not on initial load)
+      if (enterprises.length > 0) {
+        toast({
+          title: "All Enterprises Loaded",
+          description: `Successfully loaded all ${enterpriseData.length} enterprises`,
+          variant: "default",
+        })
+      }
+      
+    } catch (error) {
+      console.error('Failed to load all enterprises:', error)
+      setEnterprisesError('Failed to load all enterprises')
+      toast({
+        title: "Error Loading Enterprises",
+        description: "Failed to load all enterprises. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingEnterprises(false)
+    }
+  }
+
   // Refresh functions
   const refreshEnterprises = async () => {
     setEnterprisePage(1)
@@ -345,8 +449,8 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
       setIsInitialLoading(true)
       
       try {
-        // Load enterprises first
-        await loadEnterprises(1, false)
+        // Load ALL enterprises first instead of just first page
+        await loadAllEnterprises()
         
         // Try to restore saved selections
         const savedEnterprise = loadSelectedEnterprise()
@@ -402,6 +506,7 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
     setSelectedEnterprise,
     setSelectedTeam,
     loadMoreEnterprises,
+    loadAllEnterprises,
     refreshEnterprises,
     refreshTeams,
     searchEnterprises,

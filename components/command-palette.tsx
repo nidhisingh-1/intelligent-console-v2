@@ -12,7 +12,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command"
 import { Badge } from "@/components/ui/badge"
-import { ClipboardList, BarChart3, Settings, Phone, Filter, FileText } from "lucide-react"
+import { ClipboardList, BarChart3, Settings, Phone, Filter, FileText, CheckCircle } from "lucide-react"
 import { useFiltersStore, useGlobalSearch } from "@/lib/uiState"
 import { MOCKS } from "@/lib/mocks"
 
@@ -61,6 +61,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <Settings className="mr-2 h-4 w-4" />
             <span>Enum Catalog Manager</span>
           </CommandItem>
+
         </CommandGroup>
 
         <CommandSeparator />

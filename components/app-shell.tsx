@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { ClipboardList, BarChart3, Settings, Menu, Bug } from "lucide-react"
+import { ClipboardList, BarChart3, Settings, Menu, Bug, CheckCircle } from "lucide-react"
 
 const navigation = [
   {
@@ -27,13 +27,15 @@ const navigation = [
     icon: Bug,
     description: "Manage and categorize quality issues",
   },
+
 ]
 
 interface AppShellProps {
   children: React.ReactNode
+  statsChips?: React.ReactNode
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, statsChips }: AppShellProps) {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
 
@@ -137,7 +139,12 @@ export function AppShell({ children }: AppShellProps) {
                 </nav>
               </div>
 
-              
+              {/* Right Side - Stats Chips */}
+              {statsChips && (
+                <div className="flex items-center pr-4">
+                  {statsChips}
+                </div>
+              )}
             </div>
           </div>
         </header>

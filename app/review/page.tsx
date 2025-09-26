@@ -6,13 +6,19 @@ import { CallsTable, CallsTableRef } from "@/components/calls/calls-table"
 import AudioPlayer, { AudioPlayerRef } from "@/components/audio/audio-player"
 import { MarkIssueForm, MarkIssueFormRef } from "@/components/transcript/mark-issue-form"
 import { fetchCallById } from "@/lib/api"
-import { callsApiService, CallIssuesResponse, CallIssueGroup, type AssignQCRequest } from "@/lib/calls-api"
+import { callsApiService, CallIssuesResponse, CallIssueGroup, type AssignQCRequest, filterCallsByDateRange } from "@/lib/calls-api"
 import { useToast } from "@/hooks/use-toast"
 import { useEnterprise } from "@/lib/enterprise-context"
 import { EnterpriseTeamSelector } from "@/components/enterprise/enterprise-team-selector"
 
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
+import { CalendarIcon, X, Phone, CheckCircle, Clock } from "lucide-react"
+import { format } from "date-fns"
 
 export default function ReviewPage() {
   const { toast } = useToast()
@@ -62,6 +68,53 @@ export default function ReviewPage() {
   const [apiCallIssues, setApiCallIssues] = useState<CallIssueGroup[]>([])
   const [isLoadingIssues, setIsLoadingIssues] = useState(false)
   const [issuesError, setIssuesError] = useState<string | null>(null)
+  
+  // Status filter state
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('pending')
+  
+  // Issues panel toggle state
+  const [showIssuesPanel, setShowIssuesPanel] = useState(false)
+  
+  // Date filter state
+  const [startDate, setStartDate] = useState<Date | undefined>()
+  const [endDate, setEndDate] = useState<Date | undefined>()
+  
+  // Stats state
+  const [callStats, setCallStats] = useState({
+    total: 0,
+    reviewed: 0,
+    unreviewed: 0,
+    isLoading: true
+  })
+  
+  // Clear selection when switching to completed calls
+  React.useEffect(() => {
+    if (statusFilter === 'completed') {
+      setSelectedCall(null)
+      setDetailedCall(null)
+    }
+  }, [statusFilter])
+
+  // Auto-switch to Previous Issues tab for completed calls and load issues
+  React.useEffect(() => {
+    if (selectedCall) {
+      console.log('Selected call changed:', selectedCall)
+      console.log('Call status:', selectedCall.qcStatus)
+      
+      // Always load issues when a call is selected
+      loadCallIssues(selectedCall.id)
+      
+      // Auto-switch to Previous Issues tab for completed calls
+      if (selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') {
+        console.log('Switching to previous issues tab for completed call')
+        setActiveTab('previous-issues')
+        setShowIssuesPanel(true) // Auto-show issues panel for completed calls
+      }
+    } else {
+      // Clear issues when no call is selected
+      setApiCallIssues([])
+    }
+  }, [selectedCall])
   
   // Form state for sticky actions
   const [isFormValid, setIsFormValid] = useState(false)
@@ -235,7 +288,20 @@ export default function ReviewPage() {
   // Mark Issue handlers
   const handleMarkIssue = (transcriptText: string, timestamp: number, transcriptIndex?: number) => {
     try {
+      // Allow marking additional issues on completed calls for further review
       setMarkIssueData({ transcriptText, timestamp, transcriptIndex })
+      
+      // For completed calls, show a different message and keep issues panel open
+      if (selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') {
+        toast({
+          title: "Adding Issue to Completed Call",
+          description: "You can add additional issues to this completed review.",
+          variant: "default",
+        })
+        // Keep the issues panel open so user can see existing issues while adding new ones
+        setShowIssuesPanel(true)
+      }
+      
       // Reset to new issue tab when opening
       setActiveTab('new-issue')
     } catch (error) {
@@ -294,14 +360,25 @@ export default function ReviewPage() {
           description = `Issues updated at ${Math.floor(markIssueData.timestamp / 60)}:${Math.floor(markIssueData.timestamp % 60).toString().padStart(2, '0')}`
         }
         
+        const isCompletedCall = selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed'
+        
         toast({
-          title: "Issues Marked Successfully",
-          description: description,
+          title: isCompletedCall ? "Additional Issues Added" : "Issues Marked Successfully",
+          description: isCompletedCall 
+            ? `Additional issues added to completed review: ${description}`
+            : description,
           variant: "default",
         })
         
         // Reload call issues to get the updated data
         await loadCallIssues(selectedCall.id)
+        
+        // For completed calls, switch to existing issues tab to show the updated list
+        if (isCompletedCall && issue.addIssues.length > 0) {
+          setTimeout(() => {
+            setActiveTab('previous-issues')
+          }, 500)
+        }
         
         // Mark the transcript card as having an issue if we added any issues
         if (issue.addIssues.length > 0 && markIssueData?.transcriptIndex !== undefined) {
@@ -487,14 +564,29 @@ export default function ReviewPage() {
 
 
 
-  // Function to load call issues from API
+  
+
+  // Function to load call issues from API with fallback to mock data
   const loadCallIssues = async (callId: string) => {
     try {
       setIsLoadingIssues(true)
       setIssuesError(null)
       
+      console.log('Loading issues for call:', callId)
+      
+      // Fetch ONLY real issues that were marked for this call
+      console.log('Fetching real issues from API for call:', callId)
       const issuesResponse = await callsApiService.getCallIssues(callId)
-      setApiCallIssues(issuesResponse.data)
+      console.log('API response for issues:', issuesResponse)
+      
+      if (issuesResponse && issuesResponse.data) {
+        console.log('Found real marked issues:', issuesResponse.data)
+        setApiCallIssues(issuesResponse.data)
+      } else {
+        console.log('No issues found for this call')
+        setApiCallIssues([])
+      }
+      
     } catch (error) {
       console.error('Error fetching call issues:', error)
       setIssuesError('Failed to load call issues')
@@ -503,6 +595,61 @@ export default function ReviewPage() {
       setIsLoadingIssues(false)
     }
   }
+
+  // Function to fetch all calls and calculate stats
+  const loadCallStats = useCallback(async () => {
+    if (!selectedEnterprise || !selectedTeam) {
+      setCallStats({ total: 0, reviewed: 0, unreviewed: 0, isLoading: false })
+      return
+    }
+
+    try {
+      setCallStats(prev => ({ ...prev, isLoading: true }))
+      
+      let allCalls: any[] = []
+      let page = 1
+      let hasMore = true
+      
+      // Fetch all pages of calls
+      while (hasMore) {
+        const response = await callsApiService.getCalls({
+          enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+          teamId: selectedTeam.team_id,
+          limit: 100, // Larger page size for efficiency
+          page: page
+        })
+        
+        if (response.calls && response.calls.length > 0) {
+          allCalls = [...allCalls, ...response.calls]
+          hasMore = response.calls.length === 100 // Continue if we got a full page
+          page++
+        } else {
+          hasMore = false
+        }
+      }
+
+      // Apply date filtering to all calls
+      const transformedCalls = allCalls.map((call: any) => callsApiService.transformCallData(call))
+      const filteredCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+      
+      // Calculate statistics
+      const total = filteredCalls.length
+      const reviewed = filteredCalls.filter((call: any) => 
+        call.qcStatus === 'done' || call.qcStatus === 'completed'
+      ).length
+      const unreviewed = total - reviewed
+
+      setCallStats({
+        total,
+        reviewed,
+        unreviewed,
+        isLoading: false
+      })
+    } catch (error) {
+      console.error('Error loading call stats:', error)
+      setCallStats({ total: 0, reviewed: 0, unreviewed: 0, isLoading: false })
+    }
+  }, [selectedEnterprise, selectedTeam, startDate, endDate])
 
   // Clear selected call when enterprise or team changes
   useEffect(() => {
@@ -515,6 +662,11 @@ export default function ReviewPage() {
     setApiCallIssues([]) // Also clear API call issues
     setCallIssues(new Map()) // Clear call issues map
   }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id])
+
+  // Load call stats when enterprise, team, or date filters change
+  useEffect(() => {
+    loadCallStats()
+  }, [loadCallStats])
 
   // Fetch detailed call data when a call is selected
   useEffect(() => {
@@ -635,7 +787,7 @@ export default function ReviewPage() {
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       // Check if we're in the search input
-      const isSearchInput = (event.target as HTMLElement)?.placeholder?.includes('Search by issue name')
+      const isSearchInput = (event.target as HTMLInputElement)?.placeholder?.includes('Search by issue name')
       
       // If mark issue panel is open, let MarkIssueForm handle ctrl+number shortcuts
       // But allow them to work in search inputs
@@ -916,29 +1068,164 @@ export default function ReviewPage() {
   }
 
   return (
-    <AppShell>
-      <div className="flex h-full bg-background">
-        {/* Left Panel - Call List */}
-        <div className="w-96 flex flex-col border-r border-border bg-card">
-          {/* Enterprise/Team Selector */}
-          <div className="px-6 py-4 border-b border-border bg-muted/20 flex-shrink-0">
-            <EnterpriseTeamSelector />
+    <AppShell 
+      statsChips={
+        <div className="flex items-center gap-3 flex-nowrap">
+          {/* Total Calls Chip */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full text-sm whitespace-nowrap">
+            <Phone className="h-3 w-3 text-blue-600 flex-shrink-0" />
+            <span className="font-medium text-blue-900">
+              Total: {callStats.isLoading ? (
+                <span className="inline-block w-6 h-3 bg-blue-200 animate-pulse rounded" />
+              ) : (
+                callStats.total.toLocaleString()
+              )}
+            </span>
           </div>
-          
-          {/* Header */}
-          <div className="px-6 py-5 border-b border-border bg-muted/20 flex-shrink-0">
-            <h2 className="text-lg font-semibold text-foreground mb-1">Call Reviews</h2>
-            <p className="text-[13px] text-muted-foreground/80">Recent customer calls</p>
+
+          {/* Reviewed Calls Chip */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full text-sm whitespace-nowrap">
+            <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
+            <span className="font-medium text-green-900">
+              Reviewed: {callStats.isLoading ? (
+                <span className="inline-block w-6 h-3 bg-green-200 animate-pulse rounded" />
+              ) : (
+                callStats.reviewed.toLocaleString()
+              )}
+            </span>
           </div>
-          
-          {/* Call List - Independent scrolling */}
-          <div className="flex-1 min-h-0 overflow-y-scroll scrollbar-hidden">
-            <CallsTable ref={callsTableRef} onCallSelect={setSelectedCall} selectedCallId={selectedCall?.id || null} />
+
+          {/* Pending Review Chip */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-full text-sm whitespace-nowrap">
+            <Clock className="h-3 w-3 text-orange-600 flex-shrink-0" />
+            <span className="font-medium text-orange-900">
+              Pending: {callStats.isLoading ? (
+                <span className="inline-block w-6 h-3 bg-orange-200 animate-pulse rounded" />
+              ) : (
+                callStats.unreviewed.toLocaleString()
+              )}
+            </span>
           </div>
         </div>
+      }
+    >
+      <div className="flex flex-col h-full bg-background">
+        {/* Top Horizontal Filters Bar - Updated Layout */}
+        <div className="flex-shrink-0 border-b border-border bg-card">
+          <div className="px-6 py-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* Enterprise/Team Selector - Now Horizontal */}
+              <div className="flex-shrink-0">
+                <EnterpriseTeamSelector />
+              </div>
+              
+              {/* Date Filters */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">From:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-36 justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "MMM dd") : "Start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      disabled={(date) => date > new Date() || (endDate ? date > endDate : false)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">To:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-36 justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "MMM dd") : "End date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      disabled={(date) => date > new Date() || (startDate ? date < startDate : false)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Clear Date Filters */}
+              {(startDate || endDate) && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    setStartDate(undefined)
+                    setEndDate(undefined)
+                  }}
+                  className="h-8 px-2"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">Status:</span>
+                <Select value={statusFilter} onValueChange={(value: 'pending' | 'completed' | 'all') => setStatusFilter(value)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending Review</SelectItem>
+                    <SelectItem value="completed">Completed Reviews</SelectItem>
+                    <SelectItem value="all">All Calls</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Main Content Area */}
+        <div className="flex flex-1 min-h-0">
+          {/* Call List Panel */}
+          <div className="w-96 flex flex-col border-r border-border bg-card">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-border bg-muted/20 flex-shrink-0">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground mb-1">Call Reviews</h2>
+                <p className="text-[13px] text-muted-foreground/80">Recent customer calls</p>
+              </div>
+            </div>
+            
+            {/* Call List - Independent scrolling */}
+            <div className="flex-1 min-h-0 overflow-y-scroll scrollbar-hidden">
+                          <CallsTable 
+              ref={callsTableRef} 
+              onCallSelect={setSelectedCall} 
+              selectedCallId={selectedCall?.id || null}
+              statusFilter={statusFilter}
+              startDate={startDate}
+              endDate={endDate}
+            />
+            </div>
+          </div>
 
         {/* Main Panel - Call Details */}
-        <div className="flex-1 transition-all duration-300">
+        <div className={`transition-all duration-300 ${
+          showIssuesPanel && (selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+            ? 'flex-1' 
+            : 'flex-1'
+        }`}>
           <div className="h-full flex flex-col">
             {selectedCall ? (
               <div className="flex-1 flex flex-col">
@@ -954,7 +1241,22 @@ export default function ReviewPage() {
                       )
                     })()}
                     <div className="flex-1 min-w-0">
-                      <h1 className="text-2xl font-semibold text-foreground mb-2">{selectedCall.customerName}</h1>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h1 className="text-2xl font-semibold text-foreground">{selectedCall.customerName}</h1>
+                        {(selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="default" className="bg-green-100 text-green-800">
+                              Completed Review
+                            </Badge>
+                            <button
+                              onClick={() => setShowIssuesPanel(!showIssuesPanel)}
+                              className="text-xs px-2 py-1 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
+                            >
+                              {showIssuesPanel ? 'Hide Issues' : 'Show Issues'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                       <div className="flex flex-wrap items-center gap-4 text-sm">
                         <div className="flex items-center gap-1">
                           <span className="text-muted-foreground">Phone:</span>
@@ -1003,6 +1305,17 @@ export default function ReviewPage() {
                           <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-medium" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>Ctrl</kbd>
                           <span className="text-[10px]">+</span>
                           <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-medium" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>A</kbd>
+                        </div>
+                      </div>
+                    ) : selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed' ? (
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-sm text-sm font-semibold">
+                            ✓ Review Completed
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            This call has been reviewed
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -1230,21 +1543,83 @@ export default function ReviewPage() {
                                     
                                     {/* Issue Indicator and Mark Issue Button */}
                                     <div className="flex items-center gap-2">
-                                      {issueCount > 0 && (
-                                        <Badge 
-                                          variant="destructive" 
-                                          className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:bg-destructive/80 transition-colors"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleMarkIssue(message.message, message.secondsFromStart || 0, index)
-                                            // Switch to previous issues tab after opening
-                                            setTimeout(() => setActiveTab('previous-issues'), 100)
-                                          }}
-                                          title={`Click to view ${issueCount} issue${issueCount > 1 ? 's' : ''} for this transcript`}
-                                        >
-                                          {issueCount}
-                                        </Badge>
-                                      )}
+                                      {/* Enhanced issue indicator for completed calls */}
+                                      {(() => {
+                                        // Find issues for this timestamp from API data
+                                        const transcriptIssues = apiCallIssues.filter(group => 
+                                          Math.abs(group.secondsFromStart - (message.secondsFromStart || 0)) < 5 // 5 second tolerance
+                                        )
+                                        
+                                        const totalIssuesAtTimestamp = transcriptIssues.reduce((total, group) => total + group.issues.length, 0)
+                                        
+                                        if (totalIssuesAtTimestamp > 0) {
+                                          const highSeverityCount = transcriptIssues.reduce((total, group) => 
+                                            total + group.issues.filter(issue => issue.severity === 'high').length, 0
+                                          )
+                                          
+                                          return (
+                                            <div className="flex items-center gap-1">
+                                              {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') ? (
+                                                // Enhanced view for completed calls
+                                                <div className="flex flex-col items-end gap-1">
+                                                  <Badge 
+                                                    variant={highSeverityCount > 0 ? "destructive" : "default"} 
+                                                    className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      setActiveTab('previous-issues')
+                                                    }}
+                                                    title={`${totalIssuesAtTimestamp} issue${totalIssuesAtTimestamp > 1 ? 's' : ''} found at this timestamp`}
+                                                  >
+                                                    {totalIssuesAtTimestamp}
+                                                  </Badge>
+                                                  {highSeverityCount > 0 && (
+                                                    <span className="text-xs text-destructive font-medium">
+                                                      {highSeverityCount} HIGH
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                // Original view for pending calls
+                                                <Badge 
+                                                  variant="destructive" 
+                                                  className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:bg-destructive/80 transition-colors"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleMarkIssue(message.message, message.secondsFromStart || 0, index)
+                                                    setTimeout(() => setActiveTab('previous-issues'), 100)
+                                                  }}
+                                                  title={`Click to view ${totalIssuesAtTimestamp} issue${totalIssuesAtTimestamp > 1 ? 's' : ''} for this transcript`}
+                                                >
+                                                  {totalIssuesAtTimestamp}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          )
+                                        }
+                                        
+                                        // Fallback to issueCount if no API data matches
+                                        if (issueCount > 0) {
+                                          return (
+                                            <Badge 
+                                              variant="destructive" 
+                                              className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:bg-destructive/80 transition-colors"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                if (!(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed')) {
+                                                  handleMarkIssue(message.message, message.secondsFromStart || 0, index)
+                                                }
+                                                setTimeout(() => setActiveTab('previous-issues'), 100)
+                                              }}
+                                              title={`Click to view ${issueCount} issue${issueCount > 1 ? 's' : ''} for this transcript`}
+                                            >
+                                              {issueCount}
+                                            </Badge>
+                                          )
+                                        }
+                                        
+                                        return null
+                                      })()}
                                       {/* Only show Mark Issue button when QC is assigned */}
                                       {selectedCall?.qcAssignedTo !== null && (
                                         <div className="flex items-center gap-1.5">
@@ -1296,13 +1671,236 @@ export default function ReviewPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                   </div>
-                  <h2 className="attio-heading-2 mb-2">No call selected</h2>
-                  <p className="attio-body">Select a call from the list to start reviewing</p>
+                  <h2 className="attio-heading-2 mb-2">
+                    {statusFilter === 'completed' ? 'Completed Reviews' : 'No call selected'}
+                  </h2>
+                  <p className="attio-body">
+                    {statusFilter === 'completed' 
+                      ? 'Select a completed call from the list to view its review details and issues found during QC'
+                      : 'Select a call from the list to start reviewing'
+                    }
+                  </p>
                 </div>
               </div>
             )}
           </div>
         </div>
+
+        {/* Issues Panel for Completed Calls - Collapsible */}
+        {showIssuesPanel && selectedCall && (selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
+          <div className="w-[480px] bg-card border-l-2 border-l-green-500/20 transition-all duration-300 shadow-xl">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-border bg-muted/20 flex-shrink-0">
+                                 <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                     <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                       <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                       </svg>
+                     </div>
+                     <div>
+                       <h3 className="text-lg font-semibold text-foreground">QC Review Issues</h3>
+                       <p className="text-sm text-muted-foreground">Issues found during quality review</p>
+                     </div>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <button
+                       onClick={() => {
+                         setActiveTab('new-issue')
+                         handleMarkIssue('Additional issue review', currentPlaybackTime || 0)
+                       }}
+                       className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+                     >
+                       Add More Issues
+                     </button>
+                     <button
+                       onClick={() => setShowIssuesPanel(false)}
+                       className="p-2 hover:bg-muted rounded-lg transition-colors"
+                     >
+                       <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                       </svg>
+                     </button>
+                   </div>
+                 </div>
+              </div>
+
+              {/* Issues Content */}
+              <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+                <div className="p-6">
+                  {isLoadingIssues ? (
+                    // Loading state
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="h-4 w-32 bg-muted rounded animate-pulse"></div>
+                        <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+                      </div>
+                      <div className="space-y-3">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="bg-muted/30 border rounded-lg p-4 space-y-3 animate-pulse">
+                            <div className="flex items-start justify-between gap-1">
+                              <div className="h-4 w-16 bg-muted rounded"></div>
+                              <div className="h-4 w-24 bg-muted rounded"></div>
+                            </div>
+                            <div className="h-12 bg-muted rounded"></div>
+                            <div className="h-4 w-full bg-muted rounded"></div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : issuesError ? (
+                    // Error state
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-foreground mb-2">Error loading issues</h3>
+                      <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">{issuesError}</p>
+                    </div>
+                  ) : apiCallIssues.length > 0 ? (
+                    // Show API issues
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-foreground">
+                          Issues Found During QC Review
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
+                            Review Complete
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {apiCallIssues.reduce((total, group) => total + group.issues.length, 0)} issue{apiCallIssues.reduce((total, group) => total + group.issues.length, 0) !== 1 ? 's' : ''}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {/* Enhanced summary for completed calls */}
+                      {apiCallIssues.length > 0 && (
+                        <div className="bg-card border rounded-lg p-4 mb-4">
+                          <h4 className="text-sm font-medium text-foreground mb-3">QC Review Summary</h4>
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <div className="text-lg font-semibold text-destructive">
+                                {apiCallIssues.reduce((total, group) => 
+                                  total + group.issues.filter(issue => issue.severity === 'high').length, 0
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">High Severity</div>
+                            </div>
+                            <div>
+                              <div className="text-lg font-semibold text-orange-600">
+                                {apiCallIssues.reduce((total, group) => 
+                                  total + group.issues.filter(issue => issue.severity === 'medium').length, 0
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Medium Severity</div>
+                            </div>
+                            <div>
+                              <div className="text-lg font-semibold text-muted-foreground">
+                                {apiCallIssues.reduce((total, group) => 
+                                  total + group.issues.filter(issue => issue.severity === 'low').length, 0
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Low Severity</div>
+                            </div>
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-border text-center">
+                            <div className="text-sm text-muted-foreground">
+                              QC completed by: <span className="font-medium text-foreground">{selectedCall?.qcAssignedTo || 'Unknown'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-3">
+                        {apiCallIssues
+                          .slice()
+                          .sort((a, b) => b.secondsFromStart - a.secondsFromStart)
+                          .map((issueGroup, groupIndex) => (
+                          <div key={groupIndex} className="bg-muted/30 border rounded-lg p-4 space-y-3 relative group">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
+                                  {Math.floor(issueGroup.secondsFromStart / 60)}:{Math.floor(issueGroup.secondsFromStart % 60).toString().padStart(2, '0')}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {issueGroup.issues.length} issue{issueGroup.issues.length > 1 ? 's' : ''}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1 justify-end">
+                                {issueGroup.issues.map((issue, issueIndex) => (
+                                  <Badge
+                                    key={issueIndex}
+                                    variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
+                                    className="text-xs"
+                                  >
+                                    {issue.severity.toUpperCase()} - {issue.title}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground bg-background/50 rounded p-2 border-l-2 border-primary/20">
+                              <strong>Transcript:</strong> "{issueGroup.transcript}"
+                            </div>
+                            {/* Enhanced issue details for completed calls */}
+                            <div className="space-y-2">
+                              {issueGroup.issues.map((issue, issueIndex) => (
+                                <div key={issueIndex} className="bg-background/70 rounded p-3 border">
+                                  <div className="flex items-start justify-between gap-2 mb-2">
+                                    <div className="flex-1">
+                                      <h4 className="text-sm font-medium text-foreground">{issue.title}</h4>
+                                      {issue.code && (
+                                        <p className="text-xs text-muted-foreground mt-1">Code: {issue.code}</p>
+                                      )}
+                                    </div>
+                                    <Badge
+                                      variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
+                                      className="text-xs"
+                                    >
+                                      {issue.severity.toUpperCase()}
+                                    </Badge>
+                                  </div>
+                                  {issue.description && (
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                      {issue.description}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    // Empty state
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+                        <svg className="w-8 h-8 text-muted-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-foreground mb-2">
+                        No issues found during QC review
+                      </h3>
+                      <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+                        This call passed QC review with no issues identified. The call quality met all standards.
+                      </p>
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="text-sm text-green-800">
+                          ✓ QC Review completed by: <span className="font-medium">{selectedCall?.qcAssignedTo || 'Unknown'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Mark Issue Panel - Wider */}
         {markIssueData && (
@@ -1336,6 +1934,7 @@ export default function ReviewPage() {
               {/* Tabs Navigation */}
               <div className="pt-4 pb-0">
                 <div className="flex border-b border-border">
+                  {/* Always show New Issue tab - but with different label for completed calls */}
                   <button
                     onClick={() => setActiveTab('new-issue')}
                     className={`flex-1 pb-3 px-6 text-sm font-medium transition-colors relative ${
@@ -1344,8 +1943,12 @@ export default function ReviewPage() {
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    New Issue
+                    {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                      ? 'Add More Issues' 
+                      : 'New Issue'
+                    }
                   </button>
+                  
                   <button
                     onClick={() => setActiveTab('previous-issues')}
                     className={`flex-1 pb-3 px-6 text-sm font-medium transition-colors relative flex items-center justify-center gap-2 ${
@@ -1354,7 +1957,10 @@ export default function ReviewPage() {
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    Previous Issues
+                    {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                      ? 'Existing Issues' 
+                      : 'Previous Issues'
+                    }
                     {(() => {
                       const totalApiIssuesCount = apiCallIssues.reduce((total, group) => total + group.issues.length, 0)
                       return totalApiIssuesCount > 0 ? (
@@ -1425,39 +2031,120 @@ export default function ReviewPage() {
                       // Show API issues
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-medium text-foreground">All Issues in This Call</h3>
-                          <Badge variant="outline" className="text-xs">
-                            {apiCallIssues.reduce((total, group) => total + group.issues.length, 0)} issue{apiCallIssues.reduce((total, group) => total + group.issues.length, 0) !== 1 ? 's' : ''}
-                          </Badge>
+                          <h3 className="text-sm font-medium text-foreground">
+                            {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                              ? 'Issues Found During QC Review' 
+                              : 'All Issues in This Call'
+                            }
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
+                              <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
+                                Review Complete
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {apiCallIssues.reduce((total, group) => total + group.issues.length, 0)} issue{apiCallIssues.reduce((total, group) => total + group.issues.length, 0) !== 1 ? 's' : ''}
+                            </Badge>
+                          </div>
                         </div>
+                        
+                        {/* Enhanced summary for completed calls */}
+                        {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && apiCallIssues.length > 0 && (
+                          <div className="bg-card border rounded-lg p-4 mb-4">
+                            <h4 className="text-sm font-medium text-foreground mb-3">QC Review Summary</h4>
+                            <div className="grid grid-cols-3 gap-4 text-center">
+                              <div>
+                                <div className="text-lg font-semibold text-destructive">
+                                  {apiCallIssues.reduce((total, group) => 
+                                    total + group.issues.filter(issue => issue.severity === 'high').length, 0
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">High Severity</div>
+                              </div>
+                              <div>
+                                <div className="text-lg font-semibold text-orange-600">
+                                  {apiCallIssues.reduce((total, group) => 
+                                    total + group.issues.filter(issue => issue.severity === 'medium').length, 0
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Medium Severity</div>
+                              </div>
+                              <div>
+                                <div className="text-lg font-semibold text-muted-foreground">
+                                  {apiCallIssues.reduce((total, group) => 
+                                    total + group.issues.filter(issue => issue.severity === 'low').length, 0
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Low Severity</div>
+                              </div>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-border text-center">
+                              <div className="text-sm text-muted-foreground">
+                                QC completed by: <span className="font-medium text-foreground">{selectedCall?.qcAssignedTo || 'Unknown'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="space-y-3">
                           {apiCallIssues
                             .slice()
                             .sort((a, b) => b.secondsFromStart - a.secondsFromStart)
                             .map((issueGroup, groupIndex) => (
                             <div key={groupIndex} className="bg-muted/30 border rounded-lg p-4 space-y-3 relative group">
-                              <div className="flex items-start justify-between gap-1">
-                                <Badge variant="outline" className="text-xs" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
-                                  {Math.floor(issueGroup.secondsFromStart / 60)}:{Math.floor(issueGroup.secondsFromStart % 60).toString().padStart(2, '0')}
-                                </Badge>
-                                <div className="flex flex-wrap gap-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>
+                                    {Math.floor(issueGroup.secondsFromStart / 60)}:{Math.floor(issueGroup.secondsFromStart % 60).toString().padStart(2, '0')}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    {issueGroup.issues.length} issue{issueGroup.issues.length > 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-1 justify-end">
                                   {issueGroup.issues.map((issue, issueIndex) => (
                                     <Badge
                                       key={issueIndex}
                                       variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
                                       className="text-xs"
                                     >
-                                      {issue.title}
+                                      {issue.severity.toUpperCase()} - {issue.title}
                                     </Badge>
                                   ))}
                                 </div>
                               </div>
                               <div className="text-xs text-muted-foreground bg-background/50 rounded p-2 border-l-2 border-primary/20">
-                                "{issueGroup.transcript}"
+                                <strong>Transcript:</strong> "{issueGroup.transcript}"
                               </div>
-                              <p className="text-sm text-foreground leading-relaxed">
-                                {issueGroup.issues.length} issue{issueGroup.issues.length > 1 ? 's' : ''} marked at {Math.floor(issueGroup.secondsFromStart / 60)}:{Math.floor(issueGroup.secondsFromStart % 60).toString().padStart(2, '0')}
-                              </p>
+                              {/* Enhanced issue details for completed calls */}
+                              {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
+                                <div className="space-y-2">
+                                  {issueGroup.issues.map((issue, issueIndex) => (
+                                    <div key={issueIndex} className="bg-background/70 rounded p-3 border">
+                                      <div className="flex items-start justify-between gap-2 mb-2">
+                                        <div className="flex-1">
+                                          <h4 className="text-sm font-medium text-foreground">{issue.title}</h4>
+                                          {issue.code && (
+                                            <p className="text-xs text-muted-foreground mt-1">Code: {issue.code}</p>
+                                          )}
+                                        </div>
+                                        <Badge
+                                          variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
+                                          className="text-xs"
+                                        >
+                                          {issue.severity.toUpperCase()}
+                                        </Badge>
+                                      </div>
+                                      {issue.description && (
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                          {issue.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1470,10 +2157,25 @@ export default function ReviewPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
-                        <h3 className="text-lg font-medium text-foreground mb-2">No issues for this call</h3>
+                        <h3 className="text-lg font-medium text-foreground mb-2">
+                          {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                            ? 'No issues found during QC review' 
+                            : 'No issues for this call'
+                          }
+                        </h3>
                         <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-                          No issues have been marked for this call yet. Switch to the "New Issue" tab to add some.
+                          {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                            ? 'This call passed QC review with no issues identified. The call quality met all standards.' 
+                            : 'No issues have been marked for this call yet. Switch to the "New Issue" tab to add some.'
+                          }
                         </p>
+                        {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
+                          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="text-sm text-green-800">
+                              ✓ QC Review completed by: <span className="font-medium">{selectedCall?.qcAssignedTo || 'Unknown'}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1505,6 +2207,7 @@ export default function ReviewPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </AppShell>
   )

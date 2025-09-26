@@ -37,6 +37,7 @@ export function EnterpriseTeamSelector({ className = "" }: EnterpriseTeamSelecto
     setSelectedEnterprise,
     setSelectedTeam,
     loadMoreEnterprises,
+    loadAllEnterprises,
     searchEnterprises,
     clearSearchAndReload,
   } = useEnterprise()
@@ -124,15 +125,15 @@ export function EnterpriseTeamSelector({ className = "" }: EnterpriseTeamSelecto
   // Show shimmer during initial loading
   if (isInitialLoading) {
     return (
-      <div className={`flex flex-col gap-4 ${className}`}>
-        <div className="flex items-center gap-2">
+      <div className={`flex items-center gap-4 flex-wrap ${className}`}>
+        <div className="flex items-center gap-2 min-w-0">
           <Building2 className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground w-20">Enterprise:</span>
+          <span className="text-sm font-medium text-foreground whitespace-nowrap">Enterprise:</span>
           <Skeleton className="w-48 h-9" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Users className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground w-20">Team:</span>
+          <span className="text-sm font-medium text-foreground whitespace-nowrap">Team:</span>
           <Skeleton className="w-48 h-9" />
         </div>
       </div>
@@ -140,11 +141,11 @@ export function EnterpriseTeamSelector({ className = "" }: EnterpriseTeamSelecto
   }
 
   return (
-    <div className={`flex flex-col gap-4 ${className}`}>
+    <div className={`flex items-center gap-4 flex-wrap ${className}`}>
       {/* Enterprise Selector */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         <Building2 className="w-4 h-4 text-muted-foreground" />
-        <span className="text-sm font-medium text-foreground w-20">Enterprise:</span>
+        <span className="text-sm font-medium text-foreground whitespace-nowrap">Enterprise:</span>
         <Popover 
           open={isEnterpriseDropdownOpen} 
           onOpenChange={(open) => {
@@ -234,10 +235,10 @@ export function EnterpriseTeamSelector({ className = "" }: EnterpriseTeamSelecto
                       </div>
                     )}
                     
-                    {/* No more data indicator */}
+                    {/* Show total count when all loaded */}
                     {!hasMoreEnterprises && enterprises.length > 0 && !isLoadingEnterprises && (
                       <div className="px-2 py-1 text-xs text-muted-foreground text-center border-t">
-                        No more enterprises
+                        {enterprises.length} enterprises
                       </div>
                     )}
                   </div>
@@ -249,9 +250,9 @@ export function EnterpriseTeamSelector({ className = "" }: EnterpriseTeamSelecto
       </div>
 
       {/* Team Selector */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         <Users className="w-4 h-4 text-muted-foreground" />
-        <span className="text-sm font-medium text-foreground w-20">Team:</span>
+        <span className="text-sm font-medium text-foreground whitespace-nowrap">Team:</span>
         <Popover open={isTeamDropdownOpen} onOpenChange={setIsTeamDropdownOpen}>
           <PopoverTrigger asChild>
             <Button

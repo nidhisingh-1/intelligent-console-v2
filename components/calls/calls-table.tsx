@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Clock } from "lucide-react"
-import { callsApiService, TransformedCall } from "@/lib/calls-api"
+import { callsApiService, TransformedCall, filterCallsByDateRange } from "@/lib/calls-api"
 
 import { useEnterprise } from "@/lib/enterprise-context"
 
@@ -14,6 +14,9 @@ import { useEnterprise } from "@/lib/enterprise-context"
 interface CallsTableProps {
   onCallSelect?: (call: TransformedCall) => void
   selectedCallId?: string | null
+  statusFilter?: 'pending' | 'completed' | 'all'
+  startDate?: Date
+  endDate?: Date
 }
 
 export interface CallsTableRef {
@@ -21,7 +24,7 @@ export interface CallsTableRef {
   refreshCalls: () => Promise<void>
 }
 
-export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect, selectedCallId: externalSelectedCallId }, ref) => {
+export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect, selectedCallId: externalSelectedCallId, statusFilter = 'pending', startDate, endDate }, ref) => {
   const { selectedEnterprise, selectedTeam } = useEnterprise()
   const [calls, setCalls] = React.useState<TransformedCall[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
@@ -84,22 +87,33 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
       setIsLoadingMore(true)
       setError(null)
       
-      const response = await callsApiService.getCalls({
-        enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
-        teamId: selectedTeam.team_id,
-        limit: 10,
-        page: page + 1,
-        qcStatus: 'yet_to_start,in_progress' // Only show calls that need QC
-      })
+      // Determine qcStatus based on statusFilter
+      let qcStatusParam: string | undefined
+      if (statusFilter === 'pending') {
+        qcStatusParam = 'yet_to_start,in_progress'
+      } else if (statusFilter === 'completed') {
+        qcStatusParam = 'done,completed'
+      }
+
+              const response = await callsApiService.getCalls({
+          enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+          teamId: selectedTeam.team_id,
+          limit: 10,
+          page: page + 1,
+          qcStatus: qcStatusParam
+        })
       
       
       const transformedCalls = response.calls.map(call => 
         callsApiService.transformCallData(call)
       )
       
-      if (transformedCalls.length > 0) {
+      // Apply client-side date filtering to new calls
+      const filteredNewCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+      
+      if (filteredNewCalls.length > 0) {
         setCalls(prev => {
-          const newCalls = [...prev, ...transformedCalls]
+          const newCalls = [...prev, ...filteredNewCalls]
           return newCalls
         })
         setPage(prev => prev + 1)
@@ -113,7 +127,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     } finally {
       setIsLoadingMore(false)
     }
-  }, [page, hasMore, isLoadingMore, isLoading, selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id])
+  }, [page, hasMore, isLoadingMore, isLoading, selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate])
 
   // Load calls when enterprise/team changes (with debouncing)
   React.useEffect(() => {
@@ -135,18 +149,30 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         setIsLoading(true)
         setError(null)
         
+        // Determine qcStatus based on statusFilter
+        let qcStatusParam: string | undefined
+        if (statusFilter === 'pending') {
+          qcStatusParam = 'yet_to_start,in_progress'
+        } else if (statusFilter === 'completed') {
+          qcStatusParam = 'done,completed'
+        }
+        // If statusFilter === 'all', don't set qcStatus parameter to get all calls
+
         const response = await callsApiService.getCalls({
           enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
           teamId: selectedTeam.team_id,
           limit: 10,
           page: 1,
-          qcStatus: 'yet_to_start,in_progress' // Only show calls that need QC
+          qcStatus: qcStatusParam
         })
         
         const transformedCalls = response.calls.map(call => 
           callsApiService.transformCallData(call)
         )
-        setCalls(transformedCalls)
+        
+        // Apply client-side date filtering
+        const filteredCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+        setCalls(filteredCalls)
         setPage(1)
         setHasMore(transformedCalls.length === 10) // Has more if we got full page
       } catch (error) {
@@ -165,7 +191,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     }, 200) // 200ms delay to batch rapid changes
 
     return () => clearTimeout(timeoutId)
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id])
+  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate])
 
   // Reusable function to load calls (for refresh functionality)
   const loadCalls = React.useCallback(async () => {
@@ -180,18 +206,29 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
       setIsLoading(true)
       setError(null)
       
+      // Determine qcStatus based on statusFilter
+      let qcStatusParam: string | undefined
+      if (statusFilter === 'pending') {
+        qcStatusParam = 'yet_to_start,in_progress'
+      } else if (statusFilter === 'completed') {
+        qcStatusParam = 'done,completed'
+      }
+
       const response = await callsApiService.getCalls({
         enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
         teamId: selectedTeam.team_id,
         limit: 10,
         page: 1,
-        qcStatus: 'yet_to_start,in_progress' // Only show calls that need QC
+        qcStatus: qcStatusParam
       })
       
       const transformedCalls = response.calls.map(call => 
         callsApiService.transformCallData(call)
       )
-      setCalls(transformedCalls)
+      
+      // Apply client-side date filtering
+      const filteredCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+      setCalls(filteredCalls)
       setPage(1)
       setHasMore(transformedCalls.length === 10) // Has more if we got full page
     } catch (error) {
@@ -201,7 +238,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     } finally {
       setIsLoading(false)
     }
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id])
+  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate])
 
   // Auto-select first contact on first load and after refresh
   React.useEffect(() => {

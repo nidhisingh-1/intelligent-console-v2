@@ -14,7 +14,7 @@ export interface ApiCall {
   createdAt: string
   updatedAt: string
   qcAssignedTo: string | null
-  qcStatus: 'yet_to_start' | 'in_progress' | 'completed'
+  qcStatus: 'yet_to_start' | 'in_progress' | 'completed' | 'done'
   callDetails: {
     agentInfo: {
       agentName: string
@@ -208,6 +208,7 @@ class CallsApiService {
     const getStatusFromQcStatus = (qcStatus: string): string => {
       switch (qcStatus) {
         case 'completed':
+        case 'done':
           return 'Pass'
         case 'in_progress':
           return 'In Progress'
@@ -250,3 +251,35 @@ class CallsApiService {
 }
 
 export const callsApiService = new CallsApiService()
+
+// Utility function to filter calls by date range
+export function filterCallsByDateRange(calls: TransformedCall[], startDate?: Date, endDate?: Date): TransformedCall[] {
+  if (!startDate && !endDate) {
+    return calls
+  }
+
+  return calls.filter(call => {
+    // Extract createdAt from the raw API data
+    const callDate = new Date(call.rawApiData.createdAt)
+    
+    // Check start date
+    if (startDate) {
+      const startOfDay = new Date(startDate)
+      startOfDay.setHours(0, 0, 0, 0)
+      if (callDate < startOfDay) {
+        return false
+      }
+    }
+    
+    // Check end date
+    if (endDate) {
+      const endOfDay = new Date(endDate)
+      endOfDay.setHours(23, 59, 59, 999)
+      if (callDate > endOfDay) {
+        return false
+      }
+    }
+    
+    return true
+  })
+}

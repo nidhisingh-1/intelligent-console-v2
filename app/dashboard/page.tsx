@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import { useDebounce } from "@/hooks/use-debounce"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +25,7 @@ import { getEnumCategoryLabel } from "@/lib/enum-api"
 
 function IssuesManagement() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   
   // Filter states
@@ -47,10 +49,16 @@ function IssuesManagement() {
   const [hasNextPage, setHasNextPage] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   
   // Infinite scroll ref
   const observerRef = useRef<IntersectionObserver | null>(null)
   const lastElementRef = useRef<HTMLTableRowElement | null>(null)
+  
+  // Extract URL parameters for enterprise and team if provided
+  const urlEnterpriseId = searchParams.get('enterprise_id')
+  const urlTeamId = searchParams.get('team_id')
+  const urlToken = searchParams.get('token')
 
   // Helper function to calculate date range
   const getDateRangeParams = useCallback(() => {
@@ -153,6 +161,7 @@ function IssuesManagement() {
       
     } catch (error) {
       console.error('Error loading issues:', error)
+      setError('Failed to load dashboard data. Please try again.')
       toast({
         title: "Error Loading Issues",
         description: "Failed to load dashboard data. Please try again.",
@@ -409,18 +418,63 @@ function IssuesManagement() {
     setSearchTerm("")
   }
 
+  if (error) {
+    return (
+      <div className="space-y-8 p-6">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-red-600">Dashboard Error</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <button 
+            onClick={() => {
+              setError(null)
+              loadIssues(1, true)
+            }}
+            className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (isLoading && issues.length === 0) {
-    return <DashboardShimmer />
+    return (
+      <div className="space-y-8 p-6">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold">Loading Dashboard...</h2>
+          <p className="text-muted-foreground">Please wait while we load the data.</p>
+          {(urlEnterpriseId || urlTeamId) && (
+            <div className="mt-2 text-sm text-green-600">
+              Using Enterprise: {urlEnterpriseId} | Team: {urlTeamId}
+            </div>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Issue Types Overview</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Issue Types Overview Dashboard</h2>
           <p className="text-sm text-muted-foreground">
             High-level view of all issue types with occurrence statistics and resolution status.
           </p>
+          {(urlEnterpriseId || urlTeamId) && (
+            <div className="mt-2 text-sm text-green-600 font-medium">
+              ✅ Dashboard is working! Connected with Enterprise: {urlEnterpriseId} | Team: {urlTeamId}
+            </div>
+          )}
+          {!urlEnterpriseId && !urlTeamId && (
+            <div className="mt-2 text-sm text-blue-600 font-medium">
+              ✅ Dashboard is working! (No URL parameters detected)
+            </div>
+          )}
+          <div className="mt-1 text-xs text-muted-foreground">
+            Total Issues Loaded: {issues.length} | Loading: {isLoading ? 'Yes' : 'No'}
+          </div>
         </div>
       </div>
 
