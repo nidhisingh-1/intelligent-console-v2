@@ -15,7 +15,9 @@ export interface DashboardIssueStats {
     liveCall: number
     demoCall: number
     afterLastResolved: number
+    uniqueCallsCount?: number
   }
+  uniqueCallsCount?: number
   severityOccurrence: {
     high: number
     medium: number

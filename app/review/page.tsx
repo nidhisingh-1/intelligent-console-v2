@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { CalendarIcon, X, Phone, CheckCircle, Clock } from "lucide-react"
 import { format } from "date-fns"
 
@@ -79,6 +80,11 @@ export default function ReviewPage() {
   const [startDate, setStartDate] = useState<Date | undefined>()
   const [endDate, setEndDate] = useState<Date | undefined>()
   
+  // Agent filter state
+  const [selectedAgentName, setSelectedAgentName] = useState<string>('all')
+  const [selectedAgentType, setSelectedAgentType] = useState<string>('all')
+  const [uniqueAgentNames, setUniqueAgentNames] = useState<string[]>([])
+  
   // Stats state
   const [callStats, setCallStats] = useState({
     total: 0,
@@ -125,6 +131,15 @@ export default function ReviewPage() {
   const [isFormValid, setIsFormValid] = useState(false)
   const [totalChanges, setTotalChanges] = useState(0)
   const formRef = React.useRef<MarkIssueFormRef>(null)
+  const [lastIssueNote, setLastIssueNote] = useState<{ timestamp: number; note: string } | null>(null)
+  
+  // Call classification dialog state
+  const [showClassificationDialog, setShowClassificationDialog] = useState(false)
+  const [selectedClassification, setSelectedClassification] = useState<string>('')
+  
+  // Note editing state
+  const [editingNote, setEditingNote] = useState(false)
+  const [editNoteText, setEditNoteText] = useState('')
 
   // Memoized form change handler to prevent unnecessary re-renders
   const handleFormChange = useCallback((isValid: boolean, changes: number) => {
@@ -293,16 +308,7 @@ export default function ReviewPage() {
   // Mark Issue handlers
   const handleMarkIssue = (transcriptText: string, timestamp: number, transcriptIndex?: number) => {
     try {
-      // Don't allow marking issues on completed calls
-      if (selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') {
-        toast({
-          title: "Cannot Mark Issues",
-          description: "This call has already been reviewed and completed.",
-          variant: "default",
-        })
-        return
-      }
-      
+      // Allow marking issues on all calls, including completed ones
       setMarkIssueData({ transcriptText, timestamp, transcriptIndex })
       
       // Reset to new issue tab when opening
@@ -316,6 +322,7 @@ export default function ReviewPage() {
     addIssues: Array<{ issueId: string; severity: 'low' | 'medium' | 'high' }>;
     updateIssues: Array<{ id: string; severity: 'low' | 'medium' | 'high' }>;
     deleteIssues: string[];
+    note?: string;
   }) => {
     if (!selectedCall?.id || !markIssueData) return
     
@@ -323,7 +330,7 @@ export default function ReviewPage() {
       // Call the POST API to mark issues
       const markIssueRequest = {
         callId: selectedCall.id,
-        secondsFromStart: markIssueData.timestamp,
+        secondsFromStart: Math.floor(markIssueData.timestamp || 0),
         transcript: markIssueData.transcriptText,
         addIssues: issue.addIssues,
         updateIssues: issue.updateIssues,
@@ -332,7 +339,29 @@ export default function ReviewPage() {
       
 
       
-      const response = await callsApiService.markCallIssues(markIssueRequest)
+      // Store note locally for immediate display even if backend doesn't persist it
+      if (issue.note) {
+        setLastIssueNote({ timestamp: markIssueData.timestamp, note: issue.note })
+      }
+
+      let response
+      try {
+        response = await callsApiService.markCallIssues(markIssueRequest)
+      } catch (err: any) {
+        const message = (err && (err.message || err.toString())) as string
+        const notAuthorized = message?.toLowerCase().includes('not authorized') || message?.toLowerCase().includes('assign') || message?.toLowerCase().includes('qcassigned')
+        if (notAuthorized) {
+          // Try to auto-assign QC to current user and retry once
+          try {
+            await callsApiService.assignQC({ callId: selectedCall.id, qcStatus: 'in_progress' })
+            response = await callsApiService.markCallIssues(markIssueRequest)
+          } catch (retryErr) {
+            throw retryErr
+          }
+        } else {
+          throw err
+        }
+      }
       
 
       
@@ -487,6 +516,13 @@ export default function ReviewPage() {
   const handleQCDone = async () => {
     if (!selectedCall?.id) return
     
+    // Show classification dialog instead of directly marking as done
+    setShowClassificationDialog(true)
+  }
+  
+  const handleClassificationSubmit = async () => {
+    if (!selectedCall?.id || !selectedClassification) return
+    
     try {
       const qcDoneRequest: AssignQCRequest = {
         callId: selectedCall.id,
@@ -498,9 +534,13 @@ export default function ReviewPage() {
       if (response.message && response.updatedFields) {
         toast({
           title: "QC Completed Successfully",
-          description: response.message,
+          description: `Call classified as "${selectedClassification}". ${response.message}`,
           variant: "default",
         })
+        
+        // Close dialog and reset
+        setShowClassificationDialog(false)
+        setSelectedClassification('')
         
         // Clear the current call selection since it's now completed
         setSelectedCall(null)
@@ -824,7 +864,7 @@ export default function ReviewPage() {
 
         
         // Tab key - Toggle Mark Issue panel and pause audio (only if QC is assigned and call is not completed)
-        if (event.code === 'Tab' && selectedCall?.qcAssignedTo !== null && !(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed')) {
+        if (event.code === 'Tab' && selectedCall?.qcAssignedTo !== null) {
           event.preventDefault()
           
           // If Mark Issue panel is already open, close it
@@ -1194,6 +1234,48 @@ export default function ReviewPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Agent Type Filter */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">Agent Type:</span>
+                <Select value={selectedAgentType} onValueChange={setSelectedAgentType}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="sales">Sales</SelectItem>
+                    <SelectItem value="service">Service</SelectItem>
+                    <SelectItem value="support">Support</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Agent Name Filter */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">Agent:</span>
+                <Select 
+                  value={selectedAgentName} 
+                  onValueChange={setSelectedAgentName}
+                  onOpenChange={(open) => {
+                    if (open && callsTableRef.current) {
+                      const names = callsTableRef.current.getUniqueAgentNames()
+                      setUniqueAgentNames(names)
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="All Agents" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Agents</SelectItem>
+                    {/* Dynamic agent names populated from calls data */}
+                    {uniqueAgentNames.map((agentName: string) => (
+                      <SelectItem key={agentName} value={agentName}>{agentName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
@@ -1219,6 +1301,8 @@ export default function ReviewPage() {
               statusFilter={statusFilter}
               startDate={startDate}
               endDate={endDate}
+              selectedAgentName={selectedAgentName}
+              selectedAgentType={selectedAgentType}
             />
             </div>
           </div>
@@ -1252,20 +1336,6 @@ export default function ReviewPage() {
                           <span>Duration:</span>
                           <span className="text-foreground">{selectedCall.callLength}</span>
                         </div>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                          selectedCall.callType === 'Inbound' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {selectedCall.callType}
-                        </span>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                          selectedCall.callPriority === 'High' 
-                            ? 'bg-red-100 text-red-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {selectedCall.callPriority}
-                        </span>
                       </div>
                       {/* Completed Review Status on separate line */}
                       {(selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
@@ -1611,8 +1681,8 @@ export default function ReviewPage() {
                                         
                                         return null
                                       })()}
-                                      {/* Only show Mark Issue button when QC is assigned and call is not completed */}
-                                      {selectedCall?.qcAssignedTo !== null && !(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
+                                      {/* Show Mark Issue button when QC is assigned - allow for completed calls too */}
+                                      {selectedCall?.qcAssignedTo !== null && (
                                         <div className="flex items-center gap-1.5">
                                           <button
                                             onClick={(e) => {
@@ -1886,8 +1956,8 @@ export default function ReviewPage() {
           </div>
         )}
 
-        {/* Mark Issue Panel - Responsive - Only show for non-completed calls */}
-        {markIssueData && selectedCall && !(selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
+        {/* Mark Issue Panel - Responsive - Allow marking issues even for completed calls */}
+        {markIssueData && selectedCall && (
           <div className="w-full sm:w-[380px] md:w-[400px] lg:w-[480px] xl:w-[520px] bg-card border-l-2 border-l-primary/20 transition-all duration-300 shadow-xl flex-shrink-0">
             <div className="flex flex-col h-full">
               {/* Header */}
@@ -2094,14 +2164,66 @@ export default function ReviewPage() {
                                   ))}
                                 </div>
                               </div>
-                              <div className="text-xs text-muted-foreground bg-background/50 rounded p-2 border-l-2 border-primary/20">
-                                <strong>Transcript:</strong> "{issueGroup.transcript}"
+                              <div className="text-xs text-muted-foreground bg-background/50 rounded p-2 border-l-2 border-primary/20 space-y-1">
+                                <div>
+                                  <strong>Transcript:</strong> "{issueGroup.transcript}"
+                                </div>
+                                {lastIssueNote && Math.abs(issueGroup.secondsFromStart - lastIssueNote.timestamp) < 5 && (
+                                  <div className="text-xs text-foreground flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      {editingNote ? (
+                                        <textarea
+                                          value={editNoteText}
+                                          onChange={(e) => setEditNoteText(e.target.value)}
+                                          className="w-full text-xs border rounded px-2 py-1 min-h-[60px]"
+                                          autoFocus
+                                        />
+                                      ) : (
+                                        <div>
+                                          <strong>Note:</strong> {lastIssueNote.note}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {editingNote ? (
+                                      <div className="flex gap-1">
+                                        <button
+                                          onClick={() => {
+                                            setLastIssueNote({ ...lastIssueNote, note: editNoteText })
+                                            setEditingNote(false)
+                                          }}
+                                          className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setEditingNote(false)
+                                            setEditNoteText(lastIssueNote.note)
+                                          }}
+                                          className="text-xs px-2 py-1 bg-muted text-foreground rounded hover:bg-muted/80"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                          setEditNoteText(lastIssueNote.note)
+                                          setEditingNote(true)
+                                        }}
+                                        className="text-xs text-primary hover:underline"
+                                      >
+                                        Edit
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               {/* Enhanced issue details for completed calls */}
                               {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
                                 <div className="space-y-2">
                                   {issueGroup.issues.map((issue, issueIndex) => (
-                                    <div key={issueIndex} className="bg-background/70 rounded p-3 border">
+                                    <div key={issueIndex} className="bg-background/70 rounded p-3 border group/issue hover:border-primary/30 transition-colors">
                                       <div className="flex items-start justify-between gap-2 mb-2">
                                         <div className="flex-1">
                                           <h4 className="text-sm font-medium text-foreground">{issue.title}</h4>
@@ -2109,12 +2231,44 @@ export default function ReviewPage() {
                                             <p className="text-xs text-muted-foreground mt-1">Code: {issue.code}</p>
                                           )}
                                         </div>
-                                        <Badge
-                                          variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
-                                          className="text-xs"
-                                        >
-                                          {issue.severity.toUpperCase()}
-                                        </Badge>
+                                        <div className="flex items-center gap-2">
+                                          <Badge
+                                            variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
+                                            className="text-xs"
+                                          >
+                                            {issue.severity.toUpperCase()}
+                                          </Badge>
+                                          <button
+                                            onClick={async () => {
+                                              if (confirm(`Remove "${issue.title}" from this timestamp?`)) {
+                                                try {
+                                                  await callsApiService.markCallIssues({
+                                                    callId: selectedCall.id,
+                                                    secondsFromStart: Math.floor(issueGroup.secondsFromStart),
+                                                    transcript: issueGroup.transcript,
+                                                    addIssues: [],
+                                                    updateIssues: [],
+                                                    deleteIssues: [issue._id]
+                                                  })
+                                                  toast({
+                                                    title: "Issue Removed",
+                                                    description: `"${issue.title}" has been removed.`,
+                                                  })
+                                                  await loadCallIssues(selectedCall.id)
+                                                } catch (err) {
+                                                  toast({
+                                                    title: "Error",
+                                                    description: "Failed to remove issue.",
+                                                    variant: "destructive"
+                                                  })
+                                                }
+                                              }
+                                            }}
+                                            className="opacity-0 group-hover/issue:opacity-100 text-xs px-2 py-1 text-destructive hover:bg-destructive/10 rounded transition-all"
+                                          >
+                                            Remove
+                                          </button>
+                                        </div>
                                       </div>
                                       {issue.description && (
                                         <p className="text-xs text-muted-foreground leading-relaxed">
@@ -2123,6 +2277,17 @@ export default function ReviewPage() {
                                       )}
                                     </div>
                                   ))}
+                                  <button
+                                    onClick={() => {
+                                      handleMarkIssue(
+                                        issueGroup.transcript,
+                                        issueGroup.secondsFromStart
+                                      )
+                                    }}
+                                    className="w-full text-xs px-3 py-2 bg-primary/10 text-primary border border-primary/20 rounded hover:bg-primary/20 transition-colors"
+                                  >
+                                    Add/Change Issues at this Timestamp
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -2189,6 +2354,57 @@ export default function ReviewPage() {
         )}
         </div>
       </div>
+      
+      {/* Call Classification Dialog */}
+      <Dialog open={showClassificationDialog} onOpenChange={setShowClassificationDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Classify Call Quality</DialogTitle>
+            <DialogDescription>
+              Please classify this call before marking it as completed.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 py-4">
+            {['Excellent', 'Good', 'Average', 'Bad', 'Poor'].map((classification) => (
+              <button
+                key={classification}
+                onClick={() => setSelectedClassification(classification)}
+                className={`w-full px-4 py-3 text-left rounded-lg border-2 transition-all ${
+                  selectedClassification === classification
+                    ? 'border-primary bg-primary/10 font-semibold'
+                    : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">{classification}</span>
+                  {selectedClassification === classification && (
+                    <CheckCircle className="h-5 w-5 text-primary" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowClassificationDialog(false)
+                setSelectedClassification('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleClassificationSubmit}
+              disabled={!selectedClassification}
+            >
+              Mark Completed
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   )
 }

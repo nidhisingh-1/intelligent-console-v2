@@ -151,13 +151,15 @@ export function EnterpriseTeamSelector({ className = "" }: EnterpriseTeamSelecto
           onOpenChange={(open) => {
             console.log('[Enterprise Dropdown] Open changed:', open, 'Search term:', enterpriseSearchTerm)
             setIsEnterpriseDropdownOpen(open)
-            if (open && enterpriseSearchTerm) {
-              console.log('[Enterprise Dropdown] Clearing search and reloading')
-              // If dropdown is opened and there was a previous search, clear it and reload full list
+            if (open) {
+              console.log('[Enterprise Dropdown] Opening - clearing search and reloading')
+              // Always clear search when dropdown opens to show full list
               setLocalEnterpriseSearchTerm("")
               setIsSearchingEnterprises(false)
-              clearSearchAndReload()
-            } else if (!open) {
+              if (enterpriseSearchTerm) {
+                clearSearchAndReload()
+              }
+            } else {
               // Clear local search when dropdown closes
               setLocalEnterpriseSearchTerm("")
               setIsSearchingEnterprises(false)
@@ -183,7 +185,7 @@ export function EnterpriseTeamSelector({ className = "" }: EnterpriseTeamSelecto
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48 p-0">
-            <Command>
+            <Command key={isEnterpriseDropdownOpen ? 'open' : 'closed'} shouldFilter={false}>
               <CommandInput 
                 placeholder="Search enterprises..." 
                 value={localEnterpriseSearchTerm}

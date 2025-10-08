@@ -17,20 +17,25 @@ interface CallsTableProps {
   statusFilter?: 'pending' | 'completed' | 'all'
   startDate?: Date
   endDate?: Date
+  selectedAgentName?: string
+  selectedAgentType?: string
 }
 
 export interface CallsTableRef {
   updateCallStatus: (callId: string, qcStatus: string, qcAssignedTo: string | null) => void
   refreshCalls: () => Promise<void>
+  getUniqueAgentNames: () => string[]
+  getCalls: () => any[]
 }
 
-export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect, selectedCallId: externalSelectedCallId, statusFilter = 'pending', startDate, endDate }, ref) => {
+export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect, selectedCallId: externalSelectedCallId, statusFilter = 'pending', startDate, endDate, selectedAgentName = 'all', selectedAgentType = 'all' }, ref) => {
   const { selectedEnterprise, selectedTeam } = useEnterprise()
   const [calls, setCalls] = React.useState<TransformedCall[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isLoadingMore, setIsLoadingMore] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [selectedCallId, setSelectedCallId] = React.useState<string | null>(externalSelectedCallId || null)
+  const [lastQueryDebug, setLastQueryDebug] = React.useState<string>('')
 
   // Sync internal state with external prop
   React.useEffect(() => {
@@ -86,7 +91,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     try {
       setIsLoadingMore(true)
       setError(null)
-      
+
       // Determine qcStatus based on statusFilter
       let qcStatusParam: string | undefined
       if (statusFilter === 'pending') {
@@ -95,21 +100,89 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         qcStatusParam = 'done'  // Only show calls with qc_status = 'done'
       }
 
+      // Build debug string for request (after qcStatus computed)
+      const debugParams: Record<string, string> = {
+        enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+        teamId: selectedTeam.team_id,
+        limit: '10',
+        page: String(page + 1),
+      }
+      if (!((selectedAgentType && selectedAgentType !== 'all'))) {
+        if (qcStatusParam) debugParams.qcStatus = qcStatusParam
+      }
+      const agentTypeParam = (selectedAgentType && selectedAgentType !== 'all')
+        ? selectedAgentType
+            .split(',')
+            .map(s => s.trim().toLowerCase())
+            .filter(Boolean)
+            .map(s => (s === 'sales' ? 'Sales' : s === 'service' ? 'Service' : s))
+            .join(',')
+        : undefined
+      if (agentTypeParam) debugParams.agentType = agentTypeParam
+      if (startDate) debugParams.startDate = startDate.toISOString()
+      if (endDate) debugParams.endDate = endDate.toISOString()
+      setLastQueryDebug(Object.entries(debugParams).map(([k,v]) => `${k}=${v}`).join('&'))
+
               const response = await callsApiService.getCalls({
           enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
           teamId: selectedTeam.team_id,
           limit: 10,
           page: page + 1,
-          qcStatus: qcStatusParam
+          qcStatus: (selectedAgentType && selectedAgentType !== 'all') ? undefined : qcStatusParam,
+          agentType: (selectedAgentType && selectedAgentType !== 'all')
+            ? selectedAgentType
+                .split(',')
+                .map(s => s.trim().toLowerCase())
+                .filter(Boolean)
+                .map(s => (s === 'sales' ? 'Sales' : s === 'service' ? 'Service' : s))
+                .join(',')
+            : undefined,
+          startDate: startDate ? startDate.toISOString() : undefined,
+          endDate: endDate ? endDate.toISOString() : undefined
         })
       
       
-      const transformedCalls = response.calls.map(call => 
+      let apiCalls = response.calls
+      // Fallback: if agentType selected and API returned 0, refetch without agentType and filter client-side
+      if ((selectedAgentType && selectedAgentType !== 'all') && apiCalls.length === 0) {
+        const fallbackResp = await callsApiService.getCalls({
+          enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+          teamId: selectedTeam.team_id,
+          limit: 10,
+          page: page + 1,
+          qcStatus: qcStatusParam,
+        })
+        apiCalls = fallbackResp.calls
+        // Update debug to indicate fallback
+        const fb: Record<string,string> = {
+          enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+          teamId: selectedTeam.team_id,
+          limit: '10',
+          page: String(page + 1),
+        }
+        if (qcStatusParam) fb.qcStatus = qcStatusParam
+        setLastQueryDebug(Object.entries(fb).map(([k,v]) => `${k}=${v}`).join('&') + '  (fallback)')
+      }
+
+      const transformedCalls = apiCalls.map(call => 
         callsApiService.transformCallData(call)
       )
       
       // Apply client-side date filtering to new calls
-      const filteredNewCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+              // Apply client-side filtering (API doesn't support agent filters)
+        let filteredNewCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+        
+        // Apply agent filters client-side (case-insensitive)
+        if (selectedAgentName && selectedAgentName !== 'all') {
+          filteredNewCalls = filteredNewCalls.filter(call => 
+            call.agentName?.toLowerCase() === selectedAgentName.toLowerCase()
+          )
+        }
+        if (selectedAgentType && selectedAgentType !== 'all') {
+          filteredNewCalls = filteredNewCalls.filter(call => 
+            call.agentType?.toLowerCase() === selectedAgentType.toLowerCase()
+          )
+        }
       
       if (filteredNewCalls.length > 0) {
         setCalls(prev => {
@@ -127,7 +200,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     } finally {
       setIsLoadingMore(false)
     }
-  }, [page, hasMore, isLoadingMore, isLoading, selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate])
+  }, [page, hasMore, isLoadingMore, isLoading, selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType])
 
   // Load calls when enterprise/team changes (with debouncing)
   React.useEffect(() => {
@@ -158,21 +231,84 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         }
         // If statusFilter === 'all', don't set qcStatus parameter to get all calls
 
-        const response = await callsApiService.getCalls({
+              const response = await callsApiService.getCalls({
+        enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+        teamId: selectedTeam.team_id,
+        limit: 10,
+        page: 1,
+        qcStatus: (selectedAgentType && selectedAgentType !== 'all') ? undefined : qcStatusParam,
+          agentType: (selectedAgentType && selectedAgentType !== 'all')
+            ? selectedAgentType
+                .split(',')
+                .map(s => s.trim().toLowerCase())
+                .filter(Boolean)
+                .map(s => (s === 'sales' ? 'Sales' : s === 'service' ? 'Service' : s))
+                .join(',')
+            : undefined,
+          startDate: startDate ? startDate.toISOString() : undefined,
+          endDate: endDate ? endDate.toISOString() : undefined
+      })
+        // Build debug string for request
+        const debugParams: Record<string, string> = {
           enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
           teamId: selectedTeam.team_id,
-          limit: 10,
-          page: 1,
-          qcStatus: qcStatusParam
-        })
-        
-        const transformedCalls = response.calls.map(call => 
+          limit: '10',
+          page: '1',
+        }
+        if (!((selectedAgentType && selectedAgentType !== 'all'))) {
+          if (qcStatusParam) debugParams.qcStatus = qcStatusParam
+        }
+        const agentTypeParam = (selectedAgentType && selectedAgentType !== 'all')
+          ? selectedAgentType
+              .split(',')
+              .map(s => s.trim().toLowerCase())
+              .filter(Boolean)
+              .map(s => (s === 'sales' ? 'Sales' : s === 'service' ? 'Service' : s))
+              .join(',')
+          : undefined
+        if (agentTypeParam) debugParams.agentType = agentTypeParam
+        if (startDate) debugParams.startDate = startDate.toISOString()
+        if (endDate) debugParams.endDate = endDate.toISOString()
+        setLastQueryDebug(Object.entries(debugParams).map(([k,v]) => `${k}=${v}`).join('&'))
+
+        let apiCalls = response.calls
+        // Fallback: if agentType selected and API returned 0, refetch without agentType and filter client-side
+        if ((selectedAgentType && selectedAgentType !== 'all') && apiCalls.length === 0) {
+          const fallbackResp = await callsApiService.getCalls({
+            enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+            teamId: selectedTeam.team_id,
+            limit: 10,
+            page: 1,
+            qcStatus: qcStatusParam,
+          })
+          apiCalls = fallbackResp.calls
+          // Update debug to indicate fallback
+          const fb: Record<string,string> = {
+            enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+            teamId: selectedTeam.team_id,
+            limit: '10',
+            page: '1',
+          }
+          if (qcStatusParam) fb.qcStatus = qcStatusParam
+          setLastQueryDebug(Object.entries(fb).map(([k,v]) => `${k}=${v}`).join('&') + '  (fallback)')
+        }
+
+        const transformedCalls = apiCalls.map(call => 
           callsApiService.transformCallData(call)
         )
         
-        // Apply client-side date filtering
-        const filteredCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
-        setCalls(filteredCalls)
+                  // Apply client-side filtering (API doesn't support agent filters)
+          let filteredCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+          
+          // Apply agent filters client-side
+          if (selectedAgentName && selectedAgentName !== 'all') {
+            filteredCalls = filteredCalls.filter(call => call.agentName === selectedAgentName)
+          }
+          if (selectedAgentType && selectedAgentType !== 'all') {
+            filteredCalls = filteredCalls.filter(call => call.agentType === selectedAgentType)
+          }
+          
+          setCalls(filteredCalls)
         setPage(1)
         setHasMore(transformedCalls.length === 10) // Has more if we got full page
       } catch (error) {
@@ -191,7 +327,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     }, 200) // 200ms delay to batch rapid changes
 
     return () => clearTimeout(timeoutId)
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate])
+  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType])
 
   // Reusable function to load calls (for refresh functionality)
   const loadCalls = React.useCallback(async () => {
@@ -214,20 +350,52 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         qcStatusParam = 'done,completed'
       }
 
-      const response = await callsApiService.getCalls({
-        enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
-        teamId: selectedTeam.team_id,
-        limit: 10,
-        page: 1,
-        qcStatus: qcStatusParam
-      })
+              const response = await callsApiService.getCalls({
+          enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+          teamId: selectedTeam.team_id,
+          limit: 10,
+          page: 1,
+          qcStatus: (selectedAgentType && selectedAgentType !== 'all') ? undefined : qcStatusParam,
+          agentType: (selectedAgentType && selectedAgentType !== 'all')
+            ? selectedAgentType
+                .split(',')
+                .map(s => s.trim().toLowerCase())
+                .filter(Boolean)
+                .map(s => (s === 'sales' ? 'Sales' : s === 'service' ? 'Service' : s))
+                .join(',')
+            : undefined,
+          startDate: startDate ? startDate.toISOString() : undefined,
+          endDate: endDate ? endDate.toISOString() : undefined
+        })
       
-      const transformedCalls = response.calls.map(call => 
+      let apiCalls = response.calls
+      // Fallback: if agentType selected and API returned 0, refetch without agentType and filter client-side
+      if ((selectedAgentType && selectedAgentType !== 'all') && apiCalls.length === 0) {
+        const fallbackResp = await callsApiService.getCalls({
+          enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+          teamId: selectedTeam.team_id,
+          limit: 10,
+          page: 1,
+          qcStatus: qcStatusParam,
+        })
+        apiCalls = fallbackResp.calls
+      }
+
+      const transformedCalls = apiCalls.map(call => 
         callsApiService.transformCallData(call)
       )
       
-      // Apply client-side date filtering
-      const filteredCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+      // Apply client-side filtering (API doesn't support agent filters)
+      let filteredCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+      
+          // Apply agent filters client-side (case-insensitive safeguard)
+          if (selectedAgentName && selectedAgentName !== 'all') {
+            filteredCalls = filteredCalls.filter(call => call.agentName?.toLowerCase() === selectedAgentName.toLowerCase())
+          }
+          if (selectedAgentType && selectedAgentType !== 'all') {
+            filteredCalls = filteredCalls.filter(call => call.agentType?.toLowerCase() === selectedAgentType.toLowerCase())
+          }
+      
       setCalls(filteredCalls)
       setPage(1)
       setHasMore(transformedCalls.length === 10) // Has more if we got full page
@@ -238,7 +406,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     } finally {
       setIsLoading(false)
     }
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate])
+  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType])
 
   // Auto-select first contact on first load and after refresh
   React.useEffect(() => {
@@ -290,7 +458,12 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         )
       )
     },
-    refreshCalls: loadCalls
+    refreshCalls: loadCalls,
+    getUniqueAgentNames: () => {
+      const agentNames = [...new Set(calls.map(call => call.agentName).filter(Boolean))] as string[]
+      return agentNames.sort()
+    },
+    getCalls: () => calls
   }))
 
   const getReviewStatusBadge = (status: string) => {
@@ -357,6 +530,11 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
 
   return (
     <div className="space-y-0">
+      {lastQueryDebug && (
+        <div className="px-5 py-2 text-[11px] text-muted-foreground/70 border-b border-border/30">
+          <span className="font-medium">Last calls query:</span> {lastQueryDebug}
+        </div>
+      )}
       {calls.map((call) => {
         const isSelected = selectedCallId === call.id
 
@@ -401,15 +579,6 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
                   <div className="flex items-center gap-2">
                     {getReviewStatusBadge(call.status)}
                   </div>
-                  
-                  {/* Call type indicator */}
-                  <span className={`text-[10px] px-2 py-1 rounded-md font-semibold ${
-                    call.callType === 'Inbound' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {call.callType}
-                  </span>
                 </div>
                 
                 {/* Tertiary info - Phone number and Duration */}

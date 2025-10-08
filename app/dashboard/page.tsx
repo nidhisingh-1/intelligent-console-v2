@@ -18,6 +18,8 @@ import { dashboardApiService, type DashboardIssueStats, type DashboardFilters } 
 import { DashboardShimmer } from "@/components/dashboard/dashboard-shimmer"
 import { useToast } from "@/hooks/use-toast"
 import { getEnumCategoryLabel } from "@/lib/enum-api"
+import { callsApiService } from "@/lib/calls-api"
+import { useEnterprise } from "@/lib/enterprise-context"
 
 
 
@@ -27,6 +29,7 @@ function IssuesManagement() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const { selectedEnterprise, selectedTeam } = useEnterprise()
   
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -50,6 +53,9 @@ function IssuesManagement() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  
+  // Unique calls count calculated from client side
+  const [uniqueCallsCounts, setUniqueCallsCounts] = useState<Record<string, number>>({})
   
   // Infinite scroll ref
   const observerRef = useRef<IntersectionObserver | null>(null)
@@ -107,6 +113,75 @@ function IssuesManagement() {
     return { startDate, endDate }
   }, [selectedDateRange, customDateFrom, customDateTo])
 
+  // Calculate unique calls count for each issue by fetching all calls
+  const calculateUniqueCallsCounts = useCallback(async () => {
+    if (!selectedEnterprise || !selectedTeam) {
+      return
+    }
+
+    try {
+      console.log('[Unique Calls] Starting calculation...')
+      
+      // Fetch all calls (we'll fetch multiple pages)
+      const allCalls: any[] = []
+      let page = 1
+      let hasMore = true
+      
+      while (hasMore && page <= 10) { // Limit to 10 pages (100 calls max) for performance
+        const response = await callsApiService.getCalls({
+          enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
+          teamId: selectedTeam.team_id,
+          limit: 10,
+          page: page,
+        })
+        
+        allCalls.push(...response.calls)
+        hasMore = response.calls.length === 10
+        page++
+      }
+      
+      console.log(`[Unique Calls] Fetched ${allCalls.length} calls`)
+      
+      // Now fetch issues for each call and count unique callIds per issue code
+      const issueToCallIds: Record<string, Set<string>> = {}
+      
+      for (const call of allCalls) {
+        try {
+          const issuesResponse = await callsApiService.getCallIssues(call.callId)
+          
+          if (issuesResponse && issuesResponse.data) {
+            // Extract all unique issue codes from this call
+            const issuesInCall = issuesResponse.data.flatMap(group => 
+              group.issues.map(issue => issue.code)
+            )
+            
+            // Add this callId to each issue's set
+            issuesInCall.forEach(issueCode => {
+              if (!issueToCallIds[issueCode]) {
+                issueToCallIds[issueCode] = new Set()
+              }
+              issueToCallIds[issueCode].add(call.callId)
+            })
+          }
+        } catch (error) {
+          console.error(`[Unique Calls] Error fetching issues for call ${call.callId}:`, error)
+        }
+      }
+      
+      // Convert Sets to counts
+      const uniqueCounts: Record<string, number> = {}
+      Object.entries(issueToCallIds).forEach(([issueCode, callIdSet]) => {
+        uniqueCounts[issueCode] = callIdSet.size
+      })
+      
+      console.log('[Unique Calls] Calculated unique counts:', uniqueCounts)
+      setUniqueCallsCounts(uniqueCounts)
+      
+    } catch (error) {
+      console.error('[Unique Calls] Error calculating unique calls:', error)
+    }
+  }, [selectedEnterprise, selectedTeam])
+
   // Load issues from API
   const loadIssues = useCallback(async (page: number = 1, resetData: boolean = true) => {
     try {
@@ -159,6 +234,11 @@ function IssuesManagement() {
       setCurrentPage(response.pagination.currentPage)
       setTotalItems(response.pagination.totalItems)
       
+      // Calculate unique calls counts after loading issues
+      if (page === 1 && resetData) {
+        calculateUniqueCallsCounts()
+      }
+      
     } catch (error) {
       console.error('Error loading issues:', error)
       setError('Failed to load dashboard data. Please try again.')
@@ -171,7 +251,7 @@ function IssuesManagement() {
       setIsLoading(false)
       setIsLoadingMore(false)
     }
-  }, [selectedStatus, selectedSeverity, debouncedSearchTerm, getDateRangeParams, toast])
+  }, [selectedStatus, selectedSeverity, debouncedSearchTerm, getDateRangeParams, toast, calculateUniqueCallsCounts])
 
   // Load more issues for infinite scroll
   const loadMoreIssues = useCallback(async () => {
@@ -602,9 +682,8 @@ function IssuesManagement() {
                   <TableRow className="bg-secondary/60 backdrop-blur-sm">
                     <SortableHeader field="title" className="min-w-[300px]">Issue Name</SortableHeader>
                     <SortableHeader field="occurrence" className="min-w-[100px]">Occurrence</SortableHeader>
+                    <SortableHeader field="uniqueCalls" className="min-w-[100px]">Unique Calls</SortableHeader>
                     <SortableHeader field="severity" className="min-w-[200px]">Severity</SortableHeader>
-                    <SortableHeader field="liveCall" className="min-w-[100px]">Live Call</SortableHeader>
-                    <SortableHeader field="demoCall" className="min-w-[100px]">Demo Call</SortableHeader>
                     <SortableHeader field="firstMarkDate" className="min-w-[140px]">First Raised Date</SortableHeader>
                     <SortableHeader field="lastMarkDate" className="min-w-[140px]">Last Raised Date</SortableHeader>
                     <SortableHeader field="lastResolvedAt" className="min-w-[140px]">Last Resolved At</SortableHeader>
@@ -641,20 +720,15 @@ function IssuesManagement() {
                             {issue.occurrence.total}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-center py-3 px-4">
+                          <Badge variant="outline" className="text-sm font-medium bg-blue-50 text-blue-700 border-blue-200">
+                            {uniqueCallsCounts[issue.code] ?? issue.uniqueCallsCount ?? issue.occurrence.uniqueCallsCount ?? '-'}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
                             {getSeverityBadges(issue.severityOccurrence)}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-center py-3 px-4">
-                          <Badge variant="outline" className="text-sm font-medium">
-                            {issue.occurrence.liveCall}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center py-3 px-4">
-                          <Badge variant="outline" className="text-sm font-medium">
-                            {issue.occurrence.demoCall}
-                          </Badge>
                         </TableCell>
                         <TableCell className="text-center py-3 px-4">
                           <span className="text-sm">

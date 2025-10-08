@@ -139,11 +139,68 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
       // Extract enterprises from the nested response structure
       const rawEnterprises = response.data?.enterprises || []
       
-      // Transform enterprises to add id field for compatibility
-      const enterpriseData: Enterprise[] = rawEnterprises.map(enterprise => ({
+      // Transform ALL API enterprises first
+      const allApiEnterprises: Enterprise[] = rawEnterprises.map(enterprise => ({
         ...enterprise,
-        id: enterprise.enterpriseId // Add id as alias for enterpriseId
+        id: enterprise.enterpriseId
       }))
+      
+      console.log(`[Enterprise Filter] Searching through ${allApiEnterprises.length} API enterprises for matches...`)
+      
+      // Define the enterprise names we're looking for
+      const targetEnterprises = [
+        'nextgear motors',
+        'bridge auto group', 
+        'bridge auto vinnie',
+        'i 40 autos',
+        'paragon honda',
+        'tropical chevrolet',
+        'khandelwal motors',
+        'quickshift autos',
+        'impex auto sales',
+        'callrevu',
+        'callsource'
+      ]
+      
+      // Find matching enterprises from the API
+      const enterpriseData: Enterprise[] = allApiEnterprises.filter(enterprise => {
+        const name = enterprise.name.toLowerCase()
+        
+        // Check if this enterprise matches any of our target names
+        const isMatch = targetEnterprises.some(target => {
+          const targetWords = target.split(' ')
+          
+          // Check if the enterprise name contains all words from the target
+          const containsAllWords = targetWords.every(word => name.includes(word))
+          
+          // Or check if the enterprise name contains the target as a substring
+          const containsTarget = name.includes(target)
+          
+          // Or check for partial matches with key words
+          const keywordMatch = (
+            (target.includes('nextgear') && name.includes('nextgear')) ||
+            (target.includes('bridge') && name.includes('bridge')) ||
+            (target.includes('paragon') && name.includes('paragon')) ||
+            (target.includes('tropical') && name.includes('tropical')) ||
+            (target.includes('khandelwal') && name.includes('khandelwal')) ||
+            (target.includes('quickshift') && name.includes('quickshift')) ||
+            (target.includes('impex') && name.includes('impex')) ||
+            (target.includes('callrevu') && name.includes('callrevu')) ||
+            (target.includes('callsource') && name.includes('callsource')) ||
+            (target.includes('i 40') && (name.includes('i 40') || name.includes('i-40') || name.includes('i40')))
+          )
+          
+          return containsAllWords || containsTarget || keywordMatch
+        })
+        
+        if (isMatch) {
+          console.log(`[Enterprise Filter] ✅ FOUND MATCH: "${enterprise.name}" (ID: ${enterprise.enterpriseId})`)
+        }
+        
+        return isMatch
+      })
+      
+      console.log(`[Enterprise Filter] Found ${enterpriseData.length} matching enterprises from API`)
       
       // Sort enterprises by name in ascending order
       enterpriseData.sort((a, b) => a.name.localeCompare(b.name))
@@ -294,10 +351,44 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
       
       // If there's only one page, we're done
       if (totalPages <= 1) {
-        const enterpriseData: Enterprise[] = firstPageEnterprises.map(enterprise => ({
+        // Apply same filtering logic for single page
+        const allApiEnterprises: Enterprise[] = firstPageEnterprises.map(enterprise => ({
           ...enterprise,
           id: enterprise.enterpriseId
         }))
+        
+        console.log(`[Enterprise Filter - Single Page] Searching through ${allApiEnterprises.length} enterprises...`)
+        
+        const targetEnterprises = [
+          'nextgear motors', 'bridge auto group', 'bridge auto vinnie', 'i 40 autos',
+          'paragon honda', 'tropical chevrolet', 'khandelwal motors', 'quickshift autos',
+          'impex auto sales', 'callrevu', 'callsource'
+        ]
+        
+        const enterpriseData: Enterprise[] = allApiEnterprises.filter(enterprise => {
+          const name = enterprise.name.toLowerCase()
+          const isMatch = targetEnterprises.some(target => {
+            return name.includes(target) || target.split(' ').every(word => name.includes(word)) ||
+                   (target.includes('nextgear') && name.includes('nextgear')) ||
+                   (target.includes('bridge') && name.includes('bridge')) ||
+                   (target.includes('paragon') && name.includes('paragon')) ||
+                   (target.includes('tropical') && name.includes('tropical')) ||
+                   (target.includes('khandelwal') && name.includes('khandelwal')) ||
+                   (target.includes('quickshift') && name.includes('quickshift')) ||
+                   (target.includes('impex') && name.includes('impex')) ||
+                   (target.includes('callrevu') && name.includes('callrevu')) ||
+                   (target.includes('callsource') && name.includes('callsource')) ||
+                   (target.includes('i 40') && (name.includes('i 40') || name.includes('i-40') || name.includes('i40')))
+          })
+          
+          if (isMatch) {
+            console.log(`[Enterprise Filter - Single Page] ✅ FOUND: "${enterprise.name}" (ID: ${enterprise.enterpriseId})`)
+          }
+          
+          return isMatch
+        })
+        
+        console.log(`[Enterprise Filter - Single Page] Found ${enterpriseData.length} matches`)
         
         // Sort enterprises by name in ascending order
         enterpriseData.sort((a, b) => a.name.localeCompare(b.name))
@@ -331,11 +422,68 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
         }
       })
       
-      // Transform enterprises to add id field
-      const enterpriseData: Enterprise[] = allEnterprises.map(enterprise => ({
+      // Transform ALL API enterprises first
+      const allApiEnterprises: Enterprise[] = allEnterprises.map(enterprise => ({
         ...enterprise,
         id: enterprise.enterpriseId
       }))
+      
+      console.log(`[Enterprise Filter - LoadAll] Searching through ${allApiEnterprises.length} API enterprises for matches...`)
+      
+      // Define the enterprise names we're looking for
+      const targetEnterprises = [
+        'nextgear motors',
+        'bridge auto group', 
+        'bridge auto vinnie',
+        'i 40 autos',
+        'paragon honda',
+        'tropical chevrolet',
+        'khandelwal motors',
+        'quickshift autos',
+        'impex auto sales',
+        'callrevu',
+        'callsource'
+      ]
+      
+      // Find matching enterprises from the API
+      const enterpriseData: Enterprise[] = allApiEnterprises.filter(enterprise => {
+        const name = enterprise.name.toLowerCase()
+        
+        // Check if this enterprise matches any of our target names
+        const isMatch = targetEnterprises.some(target => {
+          const targetWords = target.split(' ')
+          
+          // Check if the enterprise name contains all words from the target
+          const containsAllWords = targetWords.every(word => name.includes(word))
+          
+          // Or check if the enterprise name contains the target as a substring
+          const containsTarget = name.includes(target)
+          
+          // Or check for partial matches with key words
+          const keywordMatch = (
+            (target.includes('nextgear') && name.includes('nextgear')) ||
+            (target.includes('bridge') && name.includes('bridge')) ||
+            (target.includes('paragon') && name.includes('paragon')) ||
+            (target.includes('tropical') && name.includes('tropical')) ||
+            (target.includes('khandelwal') && name.includes('khandelwal')) ||
+            (target.includes('quickshift') && name.includes('quickshift')) ||
+            (target.includes('impex') && name.includes('impex')) ||
+            (target.includes('callrevu') && name.includes('callrevu')) ||
+            (target.includes('callsource') && name.includes('callsource')) ||
+            (target.includes('i 40') && (name.includes('i 40') || name.includes('i-40') || name.includes('i40')))
+          )
+          
+          return containsAllWords || containsTarget || keywordMatch
+        })
+        
+        if (isMatch) {
+          console.log(`[Enterprise Filter - LoadAll] ✅ FOUND MATCH: "${enterprise.name}" (ID: ${enterprise.enterpriseId})`)
+        }
+        
+        return isMatch
+      })
+      
+      console.log(`[Enterprise Filter - LoadAll] Found ${enterpriseData.length} matching enterprises from ${allApiEnterprises.length} total`)
       
       // Sort enterprises by name in ascending order
       enterpriseData.sort((a, b) => a.name.localeCompare(b.name))
@@ -390,15 +538,15 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
 
   // Clear search and reload full list
   const clearSearchAndReload = async () => {
-    console.log('[Enterprise Context] Clearing search and reloading full list')
+    console.log('[Enterprise Context] Clearing search and reloading ALL enterprises')
     // Clear the search term first
     setEnterpriseSearchTerm("")
     setEnterprisePage(1)
-    setHasMoreEnterprises(true)
+    setHasMoreEnterprises(false)
     // Clear existing enterprises to show loading state
     setEnterprises([])
-    // Load full list without any search term
-    await loadEnterprises(1, false, "")
+    // Load ALL enterprises to ensure we show the complete whitelist
+    await loadAllEnterprises()
   }
 
   // Handle enterprise selection change

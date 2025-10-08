@@ -37,6 +37,10 @@ export interface GetCallsParams {
   limit?: number
   page?: number
   qcStatus?: string
+  agentName?: string
+  agentType?: string
+  startDate?: string
+  endDate?: string
 }
 
 // Transform API call data to match UI expectations
@@ -62,6 +66,8 @@ export interface TransformedCall {
   actionItems: string[]
   qcStatus: string
   qcAssignedTo: string | null
+  agentName: string
+  agentType: string
   rawApiData: ApiCall
 }
 
@@ -130,17 +136,31 @@ class CallsApiService {
   }
 
   async getCalls(params: GetCallsParams): Promise<CallApiResponse> {
-    const searchParams = new URLSearchParams({
+        const searchParams = new URLSearchParams({
       enterpriseId: params.enterpriseId,
       teamId: params.teamId,
       limit: (params.limit || 10).toString(),
       page: (params.page || 1).toString(),
     })
-
+    
     if (params.qcStatus) {
       searchParams.append('qcStatus', params.qcStatus)
     }
 
+    // Backend supports filtering by agentType (single or comma separated)
+    if (params.agentType && params.agentType !== 'all') {
+      searchParams.append('agentType', params.agentType)
+    }
+    
+    // Note: API doesn't support agentName/agentType filtering - will be handled client-side
+    
+    if (params.startDate) {
+      searchParams.append('startDate', params.startDate)
+    }
+    
+    if (params.endDate) {
+      searchParams.append('endDate', params.endDate)
+    }
     return this.apiClient.get<CallApiResponse>(`/conversation/converse-qc/calls?${searchParams}`)
   }
 
@@ -245,6 +265,8 @@ class CallsApiService {
       actionItems: [], // Default empty array
       qcStatus: apiCall.qcStatus,
       qcAssignedTo: apiCall.qcAssignedTo,
+      agentName: apiCall.callDetails.agentInfo.agentName,
+      agentType: apiCall.callDetails.agentInfo.agentType,
       rawApiData: apiCall
     }
   }

@@ -23,6 +23,7 @@ interface MarkIssueFormProps {
     addIssues: Array<{ issueId: string; severity: 'low' | 'medium' | 'high' }>;
     updateIssues: Array<{ id: string; severity: 'low' | 'medium' | 'high' }>;
     deleteIssues: string[];
+    note?: string;
   }) => void
   onCancel: () => void
   showActions?: boolean
@@ -64,6 +65,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
 }, ref) => {
 
   const [selectedIssues, setSelectedIssues] = React.useState<SelectedIssue[]>([])
+  const [note, setNote] = React.useState<string>("")
   const [searchQuery, setSearchQuery] = React.useState("")
   const [selectedCategory, setSelectedCategory] = React.useState<string>("")
   const [isTranscriptExpanded, setIsTranscriptExpanded] = React.useState(false)
@@ -482,6 +484,25 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
       severity: issue.severity // Use the issue's default severity from API
     }
     setSelectedIssues([newSelectedIssue]) // Replace array instead of adding to it
+    
+    // Auto-scroll to severity selection after a short delay
+    setTimeout(() => {
+      const selectedSection = document.querySelector('[data-selected-issues-form]')
+      const markIssueContainer = document.querySelector('.flex-1.overflow-y-auto.min-h-0')
+      
+      if (selectedSection && markIssueContainer) {
+        // Calculate position relative to the container
+        const containerRect = markIssueContainer.getBoundingClientRect()
+        const sectionRect = selectedSection.getBoundingClientRect()
+        const relativeTop = sectionRect.top - containerRect.top
+        
+        // Scroll within the container only
+        markIssueContainer.scrollTo({
+          top: markIssueContainer.scrollTop + relativeTop - 20,
+          behavior: 'smooth'
+        })
+      }
+    }, 100)
   }, [selectedIssues.length, toast])
 
   const removeIssue = React.useCallback((issueId: string) => {
@@ -602,7 +623,8 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
     onSubmit({
       addIssues,
       updateIssues,
-      deleteIssues
+      deleteIssues,
+      note: note.trim() ? note.trim() : undefined
     })
   }
 
@@ -1112,6 +1134,19 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
         </div>
       )}
 
+
+      {/* Short Note */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Short note (optional)</Label>
+        <Textarea
+          placeholder="Add a brief note to describe the issue context (max 200 chars)"
+          value={note}
+          onChange={(e) => setNote(e.target.value.slice(0, 200))}
+          rows={3}
+          className="text-sm resize-none max-h-[140px]"
+        />
+        <div className="text-[10px] text-muted-foreground text-right">{note.length}/200</div>
+      </div>
 
 
       {/* Actions */}
