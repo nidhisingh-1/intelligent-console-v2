@@ -237,7 +237,8 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         teamId: selectedTeam.team_id,
         limit: 10,
         page: 1,
-        qcStatus: (selectedAgentType && selectedAgentType !== 'all') ? undefined : qcStatusParam,
+        qcStatus: qcStatusParam,
+          agentName: (selectedAgentName && selectedAgentName !== 'all') ? selectedAgentName : undefined,
           agentType: (selectedAgentType && selectedAgentType !== 'all')
             ? selectedAgentType
                 .split(',')
@@ -256,9 +257,8 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
           limit: '10',
           page: '1',
         }
-        if (!((selectedAgentType && selectedAgentType !== 'all'))) {
-          if (qcStatusParam) debugParams.qcStatus = qcStatusParam
-        }
+        if (qcStatusParam) debugParams.qcStatus = qcStatusParam
+        if (selectedAgentName && selectedAgentName !== 'all') debugParams.agentName = selectedAgentName
         const agentTypeParam = (selectedAgentType && selectedAgentType !== 'all')
           ? selectedAgentType
               .split(',')
@@ -281,6 +281,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
             limit: 10,
             page: 1,
             qcStatus: qcStatusParam,
+            agentName: (selectedAgentName && selectedAgentName !== 'all') ? selectedAgentName : undefined,
           })
           apiCalls = fallbackResp.calls
           // Update debug to indicate fallback
@@ -291,6 +292,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
             page: '1',
           }
           if (qcStatusParam) fb.qcStatus = qcStatusParam
+          if (selectedAgentName && selectedAgentName !== 'all') fb.agentName = selectedAgentName
           setLastQueryDebug(Object.entries(fb).map(([k,v]) => `${k}=${v}`).join('&') + '  (fallback)')
         }
 
@@ -303,10 +305,10 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
           
           // Apply agent filters client-side
           if (selectedAgentName && selectedAgentName !== 'all') {
-            filteredCalls = filteredCalls.filter(call => call.agentName === selectedAgentName)
+            filteredCalls = filteredCalls.filter(call => call.agentName?.toLowerCase() === selectedAgentName.toLowerCase())
           }
           if (selectedAgentType && selectedAgentType !== 'all') {
-            filteredCalls = filteredCalls.filter(call => call.agentType === selectedAgentType)
+            filteredCalls = filteredCalls.filter(call => call.agentType?.toLowerCase() === selectedAgentType.toLowerCase())
           }
           
           setCalls(filteredCalls)
@@ -362,7 +364,8 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
           teamId: selectedTeam.team_id,
           limit: 10,
           page: 1,
-          qcStatus: (selectedAgentType && selectedAgentType !== 'all') ? undefined : qcStatusParam,
+          qcStatus: qcStatusParam,
+          agentName: (selectedAgentName && selectedAgentName !== 'all') ? selectedAgentName : undefined,
           agentType: (selectedAgentType && selectedAgentType !== 'all')
             ? selectedAgentType
                 .split(',')
@@ -384,6 +387,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
           limit: 10,
           page: 1,
           qcStatus: qcStatusParam,
+          agentName: (selectedAgentName && selectedAgentName !== 'all') ? selectedAgentName : undefined,
         })
         apiCalls = fallbackResp.calls
       }

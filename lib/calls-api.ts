@@ -152,12 +152,13 @@ class CallsApiService {
       searchParams.append('qcStatus', params.qcStatus)
     }
 
-    // Backend supports filtering by agentType (single or comma separated)
+    if (params.agentName) {
+      searchParams.append('agentName', params.agentName)
+    }
+
     if (params.agentType && params.agentType !== 'all') {
       searchParams.append('agentType', params.agentType)
     }
-    
-    // Note: API doesn't support agentName/agentType filtering - will be handled client-side
     
     if (params.startDate) {
       searchParams.append('startDate', params.startDate)
