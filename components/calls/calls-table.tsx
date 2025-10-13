@@ -4,8 +4,9 @@ import * as React from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Clock } from "lucide-react"
-import { callsApiService, TransformedCall, filterCallsByDateRange } from "@/lib/calls-api"
+import { callsApiService, TransformedCall } from "@/lib/calls-api"
 
 import { useEnterprise } from "@/lib/enterprise-context"
 
@@ -19,17 +20,18 @@ interface CallsTableProps {
   endDate?: Date
   selectedAgentName?: string
   selectedAgentType?: string
+  selectedCallType?: string
   onAgentNamesChange?: (agentNames: string[]) => void
 }
 
 export interface CallsTableRef {
-  updateCallStatus: (callId: string, qcStatus: string, qcAssignedTo: string | null) => void
+  updateCallStatus: (callId: string, qcStatus: string, qcAssignedTo: { id: string; name: string } | null) => void
   refreshCalls: () => Promise<void>
   getUniqueAgentNames: () => string[]
   getCalls: () => any[]
 }
 
-export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect, selectedCallId: externalSelectedCallId, statusFilter = 'pending', startDate, endDate, selectedAgentName = 'all', selectedAgentType = 'all', onAgentNamesChange }, ref) => {
+export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect, selectedCallId: externalSelectedCallId, statusFilter = 'pending', startDate, endDate, selectedAgentName = 'all', selectedAgentType = 'all', selectedCallType = 'all', onAgentNamesChange }, ref) => {
   const { selectedEnterprise, selectedTeam } = useEnterprise()
   const [calls, setCalls] = React.useState<TransformedCall[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
@@ -137,8 +139,19 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
                 .map(s => (s === 'sales' ? 'Sales' : s === 'service' ? 'Service' : s))
                 .join(',')
             : undefined,
-          startDate: startDate ? startDate.toISOString() : undefined,
-          endDate: endDate ? endDate.toISOString() : undefined
+          startDate: startDate ? (() => {
+            const year = startDate.getFullYear();
+            const month = String(startDate.getMonth() + 1).padStart(2, '0');
+            const day = String(startDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}T00:00:00.000Z`;
+          })() : undefined,
+          endDate: endDate ? (() => {
+            const year = endDate.getFullYear();
+            const month = String(endDate.getMonth() + 1).padStart(2, '0');
+            const day = String(endDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}T23:59:59.999Z`;
+          })() : undefined,
+          callType: (selectedCallType && selectedCallType !== 'all') ? selectedCallType : undefined
         })
       
       
@@ -151,6 +164,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
           limit: 10,
           page: page + 1,
           qcStatus: qcStatusParam,
+          callType: (selectedCallType && selectedCallType !== 'all') ? selectedCallType : undefined,
         })
         apiCalls = fallbackResp.calls
         // Update debug to indicate fallback
@@ -168,9 +182,8 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         callsApiService.transformCallData(call)
       )
       
-      // Apply client-side date filtering to new calls
-              // Apply client-side filtering (API doesn't support agent filters)
-        let filteredNewCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+      // No need for client-side date filtering - API already handles date filtering
+        let filteredNewCalls = transformedCalls
         
         // Apply agent filters client-side (case-insensitive)
         if (selectedAgentName && selectedAgentName !== 'all') {
@@ -200,7 +213,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     } finally {
       setIsLoadingMore(false)
     }
-  }, [page, hasMore, isLoadingMore, isLoading, selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType])
+  }, [page, hasMore, isLoadingMore, isLoading, selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType])
 
   // Load calls when enterprise/team changes (with debouncing)
   React.useEffect(() => {
@@ -247,17 +260,20 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
                 .join(',')
             : undefined,
           startDate: startDate ? (() => {
-            // Create a new date at midnight local time for the selected date
-            const d = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
-            const iso = d.toISOString();
-            return iso;
+            // Create UTC date at midnight (00:00:00.000Z) for the selected date
+            const year = startDate.getFullYear();
+            const month = String(startDate.getMonth() + 1).padStart(2, '0');
+            const day = String(startDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}T00:00:00.000Z`;
           })() : undefined,
           endDate: endDate ? (() => {
-            // Create a new date at 23:59:59.999 local time for the selected date
-            const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
-            const iso = d.toISOString();
-            return iso;
-          })() : undefined
+            // Create UTC date at end of day (23:59:59.999Z) for the selected date
+            const year = endDate.getFullYear();
+            const month = String(endDate.getMonth() + 1).padStart(2, '0');
+            const day = String(endDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}T23:59:59.999Z`;
+          })() : undefined,
+          callType: (selectedCallType && selectedCallType !== 'all') ? selectedCallType : undefined
       })
         // Build debug string for request
         const debugParams: Record<string, string> = {
@@ -291,6 +307,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
             page: 1,
             qcStatus: qcStatusParam,
             agentName: (selectedAgentName && selectedAgentName !== 'all') ? selectedAgentName : undefined,
+            callType: (selectedCallType && selectedCallType !== 'all') ? selectedCallType : undefined,
           })
           apiCalls = fallbackResp.calls
           // Update debug to indicate fallback
@@ -309,8 +326,8 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
           callsApiService.transformCallData(call)
         )
         
-                  // Apply client-side filtering (API doesn't support agent filters)
-          let filteredCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+          // No need for client-side date filtering - API already handles date filtering
+          let filteredCalls = transformedCalls
           
           // Apply agent filters client-side
           if (selectedAgentName && selectedAgentName !== 'all') {
@@ -350,7 +367,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     }, 200) // 200ms delay to batch rapid changes
 
     return () => clearTimeout(timeoutId)
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType])
+  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType])
 
   // Reusable function to load calls (for refresh functionality)
   const loadCalls = React.useCallback(async () => {
@@ -389,17 +406,20 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
                 .join(',')
             : undefined,
           startDate: startDate ? (() => {
-            // Create a new date at midnight local time for the selected date
-            const d = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
-            const iso = d.toISOString();
-            return iso;
+            // Create UTC date at midnight (00:00:00.000Z) for the selected date
+            const year = startDate.getFullYear();
+            const month = String(startDate.getMonth() + 1).padStart(2, '0');
+            const day = String(startDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}T00:00:00.000Z`;
           })() : undefined,
           endDate: endDate ? (() => {
-            // Create a new date at 23:59:59.999 local time for the selected date
-            const d = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
-            const iso = d.toISOString();
-            return iso;
-          })() : undefined
+            // Create UTC date at end of day (23:59:59.999Z) for the selected date
+            const year = endDate.getFullYear();
+            const month = String(endDate.getMonth() + 1).padStart(2, '0');
+            const day = String(endDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}T23:59:59.999Z`;
+          })() : undefined,
+          callType: (selectedCallType && selectedCallType !== 'all') ? selectedCallType : undefined
         })
       
       let apiCalls = response.calls
@@ -412,6 +432,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
           page: 1,
           qcStatus: qcStatusParam,
           agentName: (selectedAgentName && selectedAgentName !== 'all') ? selectedAgentName : undefined,
+          callType: (selectedCallType && selectedCallType !== 'all') ? selectedCallType : undefined,
         })
         apiCalls = fallbackResp.calls
       }
@@ -420,8 +441,8 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         callsApiService.transformCallData(call)
       )
       
-      // Apply client-side filtering (API doesn't support agent filters)
-      let filteredCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
+      // No need for client-side date filtering - API already handles date filtering
+      let filteredCalls = transformedCalls
       
           // Apply agent filters client-side (case-insensitive safeguard)
           if (selectedAgentName && selectedAgentName !== 'all') {
@@ -452,7 +473,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     } finally {
       setIsLoading(false)
     }
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType])
+  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType])
 
   // Auto-select first contact on first load and after refresh
   React.useEffect(() => {
@@ -495,7 +516,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
 
   // Expose methods to parent component
   React.useImperativeHandle(ref, () => ({
-    updateCallStatus: (callId: string, qcStatus: string, qcAssignedTo: string | null) => {
+    updateCallStatus: (callId: string, qcStatus: string, qcAssignedTo: { id: string; name: string } | null) => {
       setCalls(prevCalls => 
         prevCalls.map(call => 
           call.id === callId 
@@ -622,14 +643,34 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
                   </div>
                 </div>
                 
-                {/* Tertiary info - Phone number and Duration */}
-                <div className="flex items-center gap-3 text-[11px] text-muted-foreground/60 truncate">
-                  <span className="font-mono" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>{call.phoneNumber}</span>
-                  <span className="text-muted-foreground/40">•</span>
-                  <div className="flex items-center gap-1 text-muted-foreground/80">
-                    <Clock className="h-3 w-3 opacity-60" />
-                    <span className="font-medium" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>{call.callLength}</span>
+                {/* Tertiary info - Phone number, Duration, and QC Assignee */}
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground/60">
+                  <div className="flex items-center gap-3 truncate">
+                    <span className="font-mono" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>{call.phoneNumber}</span>
+                    <span className="text-muted-foreground/40">•</span>
+                    <div className="flex items-center gap-1 text-muted-foreground/80">
+                      <Clock className="h-3 w-3 opacity-60" />
+                      <span className="font-medium" style={{fontFamily: 'Inter, system-ui, sans-serif'}}>{call.callLength}</span>
+                    </div>
                   </div>
+                  
+                  {/* QC Assigned User Avatar */}
+                  {call.qcAssignedTo && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Avatar className="h-6 w-6 flex-shrink-0">
+                            <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                              {call.qcAssignedTo.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{call.qcAssignedTo.name}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
               </div>
             </div>

@@ -197,9 +197,9 @@ export function EnterpriseTeamSelector({ className = "" }: EnterpriseTeamSelecto
                     ref={enterpriseScrollRef}
                     className="max-h-60 overflow-y-auto"
                   >
-                    {enterprises.map((enterprise) => (
+                    {enterprises.map((enterprise, index) => (
                       <CommandItem
-                        key={enterprise.id || enterprise.enterpriseId}
+                        key={`${enterprise.enterpriseId || enterprise.id}-${index}`}
                         value={enterprise.name}
                         onSelect={() => {
                           setSelectedEnterprise(enterprise)

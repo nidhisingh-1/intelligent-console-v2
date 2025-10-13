@@ -11,7 +11,7 @@ import { MOCKS } from "@/lib/mocks"
 import { DateRangePicker } from "@/components/filters/date-range-picker"
 
 export function DashboardFilters() {
-  const { filters, setDealerships, setAgents, setSeverity, setEnumStatus, setAiOnly, resetFilters } = useFiltersStore()
+  const { filters, setDealerships, setAgents, setSeverity, setEnumStatus, setCallType, setAiOnly, resetFilters } = useFiltersStore()
 
   const dealershipOptions = MOCKS.dealerships.map((d) => ({
     value: d.id,
@@ -36,11 +36,17 @@ export function DashboardFilters() {
     { value: "REGRESSED", label: "Regressed" },
   ]
 
+  const callTypeOptions = [
+    { value: "inbound", label: "Inbound" },
+    { value: "outbound", label: "Outbound" },
+  ]
+
   const activeFiltersCount = [
     filters.dealerships.length > 0,
     filters.agents.length > 0,
     filters.severity.length > 0,
     filters.enumStatus.length > 0,
+    filters.callType.length > 0,
     filters.aiOnly,
     filters.dateRange.from || filters.dateRange.to,
   ].filter(Boolean).length
@@ -62,7 +68,7 @@ export function DashboardFilters() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-6">
           <div className="space-y-2">
             <Label>Date Range</Label>
             <DateRangePicker />
@@ -85,6 +91,16 @@ export function DashboardFilters() {
               value={filters.agents}
               onValueChange={setAgents}
               placeholder="Select agents..."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Call Type</Label>
+            <MultiSelect
+              options={callTypeOptions}
+              value={filters.callType}
+              onValueChange={setCallType}
+              placeholder="Select call type..."
             />
           </div>
 

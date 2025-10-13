@@ -10,6 +10,7 @@ import { callsApiService, CallIssuesResponse, CallIssueGroup, type AssignQCReque
 import { useToast } from "@/hooks/use-toast"
 import { useEnterprise } from "@/lib/enterprise-context"
 import { EnterpriseTeamSelector } from "@/components/enterprise/enterprise-team-selector"
+import { getCurrentUserId } from "@/lib/auth-utils"
 
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -18,7 +19,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { CalendarIcon, X, Phone, CheckCircle, Clock } from "lucide-react"
+import { CalendarIcon, X, Phone, CheckCircle, Clock, Copy } from "lucide-react"
 import { format } from "date-fns"
 
 export default function ReviewPage() {
@@ -84,6 +85,9 @@ export default function ReviewPage() {
   const [selectedAgentName, setSelectedAgentName] = useState<string>('all')
   const [selectedAgentType, setSelectedAgentType] = useState<string>('all')
   const [uniqueAgentNames, setUniqueAgentNames] = useState<string[]>([])
+  
+  // Call type filter state
+  const [selectedCallType, setSelectedCallType] = useState<string>('all')
   
   // Load agent names whenever calls are loaded
   useEffect(() => {
@@ -313,6 +317,30 @@ export default function ReviewPage() {
   // Mark Issue handlers
   const handleMarkIssue = (transcriptText: string, timestamp: number, transcriptIndex?: number) => {
     try {
+      // Check if call is assigned and if current user is authorized
+      if (selectedCall?.qcAssignedTo) {
+        const currentUserId = getCurrentUserId()
+        // The qcAssignedTo object might have userId instead of id
+        const assignedUserId = selectedCall.qcAssignedTo.userId || selectedCall.qcAssignedTo.id
+        
+        console.log('Authorization Check:', {
+          currentUserId,
+          assignedUserId,
+          assignedToName: selectedCall.qcAssignedTo.name,
+          qcAssignedToObject: selectedCall.qcAssignedTo,
+          match: currentUserId === assignedUserId
+        })
+        
+        if (currentUserId && assignedUserId && assignedUserId !== currentUserId) {
+          toast({
+            title: "Unauthorized Action",
+            description: `This call is assigned to ${selectedCall.qcAssignedTo.name}. Only the assigned QC reviewer can mark issues.`,
+            variant: "destructive",
+          })
+          return
+        }
+      }
+      
       // Allow marking issues on all calls, including completed ones
       setMarkIssueData({ transcriptText, timestamp, transcriptIndex })
       
@@ -393,9 +421,15 @@ export default function ReviewPage() {
         }
         
         if (actions.length > 0) {
-          description = `${actions.join(', ')} at ${Math.floor(markIssueData.timestamp / 60)}:${Math.floor(markIssueData.timestamp % 60).toString().padStart(2, '0')}`
+          const seconds = Math.max(0, Math.floor(markIssueData.timestamp))
+          const mins = Math.floor(seconds / 60)
+          const secs = Math.floor(seconds % 60)
+          description = `${actions.join(', ')} at ${mins}:${secs.toString().padStart(2, '0')}`
         } else {
-          description = `Issues updated at ${Math.floor(markIssueData.timestamp / 60)}:${Math.floor(markIssueData.timestamp % 60).toString().padStart(2, '0')}`
+          const seconds = Math.max(0, Math.floor(markIssueData.timestamp))
+          const mins = Math.floor(seconds / 60)
+          const secs = Math.floor(seconds % 60)
+          description = `Issues updated at ${mins}:${secs.toString().padStart(2, '0')}`
         }
         
         const isCompletedCall = selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed'
@@ -483,6 +517,11 @@ export default function ReviewPage() {
       
       // Check if we have a valid response with message and updatedFields
       if (response.message && response.updatedFields) {
+        // Store current user ID for authorization checks
+        if (response.updatedFields.qcAssignedTo?.id) {
+          localStorage.setItem('qa_dashboard_user_id', response.updatedFields.qcAssignedTo.id)
+        }
+        
         // Update the selectedCall to reflect the new assignment
         setSelectedCall((prev: any) => ({
           ...prev,
@@ -521,6 +560,22 @@ export default function ReviewPage() {
 
   const handleQCDone = async () => {
     if (!selectedCall?.id) return
+    
+    // Check if call is assigned and if current user is authorized
+    if (selectedCall?.qcAssignedTo) {
+      const currentUserId = getCurrentUserId()
+      // The qcAssignedTo object might have userId instead of id
+      const assignedUserId = selectedCall.qcAssignedTo.userId || selectedCall.qcAssignedTo.id
+      
+      if (currentUserId && assignedUserId && assignedUserId !== currentUserId) {
+        toast({
+          title: "Unauthorized Action",
+          description: `This call is assigned to ${selectedCall.qcAssignedTo.name}. Only the assigned QC reviewer can mark the call as done.`,
+          variant: "destructive",
+        })
+        return
+      }
+    }
     
     // Show classification dialog instead of directly marking as done
     setShowClassificationDialog(true)
@@ -640,7 +695,7 @@ export default function ReviewPage() {
     }
   }
 
-  // Function to fetch all calls and calculate stats
+  // Function to calculate stats from calls table data
   const loadCallStats = useCallback(async () => {
     if (!selectedEnterprise || !selectedTeam) {
       setCallStats({ total: 0, reviewed: 0, unreviewed: 0, isLoading: false })
@@ -650,50 +705,32 @@ export default function ReviewPage() {
     try {
       setCallStats(prev => ({ ...prev, isLoading: true }))
       
-      let allCalls: any[] = []
-      let page = 1
-      let hasMore = true
-      
-      // Fetch all pages of calls
-      while (hasMore) {
-        const response = await callsApiService.getCalls({
-          enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
-          teamId: selectedTeam.team_id,
-          limit: 100, // Larger page size for efficiency
-          page: page
-        })
+      // Get calls from the CallsTable component
+      if (callsTableRef.current) {
+        const calls = callsTableRef.current.getCalls()
         
-        if (response.calls && response.calls.length > 0) {
-          allCalls = [...allCalls, ...response.calls]
-          hasMore = response.calls.length === 100 // Continue if we got a full page
-          page++
-        } else {
-          hasMore = false
-        }
+        // Calculate statistics from loaded calls
+        const total = calls.length
+        const reviewed = calls.filter((call: any) => 
+          call.qcStatus === 'done' || call.qcStatus === 'completed'
+        ).length
+        const unreviewed = total - reviewed
+
+        setCallStats({
+          total,
+          reviewed,
+          unreviewed,
+          isLoading: false
+        })
+      } else {
+        // If no calls table ref, set to zero
+        setCallStats({ total: 0, reviewed: 0, unreviewed: 0, isLoading: false })
       }
-
-      // Apply date filtering to all calls
-      const transformedCalls = allCalls.map((call: any) => callsApiService.transformCallData(call))
-      const filteredCalls = filterCallsByDateRange(transformedCalls, startDate, endDate)
-      
-      // Calculate statistics
-      const total = filteredCalls.length
-      const reviewed = filteredCalls.filter((call: any) => 
-        call.qcStatus === 'done' || call.qcStatus === 'completed'
-      ).length
-      const unreviewed = total - reviewed
-
-      setCallStats({
-        total,
-        reviewed,
-        unreviewed,
-        isLoading: false
-      })
     } catch (error) {
       console.error('Error loading call stats:', error)
       setCallStats({ total: 0, reviewed: 0, unreviewed: 0, isLoading: false })
     }
-  }, [selectedEnterprise, selectedTeam, startDate, endDate])
+  }, [selectedEnterprise, selectedTeam])
 
   // Clear selected call when enterprise or team changes
   useEffect(() => {
@@ -706,10 +743,14 @@ export default function ReviewPage() {
     setCallIssues(new Map()) // Clear call issues map
   }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id])
 
-  // Load call stats when enterprise, team, or date filters change
+  // Load call stats when calls are updated (triggered by a small delay to ensure CallsTable has loaded)
   useEffect(() => {
-    loadCallStats()
-  }, [loadCallStats])
+    const timer = setTimeout(() => {
+      loadCallStats()
+    }, 500) // Small delay to ensure CallsTable has loaded calls
+    
+    return () => clearTimeout(timer)
+  }, [selectedEnterprise, selectedTeam, statusFilter, startDate, endDate, selectedAgentType, selectedCallType])
 
   // Fetch detailed call data when a call is selected
   useEffect(() => {
@@ -1267,6 +1308,21 @@ export default function ReviewPage() {
                 </Select>
               </div>
 
+              {/* Call Type Filter */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">Call Type:</span>
+                <Select value={selectedCallType} onValueChange={setSelectedCallType}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="inbound">Inbound</SelectItem>
+                    <SelectItem value="outbound">Outbound</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Agent Name Filter */}
               <div className="flex items-center gap-3 flex-shrink-0">
                 <span className="text-sm font-medium text-foreground whitespace-nowrap">Agent:</span>
@@ -1312,6 +1368,7 @@ export default function ReviewPage() {
               endDate={endDate}
               selectedAgentName={selectedAgentName}
               selectedAgentType={selectedAgentType}
+              selectedCallType={selectedCallType}
               onAgentNamesChange={setUniqueAgentNames}
             />
             </div>
@@ -1346,6 +1403,33 @@ export default function ReviewPage() {
                           <span>Duration:</span>
                           <span className="text-foreground whitespace-nowrap">{selectedCall.callLength}</span>
                         </div>
+                      </div>
+                      {/* Call ID with Copy Icon */}
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">Call ID:</span>
+                        <span className="text-xs text-foreground">{selectedCall.id}</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(selectedCall.id)
+                                  toast({
+                                    title: "Copied!",
+                                    description: `Call ID "${selectedCall.id}" copied to clipboard`,
+                                    duration: 2000,
+                                  })
+                                }}
+                                className="p-1 hover:bg-muted rounded transition-colors"
+                              >
+                                <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy Call ID</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                       {/* Completed Review Status on separate line */}
                       {(selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
@@ -1976,7 +2060,7 @@ export default function ReviewPage() {
                       </p>
                       <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <div className="text-sm text-green-800">
-                          ✓ QC Review completed by: <span className="font-medium">{selectedCall?.qcAssignedTo || 'Unknown'}</span>
+                          ✓ QC Review completed by: <span className="font-medium">{selectedCall?.qcAssignedTo?.name || 'Unknown'}</span>
                         </div>
                       </div>
                     </div>
@@ -2395,7 +2479,7 @@ export default function ReviewPage() {
                         {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
                           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="text-sm text-green-800">
-                              ✓ QC Review completed by: <span className="font-medium">{selectedCall?.qcAssignedTo || 'Unknown'}</span>
+                              ✓ QC Review completed by: <span className="font-medium">{selectedCall?.qcAssignedTo?.name || 'Unknown'}</span>
                             </div>
                           </div>
                         )}

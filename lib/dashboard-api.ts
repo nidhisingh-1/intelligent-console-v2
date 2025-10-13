@@ -39,6 +39,7 @@ export interface DashboardFilters {
   search?: string
   startDate?: string
   endDate?: string
+  callType?: string
 }
 
 export interface DashboardApiResponse {
@@ -77,6 +78,7 @@ export class DashboardApiService {
     if (filters.search) queryParams.append('search', filters.search)
     if (filters.startDate) queryParams.append('startDate', filters.startDate)
     if (filters.endDate) queryParams.append('endDate', filters.endDate)
+    if (filters.callType) queryParams.append('callType', filters.callType)
 
     const endpoint = `/conversation/converse-qc/issues-stats${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
     

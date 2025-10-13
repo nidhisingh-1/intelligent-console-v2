@@ -5,6 +5,11 @@ export interface CallApiResponse {
   calls: ApiCall[]
 }
 
+export interface QCAssignedUser {
+  id: string
+  name: string
+}
+
 export interface ApiCall {
   callId: string
   leadId: string
@@ -13,7 +18,7 @@ export interface ApiCall {
   isActive: boolean
   createdAt: string
   updatedAt: string
-  qcAssignedTo: string | null
+  qcAssignedTo: QCAssignedUser | null
   qcStatus: 'yet_to_start' | 'in_progress' | 'completed' | 'done'
   callDetails: {
     agentInfo: {
@@ -41,6 +46,7 @@ export interface GetCallsParams {
   agentType?: string
   startDate?: string
   endDate?: string
+  callType?: string
 }
 
 // Transform API call data to match UI expectations
@@ -65,7 +71,7 @@ export interface TransformedCall {
   intent: string
   actionItems: string[]
   qcStatus: string
-  qcAssignedTo: string | null
+  qcAssignedTo: QCAssignedUser | null
   agentName: string
   agentType: string
   rawApiData: ApiCall
@@ -129,7 +135,7 @@ export interface AssignQCResponse {
   callId: string
   updatedFields: {
     qcStatus: string
-    qcAssignedTo: string
+    qcAssignedTo: QCAssignedUser
   }
 }
 
@@ -167,6 +173,11 @@ class CallsApiService {
     if (params.endDate) {
       searchParams.append('endDate', params.endDate)
     }
+
+    if (params.callType) {
+      searchParams.append('callType', params.callType)
+    }
+    
     return this.apiClient.get<CallApiResponse>(`/conversation/converse-qc/calls?${searchParams}`)
   }
 
