@@ -34,21 +34,28 @@ export function getCurrentUserId(): string | null {
   if (typeof window === 'undefined') return null
   
   try {
+    console.log('🔍 getCurrentUserId called')
+    console.log('localStorage keys:', Object.keys(localStorage))
+    console.log('sessionStorage keys:', Object.keys(sessionStorage))
+    
     // Priority 1: Try multiple localStorage and sessionStorage key variations
     const possibleKeys = ['userDetails', 'qa_dashboard_userDetails', 'qa_dashboard_user_details']
     
     // Check localStorage
     for (const key of possibleKeys) {
       const userDetailsStr = localStorage.getItem(key)
+      console.log(`Checking localStorage.${key}:`, userDetailsStr)
       
       if (userDetailsStr) {
         try {
           const userDetails = JSON.parse(userDetailsStr)
+          console.log(`Parsed localStorage.${key}:`, userDetails)
           
           // Check both userId (camelCase) and user_id (snake_case)
           const foundUserId = userDetails.userId || userDetails.user_id
           
           if (foundUserId) {
+            console.log(`✅ Found userId in localStorage.${key}:`, foundUserId)
             return foundUserId
           }
         } catch (e) {
@@ -60,10 +67,12 @@ export function getCurrentUserId(): string | null {
     // Check sessionStorage
     for (const key of possibleKeys) {
       const userDetailsStr = sessionStorage.getItem(key)
+      console.log(`Checking sessionStorage.${key}:`, userDetailsStr)
       
       if (userDetailsStr) {
         try {
           const userDetails = JSON.parse(userDetailsStr)
+          console.log(`Parsed sessionStorage.${key}:`, userDetails)
           
           // Check both userId (camelCase) and user_id (snake_case)
           const foundUserId = userDetails.userId || userDetails.user_id
@@ -81,12 +90,15 @@ export function getCurrentUserId(): string | null {
     // Priority 2: Check URL query parameter 'userId'
     const urlParams = new URLSearchParams(window.location.search)
     const userIdFromUrl = urlParams.get('userId')
+    console.log('userId from URL:', userIdFromUrl)
     
     if (userIdFromUrl) {
+      console.log(`✅ Found userId in URL:`, userIdFromUrl)
       return userIdFromUrl
     }
     
     // No user ID found
+    console.log('❌ No user ID found')
     return null
   } catch (error) {
     console.error('Error getting current user ID:', error)
