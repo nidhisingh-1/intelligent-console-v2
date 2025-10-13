@@ -34,51 +34,61 @@ export function getCurrentUserId(): string | null {
   if (typeof window === 'undefined') return null
   
   try {
-    console.log('=== getCurrentUserId Debug Start ===')
-    console.log('All localStorage keys:', Object.keys(localStorage))
+    // Priority 1: Try multiple localStorage and sessionStorage key variations
+    const possibleKeys = ['userDetails', 'qa_dashboard_userDetails', 'qa_dashboard_user_details']
     
-    // Priority 1: Check localStorage.userDetails.userId or user_id
-    const userDetailsStr = localStorage.getItem('userDetails')
-    console.log('userDetails raw string:', userDetailsStr)
-    
-    if (userDetailsStr) {
-      try {
-        const userDetails = JSON.parse(userDetailsStr)
-        console.log('Parsed userDetails object:', userDetails)
-        console.log('userDetails.userId:', userDetails.userId)
-        console.log('userDetails.user_id:', userDetails.user_id)
-        
-        // Check both userId (camelCase) and user_id (snake_case)
-        const foundUserId = userDetails.userId || userDetails.user_id
-        console.log('Final foundUserId:', foundUserId)
-        
-        if (foundUserId) {
-          console.log('✅ Returning userId from localStorage:', foundUserId)
-          return foundUserId
+    // Check localStorage
+    for (const key of possibleKeys) {
+      const userDetailsStr = localStorage.getItem(key)
+      
+      if (userDetailsStr) {
+        try {
+          const userDetails = JSON.parse(userDetailsStr)
+          
+          // Check both userId (camelCase) and user_id (snake_case)
+          const foundUserId = userDetails.userId || userDetails.user_id
+          
+          if (foundUserId) {
+            return foundUserId
+          }
+        } catch (e) {
+          console.error(`Error parsing ${key} from localStorage:`, e)
         }
-      } catch (e) {
-        console.error('❌ Error parsing userDetails from localStorage:', e)
       }
-    } else {
-      console.log('⚠️ userDetails not found in localStorage')
+    }
+    
+    // Check sessionStorage
+    for (const key of possibleKeys) {
+      const userDetailsStr = sessionStorage.getItem(key)
+      
+      if (userDetailsStr) {
+        try {
+          const userDetails = JSON.parse(userDetailsStr)
+          
+          // Check both userId (camelCase) and user_id (snake_case)
+          const foundUserId = userDetails.userId || userDetails.user_id
+          
+          if (foundUserId) {
+            return foundUserId
+          }
+        } catch (e) {
+          console.error(`Error parsing ${key} from sessionStorage:`, e)
+        }
+      }
     }
     
     // Priority 2: Check URL query parameter 'userId'
     const urlParams = new URLSearchParams(window.location.search)
     const userIdFromUrl = urlParams.get('userId')
-    console.log('userId from URL:', userIdFromUrl)
     
     if (userIdFromUrl) {
-      console.log('✅ Returning userId from URL:', userIdFromUrl)
       return userIdFromUrl
     }
     
     // No user ID found
-    console.log('❌ No user ID found anywhere')
-    console.log('=== getCurrentUserId Debug End ===')
     return null
   } catch (error) {
-    console.error('💥 Error getting current user ID:', error)
+    console.error('Error getting current user ID:', error)
     return null
   }
 }

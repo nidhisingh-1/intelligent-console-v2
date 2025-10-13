@@ -323,14 +323,6 @@ export default function ReviewPage() {
         // The qcAssignedTo object might have userId instead of id
         const assignedUserId = selectedCall.qcAssignedTo.userId || selectedCall.qcAssignedTo.id
         
-        console.log('Authorization Check:', {
-          currentUserId,
-          assignedUserId,
-          assignedToName: selectedCall.qcAssignedTo.name,
-          qcAssignedToObject: selectedCall.qcAssignedTo,
-          match: currentUserId === assignedUserId
-        })
-        
         if (currentUserId && assignedUserId && assignedUserId !== currentUserId) {
           toast({
             title: "Unauthorized Action",
