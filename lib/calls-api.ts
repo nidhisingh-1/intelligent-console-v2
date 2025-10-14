@@ -261,7 +261,7 @@ class CallsApiService {
 
     const formattedCustomerName = formatCustomerName(apiCall.customerDetails?.name || 'Unknown Customer')
     const customerInitials = formattedCustomerName !== 'Unknown Customer'
-      ? formattedCustomerName.split(' ').map(n => n[0]).join('').toUpperCase()
+      ? formattedCustomerName.split(' ').filter(n => n.length > 0).map(n => n[0]).join('').toUpperCase()
       : 'UC'
 
     return {

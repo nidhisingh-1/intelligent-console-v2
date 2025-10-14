@@ -157,7 +157,7 @@ export function transformCallData(apiCall: CallData) {
     id: apiCall.callId,
     customerName: formattedCustomerName,
     customerInitials: formattedCustomerName !== 'Unknown Customer'
-      ? formattedCustomerName.split(' ').map(n => n[0]).join('').toUpperCase()
+      ? formattedCustomerName.split(' ').filter(n => n.length > 0).map(n => n[0]).join('').toUpperCase()
       : 'UC',
     phoneNumber: apiCall.callDetails.mobile || 'No phone',
     callType: apiCall.callDetails.callType === 'inboundPhoneCall' ? 'Inbound' : 'Outbound',
