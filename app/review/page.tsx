@@ -761,8 +761,6 @@ export default function ReviewPage() {
       ])
         .then(([callData]) => {
           if (callData) {
-            console.log('Call data received:', callData)
-            console.log('callDuration:', callData.callDuration)
             setDetailedCall(callData)
           }
         })
@@ -1566,7 +1564,6 @@ export default function ReviewPage() {
                               durationInSeconds = Math.floor((endTime - startTime) / 1000);
                             }
                             
-                            console.log('Calculated duration for AudioPlayer:', durationInSeconds);
                             
                             return <AudioPlayer
                               ref={audioPlayerRef}

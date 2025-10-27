@@ -94,7 +94,6 @@ const AudioPlayer = React.forwardRef<AudioPlayerRef, AudioPlayerProps>(
     const [volume, setVolume] = useState(100);
     const progressRef = useRef<HTMLDivElement>(null);
     
-    console.log('AudioPlayer received duration prop:', duration);
     
     // Initialize audio URL in the store
     useEffect(() => {
