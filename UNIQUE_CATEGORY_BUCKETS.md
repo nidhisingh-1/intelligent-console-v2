@@ -155,8 +155,7 @@ Each category uses **distinctive emojis** and **descriptive names** to make them
 → **"🔍 Inventory & Search Systems"** 
 *Specifically addresses dealership system failures*
 
-### **Instead of Generic "Communication Problems"**
-→ **"🗣️ Agent Communication Style"**
+
 *Focuses on automotive sales conversation quality*
 
 
