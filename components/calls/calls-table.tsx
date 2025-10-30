@@ -54,6 +54,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
   
   const [page, setPage] = React.useState(1)
   const [hasMore, setHasMore] = React.useState(true)
+  const callRefs = React.useRef<{ [key: string]: HTMLDivElement | null }>({})
 
   // Helper function to generate pastel colors based on name
   const getAvatarColor = (name: string) => {
@@ -642,6 +643,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         return (
           <div
             key={call.id}
+            ref={(el) => { callRefs.current[call.id] = el }}
             className={`px-5 py-4 transition-all duration-200 cursor-pointer border-b border-border/30 hover:bg-muted/40 ${
               isSelected 
                 ? 'bg-primary/10 border-l-4 border-l-primary shadow-sm' 
@@ -693,22 +695,30 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
                     </div>
                   </div>
                   
-                  {/* QC Assigned User Avatar */}
-                  {call.qcAssignedTo && call.qcAssignedTo.name && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Avatar className="h-6 w-6 flex-shrink-0">
-                            <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-                              {call.qcAssignedTo.name.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{call.qcAssignedTo.name}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                  {/* QC Assigned User Avatar or Temporary Status */}
+                  {call.qcAssignedTo && (
+                    call.qcAssignedTo.name ? (
+                      // Show avatar when name is available
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Avatar className="h-6 w-6 flex-shrink-0">
+                              <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                                {call.qcAssignedTo.name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{call.qcAssignedTo.name}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      // Show temporary "Assigned" text during optimistic update
+                      <span className="text-xs italic text-muted-foreground">
+                        Assigned
+                      </span>
+                    )
                   )}
                 </div>
               </div>

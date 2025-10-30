@@ -542,7 +542,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
       deleteIssues
     })
   }
-
+  
   // Expose submit method to parent
   React.useImperativeHandle(ref, () => ({
     submitForm: handleSubmit
