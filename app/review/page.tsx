@@ -1221,7 +1221,7 @@ export default function ReviewPage() {
               selectedAgentName={selectedAgentName}
               selectedAgentType={selectedAgentType}
               selectedCallType={selectedCallType}
-              onAgentNamesChange={setUniqueAgentNames}
+              onAgentNamesChange={handleAgentNamesChange}
               onCallsLoaded={loadCallStats}
             />
             </div>
