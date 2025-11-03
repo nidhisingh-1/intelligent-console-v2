@@ -35,6 +35,7 @@ export interface CallsTableRef {
 export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect, selectedCallId: externalSelectedCallId, statusFilter = 'pending', startDate, endDate, selectedAgentName = 'all', selectedAgentType = 'all', selectedCallType = 'all', onAgentNamesChange, onCallsLoaded }, ref) => {
   const { selectedEnterprise, selectedTeam } = useEnterprise()
   const [calls, setCalls] = React.useState<TransformedCall[]>([])
+  const [allAgentNames, setAllAgentNames] = React.useState<string[]>([]) // Store all agent names
   const [isLoading, setIsLoading] = React.useState(true)
   const [isLoadingMore, setIsLoadingMore] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -45,8 +46,15 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
   React.useEffect(() => {
     setSelectedCallId(externalSelectedCallId || null)
   }, [externalSelectedCallId])
+  
+  // Reset agent names when enterprise or team changes
+  React.useEffect(() => {
+    setAllAgentNames([])
+  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id])
+  
   const [page, setPage] = React.useState(1)
   const [hasMore, setHasMore] = React.useState(true)
+  const callRefs = React.useRef<{ [key: string]: HTMLDivElement | null }>({})
 
   // Helper function to generate pastel colors based on name
   const getAvatarColor = (name: string) => {
@@ -344,15 +352,19 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
           
           setCalls(filteredCalls)
 
-        // Notify parent component of available agent names
-        // Use the current API response which already has unfiltered data from the API
-        // (we filter client-side, so the API response has all agents)
-        if (onAgentNamesChange) {
+        // Extract and store agent names only on first load
+        if (allAgentNames.length === 0 && apiCalls.length > 0) {
           const agentNames = [...new Set(apiCalls.map(call => {
             const transformed = callsApiService.transformCallData(call)
             return transformed.agentName
           }).filter(Boolean))] as string[]
-          onAgentNamesChange(agentNames.sort())
+          const sortedNames = agentNames.sort()
+          setAllAgentNames(sortedNames)
+          
+          // Notify parent component once with all agent names
+          if (onAgentNamesChange) {
+            onAgentNamesChange(sortedNames)
+          }
         }
         setPage(1)
         setHasMore(transformedCalls.length === 10) // Has more if we got full page
@@ -460,15 +472,19 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
       
       setCalls(filteredCalls)
 
-        // Notify parent component of available agent names
-        // Use the current API response which already has unfiltered data from the API
-        // (we filter client-side, so the API response has all agents)
-        if (onAgentNamesChange) {
+        // Extract and store agent names only on first load
+        if (allAgentNames.length === 0 && apiCalls.length > 0) {
           const agentNames = [...new Set(apiCalls.map(call => {
             const transformed = callsApiService.transformCallData(call)
             return transformed.agentName
           }).filter(Boolean))] as string[]
-          onAgentNamesChange(agentNames.sort())
+          const sortedNames = agentNames.sort()
+          setAllAgentNames(sortedNames)
+          
+          // Notify parent component once with all agent names
+          if (onAgentNamesChange) {
+            onAgentNamesChange(sortedNames)
+          }
         }
       setPage(1)
       setHasMore(transformedCalls.length === 10) // Has more if we got full page
@@ -548,13 +564,13 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     },
     refreshCalls: loadCalls,
     getUniqueAgentNames: () => {
-      const agentNames = [...new Set(calls.map(call => call.agentName).filter(Boolean))] as string[]
-      return agentNames.sort()
+      // Return stored agent names from initial load, not from filtered calls
+      return allAgentNames
     },
     getCalls: () => {
       return calls
     }
-  }), [calls, loadCalls])
+  }), [calls, loadCalls, allAgentNames])
 
   const getReviewStatusBadge = (status: string) => {
     switch (status) {
@@ -627,6 +643,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         return (
           <div
             key={call.id}
+            ref={(el) => { callRefs.current[call.id] = el }}
             className={`px-5 py-4 transition-all duration-200 cursor-pointer border-b border-border/30 hover:bg-muted/40 ${
               isSelected 
                 ? 'bg-primary/10 border-l-4 border-l-primary shadow-sm' 
@@ -678,22 +695,30 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
                     </div>
                   </div>
                   
-                  {/* QC Assigned User Avatar */}
-                  {call.qcAssignedTo && call.qcAssignedTo.name && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Avatar className="h-6 w-6 flex-shrink-0">
-                            <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-                              {call.qcAssignedTo.name.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{call.qcAssignedTo.name}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                  {/* QC Assigned User Avatar or Temporary Status */}
+                  {call.qcAssignedTo && (
+                    call.qcAssignedTo.name ? (
+                      // Show avatar when name is available
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Avatar className="h-6 w-6 flex-shrink-0">
+                              <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                                {call.qcAssignedTo.name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{call.qcAssignedTo.name}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      // Show temporary "Assigned" text during optimistic update
+                      <span className="text-xs italic text-muted-foreground">
+                        Assigned
+                      </span>
+                    )
                   )}
                 </div>
               </div>

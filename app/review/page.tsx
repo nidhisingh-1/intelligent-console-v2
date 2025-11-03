@@ -19,7 +19,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { CalendarIcon, X, Phone, CheckCircle, Clock, Copy } from "lucide-react"
+import { CalendarIcon, X, Phone, CheckCircle, Clock, Copy, Loader2 } from "lucide-react"
 import { format, formatDuration } from "date-fns"
 
 export default function ReviewPage() {
@@ -88,17 +88,24 @@ export default function ReviewPage() {
   const [selectedAgentName, setSelectedAgentName] = useState<string>('all')
   const [selectedAgentType, setSelectedAgentType] = useState<string>('all')
   const [uniqueAgentNames, setUniqueAgentNames] = useState<string[]>([])
+  const [agentNamesFetched, setAgentNamesFetched] = useState(false)
   
   // Call type filter state
   const [selectedCallType, setSelectedCallType] = useState<string>('all')
   
-  // Load agent names whenever calls are loaded
+  // Reset agent names when enterprise/team changes
   useEffect(() => {
-    if (callsTableRef.current) {
-      const names = callsTableRef.current.getUniqueAgentNames()
+    setAgentNamesFetched(false)
+    setUniqueAgentNames([])
+  }, [selectedEnterprise, selectedTeam])
+  
+  // Handler to receive agent names from CallsTable (only stores once)
+  const handleAgentNamesChange = useCallback((names: string[]) => {
+    if (!agentNamesFetched && names.length > 0) {
       setUniqueAgentNames(names)
+      setAgentNamesFetched(true)
     }
-  }, [selectedEnterprise, selectedTeam, startDate, endDate, statusFilter])
+  }, [agentNamesFetched])
   
   // Stats state
   const [callStats, setCallStats] = useState({
@@ -137,7 +144,7 @@ export default function ReviewPage() {
         setActiveTab('previous-issues')
         setShowIssuesPanel(true) // Auto-show issues panel for completed calls
       }
-    } else {
+                        } else {
       // Clear issues when no call is selected
       setApiCallIssues([])
     }
@@ -156,6 +163,11 @@ export default function ReviewPage() {
   // Note editing state
   const [editingNote, setEditingNote] = useState<string | null>(null) // Store the issue _id being edited
   const [editNoteText, setEditNoteText] = useState('')
+  
+  // Submission state
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isAssigning, setIsAssigning] = useState(false)
 
   // Memoized form change handler to prevent unnecessary re-renders
   const handleFormChange = useCallback((isValid: boolean, changes: number) => {
@@ -343,6 +355,10 @@ export default function ReviewPage() {
       // Allow marking issues on all calls, including completed ones
       setMarkIssueData({ transcriptText, timestamp, transcriptIndex })
       
+      // Reset submission states when opening form
+      setIsSubmitting(false)
+      setIsSubmitted(false)
+      
       // Reset to new issue tab when opening
       setActiveTab('new-issue')
     } catch (error) {
@@ -356,6 +372,10 @@ export default function ReviewPage() {
     deleteIssues: string[];
   }) => {
     if (!selectedCall?.id || !markIssueData) return
+    
+    // Set submitting state to true at the start
+    setIsSubmitting(true)
+    setIsSubmitted(false)
     
     try {
       // Call the POST API to mark issues
@@ -482,6 +502,14 @@ export default function ReviewPage() {
           })
         }
         
+        // Set submitted state to true on success
+        setIsSubmitted(true)
+        
+        // Reset submitted state after 2 seconds to re-enable the button
+        setTimeout(() => {
+          setIsSubmitted(false)
+        }, 2000)
+        
         // Switch to Previous Issues tab instead of closing the panel
         setActiveTab('previous-issues')
       } else {
@@ -497,15 +525,22 @@ export default function ReviewPage() {
       console.error('Error marking issues:', error)
       toast({
         title: "Error Marking Issues",
-        description: "An unexpected error occurred. Please try again.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       })
+      // Reset states on error so user can retry
+      setIsSubmitting(false)
+      setIsSubmitted(false)
+    } finally {
+      // Reset submitting state
+      setIsSubmitting(false)
     }
   }
 
   const handleAssignQC = async () => {
     if (!selectedCall?.id) return
     
+    setIsAssigning(true)
     try {
       const assignRequest: AssignQCRequest = {
         callId: selectedCall.id,
@@ -528,7 +563,7 @@ export default function ReviewPage() {
           qcStatus: response.updatedFields.qcStatus
         }))
         
-        // Update the calls list to reflect the status change
+        // Optimistic update - immediately update the calls list to show the avatar
         callsTableRef.current?.updateCallStatus(
           selectedCall.id,
           response.updatedFields.qcStatus,
@@ -554,6 +589,8 @@ export default function ReviewPage() {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsAssigning(false)
     }
   }
 
@@ -630,6 +667,10 @@ export default function ReviewPage() {
 
   const handleCancelMarkIssue = () => {
     setMarkIssueData(null)
+    setActiveTab('new-issue')
+    // Reset submission states when canceling
+    setIsSubmitting(false)
+    setIsSubmitted(false)
   }
 
   const handleDeleteIssue = (issueIndex: number) => {
@@ -1045,10 +1086,10 @@ export default function ReviewPage() {
         </div>
       }
     >
-      <div className="flex flex-col h-full bg-background">
-        {/* Top Horizontal Filters Bar - Updated Layout */}
-        <div className="flex-shrink-0 border-b border-border bg-card">
-          <div className="px-6 py-4">
+      <div className="flex flex-col h-full overflow-y-auto bg-background">
+        {/* Top Horizontal Filters Bar - Sticky */}
+        <div className="flex-shrink-0 border-b border-border bg-card sticky top-0 z-10">
+          <div className="px-6 py-4 overflow-x-auto">
             <div className="flex items-center gap-4 flex-wrap">
               {/* Enterprise/Team Selector - Now Horizontal */}
               <div className="flex-shrink-0">
@@ -1198,9 +1239,9 @@ export default function ReviewPage() {
         </div>
         
         {/* Main Content Area */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Call List Panel */}
-          <div className="w-80 lg:w-96 flex flex-col border-r border-border bg-card flex-shrink-0">
+        <div className="flex flex-1 min-h-0">
+          {/* Call List Panel - Sticky */}
+          <div className="w-80 lg:w-96 flex flex-col border-r border-border bg-card flex-shrink-0 sticky self-start z-0" style={{ top: '80px', maxHeight: 'calc(100vh - 50px)' }}>
             {/* Header */}
             <div className="px-4 lg:px-6 py-4 border-b border-border bg-muted/20 flex-shrink-0">
               <div>
@@ -1221,7 +1262,7 @@ export default function ReviewPage() {
               selectedAgentName={selectedAgentName}
               selectedAgentType={selectedAgentType}
               selectedCallType={selectedCallType}
-              onAgentNamesChange={setUniqueAgentNames}
+              onAgentNamesChange={handleAgentNamesChange}
               onCallsLoaded={loadCallStats}
             />
             </div>
@@ -1314,13 +1355,22 @@ export default function ReviewPage() {
                             <TooltipTrigger asChild>
                                 <button
                                   onClick={handleAssignQC}
-                                  className="inline-flex items-center px-5 py-2 bg-primary text-primary-foreground rounded-sm text-sm font-semibold hover:bg-primary/90 transition-all duration-200"
+                                  disabled={isAssigning}
+                                  
+                                  className="inline-flex cursor-pointer items-center px-5 py-2 bg-primary text-primary-foreground rounded-sm text-sm font-semibold hover:bg-primary/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  Assign Call
+                                  {isAssigning ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Assigning...
+                                    </>
+                                  ) : (
+                                    'Assign Call'
+                                  )}
                                 </button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>Assign Call</p>
+                                <p>{isAssigning ? 'Assigning call...' : 'Assign Call'}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -1464,10 +1514,9 @@ export default function ReviewPage() {
                           ))}
                         </div>
                       ) : detailedCall?.callDetails?.messages && detailedCall.callDetails.messages.length > 0 ? (
-                        <div className="flex flex-col flex-1 min-h-0">
+                        <div className="flex flex-col flex-1 min-h-0 pb-6">
                           <h4 className="text-[15px] font-semibold text-foreground mb-3 px-4 lg:px-6 flex-shrink-0">Transcript</h4>
-                          <div ref={transcriptContainerRef} className="space-y-2 overflow-y-auto max-h-[calc(100vh-400px)] px-4 lg:px-6 pb-40 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
-                            {detailedCall.callDetails.messages.map((message: any, index: number) => {
+                          <div ref={transcriptContainerRef} className="space-y-2 overflow-y-auto max-h-[calc(100vh-400px)] px-4 lg:px-6  scrollbar-thin scrollbar-thumb-muted-foreground/20  scrollbar-track-transparent">                            {detailedCall.callDetails.messages.map((message: any, index: number) => {
                               const isAI = message.role === 'bot'
                               const speaker = isAI ? 'Agent' : formatCustomerName(detailedCall.callDetails.name || '')
                               
@@ -1513,14 +1562,11 @@ export default function ReviewPage() {
                                       : 'bg-card border-border hover:bg-muted/50'
                                   }`}
                                   onClick={() => {
-                                    // Calculate time based on message index and call duration
-                                    const totalMessages = detailedCall.callDetails.messages.length;
-                                    const callDuration = detailedCall.callDuration || 0;
-                                    const estimatedTime = Math.floor((index / Math.max(totalMessages - 1, 1)) * callDuration);
+                                    // Use the actual timestamp from the message instead of estimating
+                                    const timestamp = message.secondsFromStart || 0;
                                     
-
-                                    seekToTime(estimatedTime)
-                                    setSelectedTranscriptIndex(index)
+                                    seekToTime(timestamp);
+                                    setSelectedTranscriptIndex(index);
                                   }}
                                   title="Click to jump to this point in audio"
                                 >
@@ -2343,10 +2389,24 @@ export default function ReviewPage() {
                     <button
                       type="button"
                       onClick={() => formRef.current?.submitForm()}
-                      disabled={!isFormValid}
-                      className="flex-1 px-3 lg:px-4 py-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-lg transition-colors"
+                      disabled={!isFormValid || isSubmitting || isSubmitted}
+                      className="flex-1 px-3 lg:px-4 py-2 text-sm font-medium cursor-pointer text-primary-foreground bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
-                      Mark Issue
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : isSubmitted ? (
+                        <>
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Submitted
+                        </>
+                      ) : (
+                        'Mark Issue'
+                      )}
                     </button>
                   </div>
                 </div>
