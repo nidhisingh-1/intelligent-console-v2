@@ -1086,10 +1086,10 @@ export default function ReviewPage() {
         </div>
       }
     >
-      <div className="flex flex-col h-full bg-background">
-        {/* Top Horizontal Filters Bar - Updated Layout */}
-        <div className="flex-shrink-0 border-b border-border bg-card">
-          <div className="px-6 py-4">
+      <div className="flex flex-col h-full overflow-y-auto bg-background">
+        {/* Top Horizontal Filters Bar - Sticky */}
+        <div className="flex-shrink-0 border-b border-border bg-card sticky top-0 z-10">
+          <div className="px-6 py-4 overflow-x-auto">
             <div className="flex items-center gap-4 flex-wrap">
               {/* Enterprise/Team Selector - Now Horizontal */}
               <div className="flex-shrink-0">
@@ -1239,9 +1239,9 @@ export default function ReviewPage() {
         </div>
         
         {/* Main Content Area */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Call List Panel */}
-          <div className="w-80 lg:w-96 flex flex-col border-r border-border bg-card flex-shrink-0">
+        <div className="flex flex-1 min-h-0">
+          {/* Call List Panel - Sticky */}
+          <div className="w-80 lg:w-96 flex flex-col border-r border-border bg-card flex-shrink-0 sticky self-start z-0" style={{ top: '80px', maxHeight: 'calc(100vh - 50px)' }}>
             {/* Header */}
             <div className="px-4 lg:px-6 py-4 border-b border-border bg-muted/20 flex-shrink-0">
               <div>
@@ -1514,10 +1514,9 @@ export default function ReviewPage() {
                           ))}
                         </div>
                       ) : detailedCall?.callDetails?.messages && detailedCall.callDetails.messages.length > 0 ? (
-                        <div className="flex flex-col flex-1 min-h-0">
+                        <div className="flex flex-col flex-1 min-h-0 pb-6">
                           <h4 className="text-[15px] font-semibold text-foreground mb-3 px-4 lg:px-6 flex-shrink-0">Transcript</h4>
-                          <div ref={transcriptContainerRef} className="space-y-2 overflow-y-auto max-h-[calc(100vh-400px)] px-4 lg:px-6 pb-40 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
-                            {detailedCall.callDetails.messages.map((message: any, index: number) => {
+                          <div ref={transcriptContainerRef} className="space-y-2 overflow-y-auto max-h-[calc(100vh-400px)] px-4 lg:px-6  scrollbar-thin scrollbar-thumb-muted-foreground/20  scrollbar-track-transparent">                            {detailedCall.callDetails.messages.map((message: any, index: number) => {
                               const isAI = message.role === 'bot'
                               const speaker = isAI ? 'Agent' : formatCustomerName(detailedCall.callDetails.name || '')
                               
