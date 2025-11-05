@@ -40,6 +40,9 @@ export interface DashboardFilters {
   startDate?: string
   endDate?: string
   callType?: string
+  agentCallType?: string
+  agentType?: string
+  enterpriseId?: string
 }
 
 export interface DashboardApiResponse {
@@ -104,6 +107,9 @@ export class DashboardApiService {
     if (filters.startDate) queryParams.append('startDate', filters.startDate)
     if (filters.endDate) queryParams.append('endDate', filters.endDate)
     if (filters.callType) queryParams.append('callType', filters.callType)
+    if (filters.agentCallType) queryParams.append('agentCallType', filters.agentCallType)
+    if (filters.agentType) queryParams.append('agentType', filters.agentType)
+    if (filters.enterpriseId) queryParams.append('enterpriseId', filters.enterpriseId)
 
     const endpoint = `/conversation/converse-qc/issues-stats${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
     
