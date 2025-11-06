@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Clock } from "lucide-react"
 import { callsApiService, TransformedCall } from "@/lib/calls-api"
+import { ReviewFilterState, DEFAULT_REVIEW_FILTERS } from "@/lib/types"
 
 import { useEnterprise } from "@/lib/enterprise-context"
 
@@ -15,14 +16,8 @@ import { useEnterprise } from "@/lib/enterprise-context"
 interface CallsTableProps {
   onCallSelect?: (call: TransformedCall) => void
   selectedCallId?: string | null
-  statusFilter?: 'pending' | 'completed' | 'all'
-  startDate?: Date
-  endDate?: Date
-  selectedAgentName?: string
-  selectedAgentType?: string
-  selectedCallType?: string
+  filters?: ReviewFilterState
   onAgentNamesChange?: (agentNames: string[]) => void
-  onCallsLoaded?: () => void  // New callback to notify when calls are loaded
 }
 
 export interface CallsTableRef {
@@ -32,15 +27,28 @@ export interface CallsTableRef {
   getCalls: () => any[]
 }
 
-export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect, selectedCallId: externalSelectedCallId, statusFilter = 'pending', startDate, endDate, selectedAgentName = 'all', selectedAgentType = 'all', selectedCallType = 'all', onAgentNamesChange, onCallsLoaded }, ref) => {
+export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect, selectedCallId: externalSelectedCallId, filters, onAgentNamesChange }, ref) => {
   const { selectedEnterprise, selectedTeam } = useEnterprise()
+  
+  // Destructure filters with defaults
+  const { 
+    statusFilter = 'pending',
+    startDate,
+    endDate,
+    selectedAgentName = 'all',
+    selectedAgentType = 'all',
+    selectedCallType = 'all'
+  } = filters || DEFAULT_REVIEW_FILTERS
+  
+  // AbortController for request cancellation
+  const abortControllerRef = React.useRef<AbortController | null>(null)
+  
   const [calls, setCalls] = React.useState<TransformedCall[]>([])
   const [allAgentNames, setAllAgentNames] = React.useState<string[]>([]) // Store all agent names
   const [isLoading, setIsLoading] = React.useState(true)
   const [isLoadingMore, setIsLoadingMore] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [selectedCallId, setSelectedCallId] = React.useState<string | null>(externalSelectedCallId || null)
-  const [shouldNotifyLoaded, setShouldNotifyLoaded] = React.useState(false)
   const [lastQueryDebug, setLastQueryDebug] = React.useState<string>('')
   // Sync internal state with external prop
   React.useEffect(() => {
@@ -214,9 +222,6 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         })
         setPage(prev => prev + 1)
         setHasMore(transformedCalls.length === 10) // Has more if we got full page
-        
-        // Trigger stats update after loading more calls
-        setShouldNotifyLoaded(true)
       } else {
         setHasMore(false)
       }
@@ -226,10 +231,19 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     } finally {
       setIsLoadingMore(false)
     }
-  }, [page, hasMore, isLoadingMore, isLoading, selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType])
+  }, [page, hasMore, isLoadingMore, isLoading, selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, filters])
 
-  // Load calls when enterprise/team changes (with debouncing)
+  // Load calls when enterprise/team or filters change
   React.useEffect(() => {
+    // Cancel previous request if exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    // Create new AbortController for this request
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     // Clear calls immediately when enterprise/team changes
     setCalls([])
     setIsLoading(true)
@@ -287,7 +301,12 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
             return `${year}-${month}-${day}T23:59:59.999Z`;
           })() : undefined,
           callType: (selectedCallType && selectedCallType !== 'all') ? selectedCallType : undefined
-      })
+      }, controller.signal)
+      
+      // Check if request was cancelled
+      if (controller.signal.aborted) {
+        return
+      }
         // Build debug string for request
         const debugParams: Record<string, string> = {
           enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
@@ -312,7 +331,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
 
         let apiCalls = response.calls
         // Fallback: if agentType selected and API returned 0, refetch without agentType and filter client-side
-        if ((selectedAgentType && selectedAgentType !== 'all') && apiCalls.length === 0) {
+        if ((selectedAgentType && selectedAgentType !== 'all') && apiCalls.length === 0 && !controller.signal.aborted) {
           const fallbackResp = await callsApiService.getCalls({
             enterpriseId: selectedEnterprise.id || selectedEnterprise.enterpriseId,
             teamId: selectedTeam.team_id,
@@ -321,7 +340,12 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
             qcStatus: qcStatusParam,
             agentName: (selectedAgentName && selectedAgentName !== 'all') ? selectedAgentName : undefined,
             callType: (selectedCallType && selectedCallType !== 'all') ? selectedCallType : undefined,
-          })
+          }, controller.signal)
+          
+          // Check if cancelled before processing fallback
+          if (controller.signal.aborted) {
+            return
+          }
           apiCalls = fallbackResp.calls
           // Update debug to indicate fallback
           const fb: Record<string,string> = {
@@ -369,23 +393,44 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         setPage(1)
         setHasMore(transformedCalls.length === 10) // Has more if we got full page
       } catch (error) {
-        console.error('Error loading calls:', error)
-        setError('Failed to load calls from the server.')
-        setCalls([])
+        // Ignore cancelled requests
+        if (error instanceof Error && error.name === 'AbortError') {
+          return
+        }
+        
+        // Only set error if request wasn't cancelled
+        if (!controller.signal.aborted) {
+          console.error('Error loading calls:', error)
+          setError('Failed to load calls from the server.')
+          setCalls([])
+        }
       } finally {
-        setShouldNotifyLoaded(true)
-        setIsLoading(false)
+        // Only update loading if request wasn't cancelled
+        if (!controller.signal.aborted) {
+          setIsLoading(false)
+        }
       }
     }
 
-    // Debounce to prevent multiple calls when both enterprise and team change rapidly
-    const timeoutId = setTimeout(() => {
-
-      loadCalls()
-    }, 200) // 200ms delay to batch rapid changes
-
-    return () => clearTimeout(timeoutId)
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType])
+    // Load immediately (no debounce - cancellation handles rapid changes)
+    loadCalls()
+    
+    // Cleanup: cancel request on unmount or when dependencies change
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, filters])
+  
+  // Cleanup on component unmount
+  React.useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   // Reusable function to load calls (for refresh functionality)
   const loadCalls = React.useCallback(async () => {
@@ -493,20 +538,9 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
       setError('Failed to load calls from the server.')
       setCalls([])
     } finally {
-      setShouldNotifyLoaded(true)
       setIsLoading(false)
     }
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType, onCallsLoaded])
-
-  // Notify parent after calls state has been updated
-  React.useEffect(() => {
-    if (shouldNotifyLoaded) {
-      setShouldNotifyLoaded(false) // Reset flag
-      if (onCallsLoaded) {
-        onCallsLoaded()
-      }
-    }
-  }, [shouldNotifyLoaded, calls.length, onCallsLoaded])
+  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType])
 
   // No auto-selection - let user explicitly choose which call to review
   React.useEffect(() => {
@@ -552,15 +586,27 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
   // Expose methods to parent component
   React.useImperativeHandle(ref, () => ({
     updateCallStatus: (callId: string, qcStatus: string, qcAssignedTo: { id: string; name: string } | null) => {
+      // Map qcStatus to status display value (matching getStatusFromQcStatus logic)
+      const getStatusFromQcStatus = (qcStatus: string): string => {
+        switch (qcStatus) {
+          case 'completed':
+          case 'done':
+            return 'Pass'
+          case 'in_progress':
+            return 'In Progress'
+          case 'yet_to_start':
+          default:
+            return 'Unreviewed'
+        }
+      }
+      
       setCalls(prevCalls => 
         prevCalls.map(call => 
           call.id === callId 
-            ? { ...call, qcStatus, qcAssignedTo, status: qcStatus === 'in_progress' ? 'In Progress' : call.status }
+            ? { ...call, qcStatus, qcAssignedTo, status: getStatusFromQcStatus(qcStatus) }
             : call
         )
       )
-      // Trigger stats update after status change
-      setShouldNotifyLoaded(true)
     },
     refreshCalls: loadCalls,
     getUniqueAgentNames: () => {
@@ -584,6 +630,7 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         return <Badge variant="outline" className="text-xs">Unreviewed</Badge>
     }
   }
+
 
   // Loading state - Matches card layout exactly
   if (isLoading) {

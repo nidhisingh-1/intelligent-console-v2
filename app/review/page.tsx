@@ -6,21 +6,18 @@ import { CallsTable, CallsTableRef } from "@/components/calls/calls-table"
 import AudioPlayer, { AudioPlayerRef } from "@/components/audio/audio-player"
 import { MarkIssueForm, MarkIssueFormRef } from "@/components/transcript/mark-issue-form"
 import { fetchCallById } from "@/lib/api"
-import { callsApiService, CallIssuesResponse, CallIssueGroup, type AssignQCRequest, filterCallsByDateRange } from "@/lib/calls-api"
+import { callsApiService, CallIssueGroup, type AssignQCRequest, type TransformedQCStats } from "@/lib/calls-api"
 import { useToast } from "@/hooks/use-toast"
 import { useEnterprise } from "@/lib/enterprise-context"
-import { EnterpriseTeamSelector } from "@/components/enterprise/enterprise-team-selector"
 import { getCurrentUserId } from "@/lib/auth-utils"
+import { ReviewFilters } from "@/components/review/review-filters"
+import { ReviewFilterState, ReviewFilterUpdate, DEFAULT_REVIEW_FILTERS } from "@/lib/types"
 
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { CalendarIcon, X, Phone, CheckCircle, Clock, Copy, Loader2 } from "lucide-react"
-import { format, formatDuration } from "date-fns"
+import { Phone, CheckCircle, Clock, Copy, Loader2 } from "lucide-react"
 
 export default function ReviewPage() {
   const { toast } = useToast()
@@ -74,24 +71,21 @@ export default function ReviewPage() {
   const [isLoadingIssues, setIsLoadingIssues] = useState(false)
   const [issuesError, setIssuesError] = useState<string | null>(null)
   
-  // Status filter state
-  const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('pending')
+  // Unified filter state
+  const [filters, setFilters] = useState<ReviewFilterState>(DEFAULT_REVIEW_FILTERS)
+  const [uniqueAgentNames, setUniqueAgentNames] = useState<string[]>([])
+  const [agentNamesFetched, setAgentNamesFetched] = useState(false)
   
   // Issues panel toggle state
   const [showIssuesPanel, setShowIssuesPanel] = useState(false)
   
-  // Date filter state
-  const [startDate, setStartDate] = useState<Date | undefined>()
-  const [endDate, setEndDate] = useState<Date | undefined>()
-  
-  // Agent filter state
-  const [selectedAgentName, setSelectedAgentName] = useState<string>('all')
-  const [selectedAgentType, setSelectedAgentType] = useState<string>('all')
-  const [uniqueAgentNames, setUniqueAgentNames] = useState<string[]>([])
-  const [agentNamesFetched, setAgentNamesFetched] = useState(false)
-  
-  // Call type filter state
-  const [selectedCallType, setSelectedCallType] = useState<string>('all')
+  // Filter update function
+  const updateFilters = useCallback((updates: ReviewFilterUpdate) => {
+    setFilters(prev => ({ ...prev, ...updates }))
+    setSelectedCall(null)
+    setDetailedCall(null)
+    setMarkIssueData(null)
+  }, [])
   
   // Reset agent names when enterprise/team changes
   useEffect(() => {
@@ -105,19 +99,19 @@ export default function ReviewPage() {
       setUniqueAgentNames(names)
       setAgentNamesFetched(true)
     }
-  }, [agentNamesFetched])
+  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, filters])
   
-  // Stats state
-  const [callStats, setCallStats] = useState({
+  // Stats state - now comes from API
+  const [callStats, setCallStats] = useState<TransformedQCStats>({
     total: 0,
     reviewed: 0,
-    unreviewed: 0,
+    pending: 0,
     isLoading: true
   })
   
   // Clear selection when switching to completed calls
   React.useEffect(() => {
-    if (statusFilter === 'completed') {
+    if (filters.statusFilter === 'completed') {
       // Only clear if we're actually changing the filter
       // This prevents unnecessary clearing that could trigger auto-selection
       if (selectedCall && selectedCall.qcStatus !== 'done' && selectedCall.qcStatus !== 'completed') {
@@ -126,7 +120,7 @@ export default function ReviewPage() {
       setMarkIssueData(null) // Clear any open mark issue panel
       }
     }
-  }, [statusFilter])
+  }, [filters.statusFilter])
 
   // Auto-switch to Previous Issues tab for completed calls and load issues
   React.useEffect(() => {
@@ -168,6 +162,7 @@ export default function ReviewPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
+  const [isUnassigning, setIsUnassigning] = useState(false)
 
   // Memoized form change handler to prevent unnecessary re-renders
   const handleFormChange = useCallback((isValid: boolean, changes: number) => {
@@ -582,16 +577,25 @@ export default function ReviewPage() {
           variant: "destructive",
         })
       }
-    } catch (error) {
-      console.error('Error assigning QC:', error)
-      toast({
-        title: "Error Assigning QC",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsAssigning(false)
+  } catch (error: any) {
+    console.error('Error assigning QC:', error)
+    
+    // Extract validation error message if available
+    let errorMessage = "An unexpected error occurred. Please try again."
+    if (error?.validationErrors && error.validationErrors.length > 0) {
+      errorMessage = error.validationErrors[0].rule
+    } else if (error?.message) {
+      errorMessage = error.message
     }
+    
+    toast({
+      title: "Error Assigning QC",
+      description: errorMessage,
+      variant: "destructive",
+    })
+  } finally {
+    setIsAssigning(false)
+  }
   }
 
   const handleQCDone = async () => {
@@ -655,6 +659,7 @@ export default function ReviewPage() {
           variant: "destructive",
         })
       }
+      loadCallStats()
     } catch (error) {
       console.error('Error completing QC:', error)
       toast({
@@ -707,9 +712,68 @@ export default function ReviewPage() {
     }
   }
 
-
-
-  
+  const handleUnassign = async () => {
+    if (!selectedCall?.id) return
+    
+    setIsUnassigning(true)
+    try {
+      // Use the same assignQC endpoint but with qcStatus: 'yet_to_start' to unassign
+      const unassignRequest: AssignQCRequest = {
+        callId: selectedCall.id,
+        qcStatus: 'yet_to_start',
+        qcAssignedTo: null
+      }
+      
+      const response = await callsApiService.assignQC(unassignRequest)
+      
+      if (response.message && response.updatedFields) {
+        toast({
+          title: "Unassign Successful",
+          description: response.message,
+          variant: "default",
+        })
+        
+        // Update the selectedCall to reflect unassignment
+        // Note: The API might return qcAssignedTo as null when unassigned
+        setSelectedCall((prev: any) => ({
+          ...prev,
+          qcAssignedTo: null,
+          qcStatus: 'yet_to_start'
+        }))
+        
+        // Update the calls table
+        callsTableRef.current?.updateCallStatus(
+          selectedCall.id,
+          'yet_to_start',
+          null
+        )
+      } else {
+        toast({
+          title: "Error Unassigning",
+          description: "Failed to unassign the call. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      console.error('Error unassigning call:', error)
+      
+      // Extract validation error message if available
+      let errorMessage = "An unexpected error occurred. Please try again."
+      if (error?.validationErrors && error.validationErrors.length > 0) {
+        errorMessage = error.validationErrors[0].rule
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      toast({
+        title: "Error Unassigning",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsUnassigning(false)
+    }
+  }
 
   // Function to load call issues from API with fallback to mock data
   const loadCallIssues = async (callId: string) => {
@@ -735,42 +799,41 @@ export default function ReviewPage() {
     }
   }
 
-  // Function to calculate stats from calls table data
+  // Function to fetch QC stats from API
   const loadCallStats = useCallback(async () => {
     if (!selectedEnterprise || !selectedTeam) {
-      setCallStats({ total: 0, reviewed: 0, unreviewed: 0, isLoading: false })
+      setCallStats({ total: 0, reviewed: 0, pending: 0, isLoading: false })
       return
     }
 
     try {
       setCallStats(prev => ({ ...prev, isLoading: true }))
       
-      // Get calls from the CallsTable component
-      if (callsTableRef.current) {
-        const calls = callsTableRef.current.getCalls()
-        
-        // Calculate statistics from loaded calls
-        const total = calls.length
-        const reviewed = calls.filter((call: any) => 
-          call.qcStatus === 'done' || call.qcStatus === 'completed'
-        ).length
-        const unreviewed = total - reviewed
-
-        setCallStats({
-          total,
-          reviewed,
-          unreviewed,
-          isLoading: false
-        })
-      } else {
-        // If no calls table ref, set to zero
-        setCallStats({ total: 0, reviewed: 0, unreviewed: 0, isLoading: false })
-      }
+      // Fetch stats from API
+      const statsResponse = await callsApiService.getQCStats(
+        selectedEnterprise.enterpriseId,
+        selectedTeam.team_id
+      )
+      
+      // Transform and set stats
+      const transformedStats = callsApiService.transformQCStats(statsResponse)
+      setCallStats(transformedStats)
+      
     } catch (error) {
       console.error('Error loading call stats:', error)
-      setCallStats({ total: 0, reviewed: 0, unreviewed: 0, isLoading: false })
+      setCallStats({ total: 0, reviewed: 0, pending: 0, isLoading: false })
+      toast({
+        title: "Error Loading Stats",
+        description: "Failed to load QC statistics. Please try again.",
+        variant: "destructive",
+      })
     }
-  }, [selectedEnterprise, selectedTeam])
+  }, [selectedEnterprise, selectedTeam, toast])
+
+  // Load stats when enterprise/team changes
+  useEffect(() => {
+    loadCallStats()
+  }, [loadCallStats])
 
   // Clear selected call when enterprise or team changes
   useEffect(() => {
@@ -1047,7 +1110,7 @@ export default function ReviewPage() {
   return (
     <AppShell 
       statsChips={
-        <div className="flex items-center gap-3 flex-nowrap">
+        <div className="flex items-center gap-3 flex-nowrap ">
           {/* Total Calls Chip */}
           <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full text-sm whitespace-nowrap">
             <Phone className="h-3 w-3 text-blue-600 flex-shrink-0" />
@@ -1079,169 +1142,27 @@ export default function ReviewPage() {
               Pending: {callStats.isLoading ? (
                 <span className="inline-block w-6 h-3 bg-orange-200 animate-pulse rounded" />
               ) : (
-                callStats.unreviewed.toLocaleString()
+                callStats.pending.toLocaleString()
               )}
             </span>
           </div>
         </div>
       }
     >
-      <div className="flex flex-col bg-background">
-        {/* Top Horizontal Filters Bar - Scrolls with page */}
-        <div className="flex-shrink-0 border-b border-border bg-card">
-          <div className="px-6 py-4 overflow-x-auto">
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* Enterprise/Team Selector - Now Horizontal */}
-              <div className="flex-shrink-0">
-                <EnterpriseTeamSelector />
-              </div>
-              
-              {/* Date Filters */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-sm font-medium text-foreground whitespace-nowrap">From:</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-36 justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "MMM dd") : "Start date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          // Normalize to midnight local time to avoid timezone issues
-                          const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
-                          setStartDate(normalized);
-                        } else {
-                          setStartDate(undefined);
-                        }
-                      }}
-                      disabled={(date) => date > new Date() || (endDate ? date > endDate : false)}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-sm font-medium text-foreground whitespace-nowrap">To:</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-36 justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "MMM dd") : "End date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          // Normalize to midnight local time to avoid timezone issues
-                          const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
-                          setEndDate(normalized);
-                        } else {
-                          setEndDate(undefined);
-                        }
-                      }}
-                      disabled={(date) => date > new Date() || (startDate ? date < startDate : false)}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div> 
-
-              {/* Clear Date Filters */}
-              {(startDate || endDate) && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => {
-                    setStartDate(undefined)
-                    setEndDate(undefined)
-                  }}
-                  className="h-8 px-2"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-
-              {/* Status Filter */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-sm font-medium text-foreground whitespace-nowrap">Status:</span>
-                <Select value={statusFilter} onValueChange={(value: 'pending' | 'completed' | 'all') => setStatusFilter(value)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending Review</SelectItem>
-                    <SelectItem value="completed">Completed Reviews</SelectItem>
-                    <SelectItem value="all">All Calls</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Agent Type Filter */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-sm font-medium text-foreground whitespace-nowrap">Agent Type:</span>
-                <Select value={selectedAgentType} onValueChange={setSelectedAgentType}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder="All Types" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="sales">Sales</SelectItem>
-                    <SelectItem value="service">Service</SelectItem>
-                    <SelectItem value="support">Support</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Call Type Filter */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-sm font-medium text-foreground whitespace-nowrap">Call Type:</span>
-                <Select value={selectedCallType} onValueChange={setSelectedCallType}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder="All Types" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="inbound">Inbound</SelectItem>
-                    <SelectItem value="outbound">Outbound</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Agent Name Filter */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-sm font-medium text-foreground whitespace-nowrap">Agent:</span>
-                <Select 
-                  value={selectedAgentName} 
-                  onValueChange={setSelectedAgentName}
-                >
-                  <SelectTrigger className="w-36">
-                    <SelectValue placeholder="All Agents" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Agents</SelectItem>
-                    {uniqueAgentNames.map((agentName: string) => (
-                      <SelectItem key={agentName} value={agentName}>{agentName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
+      <div className="flex flex-col h-full overflow-y-auto bg-background">
+        {/* Top Horizontal Filters Bar */}
+        <div className="flex-shrink-0">
+          <ReviewFilters
+            filters={filters}
+            uniqueAgentNames={uniqueAgentNames}
+            onFiltersChange={updateFilters}
+          />
         </div>
         
         {/* Main Content Area */}
-        <div className="flex flex-1">
+        <div className="flex flex-1 min-h-0">
           {/* Call List Panel - Sticky */}
-          <div className="w-80 lg:w-96 flex flex-col border-r border-border bg-card flex-shrink-0 sticky top-0 h-screen">
+          <div className="w-80 lg:w-96 flex flex-col border-r border-border bg-card flex-shrink-0 sticky top-0 self-start" style={{ maxHeight: 'calc(100vh - 50px)' }}>
             {/* Header */}
             <div className="px-4 lg:px-6 py-4 border-b border-border bg-muted/20 flex-shrink-0">
               <div>
@@ -1256,14 +1177,8 @@ export default function ReviewPage() {
               ref={callsTableRef} 
               onCallSelect={setSelectedCall} 
               selectedCallId={selectedCall?.id || null}
-              statusFilter={statusFilter}
-              startDate={startDate}
-              endDate={endDate}
-              selectedAgentName={selectedAgentName}
-              selectedAgentType={selectedAgentType}
-              selectedCallType={selectedCallType}
+              filters={filters}
               onAgentNamesChange={handleAgentNamesChange}
-              onCallsLoaded={loadCallStats}
             />
             </div>
           </div>
@@ -1398,6 +1313,38 @@ export default function ReviewPage() {
                         </div>
                       </div>
                     )}
+                    {/* Only show Unassign button when call is assigned and not completed */}
+                    {selectedCall.qcAssignedTo !== null && 
+                     selectedCall.qcStatus !== 'done' && 
+                     selectedCall.qcStatus !== 'completed' && (
+                      <div>
+                        <div className="flex flex-col items-center gap-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={handleUnassign}
+                                  disabled={isUnassigning}
+                                  className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-sm text-sm font-semibold hover:bg-red-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isUnassigning ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Unassigning...
+                                    </>
+                                  ) : (
+                                    'Unassign'
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{isUnassigning ? 'Unassigning call...' : 'Unassign Call'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1412,7 +1359,7 @@ export default function ReviewPage() {
                 }`}>
                   {/* Overlay when QC not assigned */}
                   {selectedCall?.qcAssignedTo === null && (
-                    <div className="absolute h-full inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                       <div className="text-center p-6 bg-card rounded-lg shadow-lg border">
                         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                           <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1514,9 +1461,10 @@ export default function ReviewPage() {
                           ))}
                         </div>
                       ) : detailedCall?.callDetails?.messages && detailedCall.callDetails.messages.length > 0 ? (
-                        <div className="flex flex-col flex-1 min-h-0">
+                        <div className="flex flex-col flex-1 min-h-0 pb-6">
                           <h4 className="text-[15px] font-semibold text-foreground mb-3 px-4 lg:px-6 flex-shrink-0">Transcript</h4>
-                          <div ref={transcriptContainerRef} className="overflow-y-auto max-h-[calc(100vh-370px)] px-4 lg:px-6  scrollbar-thin scrollbar-thumb-muted-foreground/20  scrollbar-track-transparent">                            {detailedCall.callDetails.messages.map((message: any, index: number) => {
+                          <div ref={transcriptContainerRef} className="space-y-2 overflow-y-auto max-h-[calc(100vh-400px)] px-4 lg:px-6  scrollbar-thin scrollbar-thumb-muted-foreground/20  scrollbar-track-transparent">
+                            {detailedCall.callDetails.messages.map((message: any, index: number) => {
                               const isAI = message.role === 'bot'
                               const speaker = isAI ? 'Agent' : formatCustomerName(detailedCall.callDetails.name || '')
                               
@@ -1729,10 +1677,10 @@ export default function ReviewPage() {
                     </svg>
                   </div>
                   <h2 className="attio-heading-2 mb-2">
-                    {statusFilter === 'completed' ? 'Completed Reviews' : 'No call selected'}
+                    {filters.statusFilter === 'completed' ? 'Completed Reviews' : 'No call selected'}
                   </h2>
                   <p className="attio-body">
-                    {statusFilter === 'completed' 
+                    {filters.statusFilter === 'completed' 
                       ? 'Select a completed call from the list to view its review details and issues found during QC'
                       : 'Select a call from the list to start reviewing'
                     }
