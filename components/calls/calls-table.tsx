@@ -10,6 +10,8 @@ import { callsApiService, TransformedCall } from "@/lib/calls-api"
 import { ReviewFilterState, DEFAULT_REVIEW_FILTERS } from "@/lib/types"
 
 import { useEnterprise } from "@/lib/enterprise-context"
+import { useAppSelector } from "@/store"
+import { selectReviewFilters } from "@/store/selectors/filtersSelectors"
 
 // Remove duplicate interface - using the one from calls-api.ts
 
@@ -29,16 +31,18 @@ export interface CallsTableRef {
 
 export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ onCallSelect, selectedCallId: externalSelectedCallId, filters, onAgentNamesChange }, ref) => {
   const { selectedEnterprise, selectedTeam } = useEnterprise()
+  const reviewFilters = useAppSelector(selectReviewFilters)
+  const effectiveFilters: ReviewFilterState = filters ?? reviewFilters ?? DEFAULT_REVIEW_FILTERS
   
   // Destructure filters with defaults
   const { 
-    statusFilter = 'pending',
+    statusFilter = DEFAULT_REVIEW_FILTERS.statusFilter,
     startDate,
     endDate,
-    selectedAgentName = 'all',
-    selectedAgentType = 'all',
-    selectedCallType = 'all'
-  } = filters || DEFAULT_REVIEW_FILTERS
+    selectedAgentName = DEFAULT_REVIEW_FILTERS.selectedAgentName,
+    selectedAgentType = DEFAULT_REVIEW_FILTERS.selectedAgentType,
+    selectedCallType = DEFAULT_REVIEW_FILTERS.selectedCallType
+  } = effectiveFilters
   
   // AbortController for request cancellation
   const abortControllerRef = React.useRef<AbortController | null>(null)
@@ -231,7 +235,21 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     } finally {
       setIsLoadingMore(false)
     }
-  }, [page, hasMore, isLoadingMore, isLoading, selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, filters])
+  }, [
+    page,
+    hasMore,
+    isLoadingMore,
+    isLoading,
+    selectedEnterprise?.id,
+    selectedEnterprise?.enterpriseId,
+    selectedTeam?.team_id,
+    statusFilter,
+    startDate?.getTime(),
+    endDate?.getTime(),
+    selectedAgentName,
+    selectedAgentType,
+    selectedCallType,
+  ])
 
   // Load calls when enterprise/team or filters change
   React.useEffect(() => {
@@ -421,7 +439,17 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
         abortControllerRef.current.abort()
       }
     }
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, filters])
+  }, [
+    selectedEnterprise?.id,
+    selectedEnterprise?.enterpriseId,
+    selectedTeam?.team_id,
+    statusFilter,
+    startDate?.getTime(),
+    endDate?.getTime(),
+    selectedAgentName,
+    selectedAgentType,
+    selectedCallType,
+  ])
   
   // Cleanup on component unmount
   React.useEffect(() => {
@@ -540,7 +568,17 @@ export const CallsTable = React.forwardRef<CallsTableRef, CallsTableProps>(({ on
     } finally {
       setIsLoading(false)
     }
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType])
+  }, [
+    selectedEnterprise?.id,
+    selectedEnterprise?.enterpriseId,
+    selectedTeam?.team_id,
+    statusFilter,
+    startDate?.getTime(),
+    endDate?.getTime(),
+    selectedAgentName,
+    selectedAgentType,
+    selectedCallType,
+  ])
 
   // No auto-selection - let user explicitly choose which call to review
   React.useEffect(() => {

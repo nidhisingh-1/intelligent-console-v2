@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar } from "@/components/ui/calendar"
@@ -9,11 +9,14 @@ import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from
 import { format, startOfMonth, addMonths, isSameMonth, isSameDay } from "date-fns"
 import { EnterpriseTeamSelector } from "@/components/enterprise/enterprise-team-selector"
 import { ReviewFilterState, ReviewFilterUpdate } from "@/lib/types"
+import { useAppDispatch, useAppSelector } from "@/store"
+import { updateReviewFilters } from "@/store/slices/filtersSlice"
+import { selectReviewFilters } from "@/store/selectors/filtersSelectors"
 
 interface ReviewFiltersProps {
-  filters: ReviewFilterState
+  filters?: ReviewFilterState
   uniqueAgentNames: string[]
-  onFiltersChange: (updates: ReviewFilterUpdate) => void
+  onFiltersChange?: (updates: ReviewFilterUpdate) => void
 }
 
 export function ReviewFilters({
@@ -21,7 +24,17 @@ export function ReviewFilters({
   uniqueAgentNames,
   onFiltersChange
 }: ReviewFiltersProps) {
-  const { statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType } = filters
+  const dispatch = useAppDispatch()
+  const storeFilters = useAppSelector(selectReviewFilters)
+  const activeFilters = filters ?? storeFilters
+  const { statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType } = activeFilters
+  const handleChange = useCallback((updates: ReviewFilterUpdate) => {
+    if (onFiltersChange) {
+      onFiltersChange(updates)
+    } else {
+      dispatch(updateReviewFilters(updates))
+    }
+  }, [dispatch, onFiltersChange])
   const [rangePopoverOpen, setRangePopoverOpen] = useState(false)
   const [tempStartDate, setTempStartDate] = useState<Date | undefined>(undefined)
 
@@ -50,7 +63,7 @@ export function ReviewFilters({
     if (!range.to) {
       // If clicking same date again, apply single date filter
       if (tempStartDate && isSameDay(from, tempStartDate)) {
-        onFiltersChange({ startDate: from, endDate: from })
+        handleChange({ startDate: from, endDate: from })
         setTempStartDate(undefined)
         setRangePopoverOpen(false)
       } else {
@@ -67,7 +80,7 @@ export function ReviewFilters({
     if (isSameDay(from, to)) {
       if (tempStartDate && isSameDay(from, tempStartDate)) {
         // Same date clicked twice - apply single date filter
-        onFiltersChange({ startDate: from, endDate: from })
+        handleChange({ startDate: from, endDate: from })
         setTempStartDate(undefined)
         setRangePopoverOpen(false)
       } else {
@@ -78,7 +91,7 @@ export function ReviewFilters({
     }
 
     // Case 2b: Two different dates -> date range
-    onFiltersChange({ startDate: from, endDate: to })
+    handleChange({ startDate: from, endDate: to })
     setTempStartDate(undefined)
     setRangePopoverOpen(false)
   }
@@ -86,14 +99,14 @@ export function ReviewFilters({
   // Handler for 'Today' button
   const handleToday = () => {
     const today = normalizeDate(new Date())
-    onFiltersChange({ startDate: today, endDate: today })
+    handleChange({ startDate: today, endDate: today })
     setTempStartDate(undefined)
     setRangePopoverOpen(false)
   }
 
   // Handler to clear range
   const handleClearDates = () => {
-    onFiltersChange({ startDate: undefined, endDate: undefined })
+    handleChange({ startDate: undefined, endDate: undefined })
     setTempStartDate(undefined)
     setRangePopoverOpen(false)
   }
@@ -223,7 +236,7 @@ export function ReviewFilters({
           {/* Status Filter */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <span className="text-sm font-medium text-foreground whitespace-nowrap">Status:</span>
-            <Select value={statusFilter} onValueChange={(value: 'pending' | 'completed' | 'all') => onFiltersChange({ statusFilter: value })}>
+            <Select value={statusFilter} onValueChange={(value: 'pending' | 'completed' | 'all') => handleChange({ statusFilter: value })}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -238,7 +251,7 @@ export function ReviewFilters({
           {/* Agent Type Filter */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <span className="text-sm font-medium text-foreground whitespace-nowrap">Agent Type:</span>
-            <Select value={selectedAgentType} onValueChange={(value: string) => onFiltersChange({ selectedAgentType: value })}>
+            <Select value={selectedAgentType} onValueChange={(value: string) => handleChange({ selectedAgentType: value })}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
@@ -254,7 +267,7 @@ export function ReviewFilters({
           {/* Call Type Filter */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <span className="text-sm font-medium text-foreground whitespace-nowrap">Call Type:</span>
-            <Select value={selectedCallType} onValueChange={(value: string) => onFiltersChange({ selectedCallType: value })}>
+            <Select value={selectedCallType} onValueChange={(value: string) => handleChange({ selectedCallType: value })}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
@@ -271,7 +284,7 @@ export function ReviewFilters({
             <span className="text-sm font-medium text-foreground whitespace-nowrap">Agent:</span>
             <Select 
               value={selectedAgentName} 
-              onValueChange={(value: string) => onFiltersChange({ selectedAgentName: value })}
+              onValueChange={(value: string) => handleChange({ selectedAgentName: value })}
             >
               <SelectTrigger className="w-36">
                 <SelectValue placeholder="All Agents" />

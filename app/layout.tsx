@@ -7,6 +7,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { EnterpriseProvider } from "@/lib/enterprise-context"
+import { Providers } from "./providers"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -33,12 +34,14 @@ html {
         `}</style>
       </head>
       <body className={inter.className}>
+        <Providers>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light" disableTransitionOnChange>
           <EnterpriseProvider>
             {children}
             <Toaster />
           </EnterpriseProvider>
         </ThemeProvider>
+        </Providers>
       </body>
     </html>
   )

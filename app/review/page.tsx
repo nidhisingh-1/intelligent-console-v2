@@ -11,7 +11,10 @@ import { useToast } from "@/hooks/use-toast"
 import { useEnterprise } from "@/lib/enterprise-context"
 import { getCurrentUserId } from "@/lib/auth-utils"
 import { ReviewFilters } from "@/components/review/review-filters"
-import { ReviewFilterState, ReviewFilterUpdate, DEFAULT_REVIEW_FILTERS } from "@/lib/types"
+import { ReviewFilterUpdate } from "@/lib/types"
+import { useAppDispatch, useAppSelector } from "@/store"
+import { updateReviewFilters } from "@/store/slices/filtersSlice"
+import { selectReviewFilters } from "@/store/selectors/filtersSelectors"
 
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -26,6 +29,8 @@ export default function ReviewPage() {
     selectedEnterprise,
     selectedTeam
   } = useEnterprise()
+  const dispatch = useAppDispatch()
+  const filters = useAppSelector(selectReviewFilters)
   
   const [selectedCall, setSelectedCall] = React.useState<any>(null)
   const [detailedCall, setDetailedCall] = React.useState<any>(null)
@@ -71,8 +76,6 @@ export default function ReviewPage() {
   const [isLoadingIssues, setIsLoadingIssues] = useState(false)
   const [issuesError, setIssuesError] = useState<string | null>(null)
   
-  // Unified filter state
-  const [filters, setFilters] = useState<ReviewFilterState>(DEFAULT_REVIEW_FILTERS)
   const [uniqueAgentNames, setUniqueAgentNames] = useState<string[]>([])
   const [agentNamesFetched, setAgentNamesFetched] = useState(false)
   
@@ -80,12 +83,12 @@ export default function ReviewPage() {
   const [showIssuesPanel, setShowIssuesPanel] = useState(false)
   
   // Filter update function
-  const updateFilters = useCallback((updates: ReviewFilterUpdate) => {
-    setFilters(prev => ({ ...prev, ...updates }))
+  const handleFiltersChange = useCallback((updates: ReviewFilterUpdate) => {
+    dispatch(updateReviewFilters(updates))
     setSelectedCall(null)
     setDetailedCall(null)
     setMarkIssueData(null)
-  }, [])
+  }, [dispatch])
   
   // Reset agent names when enterprise/team changes
   useEffect(() => {
@@ -99,7 +102,7 @@ export default function ReviewPage() {
       setUniqueAgentNames(names)
       setAgentNamesFetched(true)
     }
-  }, [selectedEnterprise?.id, selectedEnterprise?.enterpriseId, selectedTeam?.team_id, filters])
+  }, [agentNamesFetched])
   
   // Stats state - now comes from API
   const [callStats, setCallStats] = useState<TransformedQCStats>({
@@ -1153,9 +1156,8 @@ export default function ReviewPage() {
         {/* Top Horizontal Filters Bar */}
         <div className="flex-shrink-0">
           <ReviewFilters
-            filters={filters}
             uniqueAgentNames={uniqueAgentNames}
-            onFiltersChange={updateFilters}
+            onFiltersChange={handleFiltersChange}
           />
         </div>
         
@@ -1173,13 +1175,12 @@ export default function ReviewPage() {
             
             {/* Call List - Independent scrolling */}
             <div className="flex-1 min-h-0 overflow-y-scroll scrollbar-hidden">
-                          <CallsTable 
-              ref={callsTableRef} 
-              onCallSelect={setSelectedCall} 
-              selectedCallId={selectedCall?.id || null}
-              filters={filters}
-              onAgentNamesChange={handleAgentNamesChange}
-            />
+              <CallsTable 
+                ref={callsTableRef} 
+                onCallSelect={setSelectedCall} 
+                selectedCallId={selectedCall?.id || null}
+                onAgentNamesChange={handleAgentNamesChange}
+              />
             </div>
           </div>
 
