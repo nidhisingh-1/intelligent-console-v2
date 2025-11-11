@@ -75,6 +75,9 @@ function IssuesManagement() {
   const observerRef = useRef<IntersectionObserver | null>(null)
   const lastElementRef = useRef<HTMLTableRowElement | null>(null)
   
+  // Add a new state to store the selected enterprise name
+  const [selectedEnterpriseName, setSelectedEnterpriseName] = useState<string>("All Enterprises")
+  
   // Extract URL parameters for enterprise and team if provided
   const urlEnterpriseId = searchParams.get('enterprise_id')
   const urlTeamId = searchParams.get('team_id')
@@ -567,6 +570,18 @@ function IssuesManagement() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
+        {/* Search bar moved to first position */}
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
+          <Input 
+            placeholder="Search issues..." 
+            className="pl-10 bg-white/90 backdrop-blur-sm border-border/50 hover:bg-white/95 transition-all"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        {/* Filters in flexible layout */}
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className={`w-auto min-w-[160px] bg-white/90 backdrop-blur-sm border-border/50 hover:bg-white/95 transition-all ${selectedCategory !== "all" ? "ring-2 ring-primary/20 border-primary" : ""}`}>
             <SelectValue placeholder="Category">
@@ -690,7 +705,7 @@ function IssuesManagement() {
               // Clear search when dropdown opens to show full list
               setLocalEnterpriseSearchTerm("")
               setIsSearchingEnterprises(false)
-              // Reload all enterprises when opening
+              // Always reload all enterprises when opening
               clearSearchAndReload()
             } else {
               // Clear local search when dropdown closes
@@ -707,13 +722,8 @@ function IssuesManagement() {
               className={`w-auto min-w-[160px] justify-between bg-white/90 backdrop-blur-sm border-border/50 hover:bg-white/95 transition-all ${selectedEnterpriseId !== "all" ? "ring-2 ring-primary/20 border-primary" : ""}`}
               disabled={isLoadingEnterprises}
             >
-              {selectedEnterpriseId !== "all" ? (
-                <span className="truncate">
-                  {enterprises.find(e => (e.enterpriseId || e.id) === selectedEnterpriseId)?.name || selectedEnterpriseId}
-                </span>
-              ) : (
-                <span className="text-muted-foreground">All Enterprises</span>
-              )}
+              {/* Use the stored name instead of looking it up */}
+              <span className="truncate">{selectedEnterpriseName}</span>
               <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -734,10 +744,11 @@ function IssuesManagement() {
                       value="all"
                       onSelect={() => {
                         setSelectedEnterpriseId("all")
+                        setSelectedEnterpriseName("All Enterprises")
                         setIsEnterpriseDropdownOpen(false)
                         setLocalEnterpriseSearchTerm("")
                         setIsSearchingEnterprises(false)
-                        searchEnterprises("")
+                        // Removed: searchEnterprises("") - unnecessary since we reload on open
                       }}
                     >
                       <div className="flex items-center gap-2 w-full min-w-0">
@@ -751,10 +762,11 @@ function IssuesManagement() {
                         value={enterprise.name}
                         onSelect={() => {
                           setSelectedEnterpriseId(enterprise.enterpriseId || enterprise.id || "")
+                          setSelectedEnterpriseName(enterprise.name) // Store the name
                           setIsEnterpriseDropdownOpen(false)
                           setLocalEnterpriseSearchTerm("")
                           setIsSearchingEnterprises(false)
-                          searchEnterprises("")
+                          // Removed: searchEnterprises("") - unnecessary since we reload on open
                         }}
                       >
                         <div className="flex items-center gap-2 w-full min-w-0">
@@ -779,53 +791,45 @@ function IssuesManagement() {
             Clear Filters
           </Button>
         )}
-
-        <div className="relative w-64 ml-auto">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
-          <Input 
-            placeholder="Search issues..." 
-            className="pl-10 bg-white/90 backdrop-blur-sm border-border/50 hover:bg-white/95 transition-all"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
       </div>
 
       {/* Issues Table */}
       <Card className="bg-card/80 backdrop-blur-sm border border-border/50">
-        <CardContent>
+        <CardContent className="p-0">
           {filteredIssues.length === 0 ? (
-            <EmptyState
-              icon={<FileX className="h-8 w-8 text-muted-foreground" />}
-              heading="No issues found"
-              subheading={
-                debouncedSearchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all" || selectedAgentType !== "all" || selectedAgentCallType !== "all" || selectedEnterpriseId !== "all"
-                  ? "No issues match your current search criteria or filters. Try adjusting your filters or search term to see more results."
-                  : "No issues are currently available in the system."
-              }
-              ctaLabel={
-                debouncedSearchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all" || selectedAgentType !== "all" || selectedAgentCallType !== "all" || selectedEnterpriseId !== "all"
-                  ? "Clear Filters"
-                  : undefined
-              }
-              onCtaClick={
-                debouncedSearchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all" || selectedAgentType !== "all" || selectedAgentCallType !== "all" || selectedEnterpriseId !== "all"
-                  ? clearFilters
-                  : undefined
-              }
-            />
+            <div className="p-6">
+              <EmptyState
+                icon={<FileX className="h-8 w-8 text-muted-foreground" />}
+                heading="No issues found"
+                subheading={
+                  debouncedSearchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all" || selectedAgentType !== "all" || selectedAgentCallType !== "all" || selectedEnterpriseId !== "all"
+                    ? "No issues match your current search criteria or filters. Try adjusting your filters or search term to see more results."
+                    : "No issues are currently available in the system."
+                }
+                ctaLabel={
+                  debouncedSearchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all" || selectedAgentType !== "all" || selectedAgentCallType !== "all" || selectedEnterpriseId !== "all"
+                    ? "Clear Filters"
+                    : undefined
+                }
+                onCtaClick={
+                  debouncedSearchTerm || selectedCategory !== "all" || selectedStatus !== "all" || selectedDateRange !== "all" || customDateFrom !== undefined || customDateTo !== undefined || selectedSeverity !== "all" || selectedAgentType !== "all" || selectedAgentCallType !== "all" || selectedEnterpriseId !== "all"
+                    ? clearFilters
+                    : undefined
+                }
+              />
+            </div>
           ) : (
-            <div className="w-full overflow-x-auto">
+            <div className="w-full overflow-x-auto overflow-y-visible">
               <Table className="min-w-full">
                 <TableHeader>
                   <TableRow className="bg-secondary/60 backdrop-blur-sm">
                     <SortableHeader field="title" className="min-w-[300px]">Issue Name</SortableHeader>
+                    <SortableHeader field="status" className="min-w-[180px]">Status</SortableHeader>
                     <SortableHeader field="occurrence" className="min-w-[100px]">Occurrence</SortableHeader>
                     <SortableHeader field="severity" className="min-w-[200px]">Severity</SortableHeader>
                     <SortableHeader field="firstMarkDate" className="min-w-[140px]">First Raised Date</SortableHeader>
                     <SortableHeader field="lastMarkDate" className="min-w-[140px]">Last Raised Date</SortableHeader>
                     <SortableHeader field="lastResolvedAt" className="min-w-[140px]">Last Resolved At</SortableHeader>
-                    <SortableHeader field="status" className="min-w-[180px]">Status</SortableHeader>
                     <SortableHeader field="afterResolve" className="min-w-[120px]">After Resolve</SortableHeader>
                   </TableRow>
                 </TableHeader>
@@ -847,37 +851,15 @@ function IssuesManagement() {
                         onClick={() => handleIssueClick(issue._id, issue.title, issue.code)}
                         title="Click to view calls with this issue"
                       >
+                        {/* 1. Issue Name */}
                         <TableCell className="py-3 px-4">
                           <div className="max-w-[300px]">
                             <div className="font-medium text-foreground line-clamp-2 leading-tight">{issue.title}</div>
                             <div className="text-sm mt-1" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>{category}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center py-3 px-4">
-                          <Badge variant="outline" className="text-sm font-medium">
-                            {issue.occurrence.total}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-3 px-4">
-                          <div className="flex flex-wrap gap-1">
-                            {getSeverityBadges(issue.severityOccurrence)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center py-3 px-4">
-                          <span className="text-sm">
-                            {issue.firstMarkDate ? new Date(issue.firstMarkDate).toLocaleDateString() : '-'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center py-3 px-4">
-                          <span className="text-sm">
-                            {issue.lastMarkDate ? new Date(issue.lastMarkDate).toLocaleDateString() : '-'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center py-3 px-4">
-                          <span className="text-sm">
-                            {issue.lastResolvedAt ? new Date(issue.lastResolvedAt).toLocaleDateString() : '-'}
-                          </span>
-                        </TableCell>
+                        
+                        {/* 2. Status - MOVED TO 2ND POSITION */}
                         <TableCell className="text-center py-3 px-4">
                           <Select 
                             value={issue.status} 
@@ -904,6 +886,43 @@ function IssuesManagement() {
                             </SelectContent>
                           </Select>
                         </TableCell>
+                        
+                        {/* 3. Occurrence */}
+                        <TableCell className="text-center py-3 px-4">
+                          <Badge variant="outline" className="text-sm font-medium">
+                            {issue.occurrence.total}
+                          </Badge>
+                        </TableCell>
+                        
+                        {/* 4. Severity */}
+                        <TableCell className="py-3 px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {getSeverityBadges(issue.severityOccurrence)}
+                          </div>
+                        </TableCell>
+                        
+                        {/* 5. First Raised Date */}
+                        <TableCell className="text-center py-3 px-4">
+                          <span className="text-sm">
+                            {issue.firstMarkDate ? new Date(issue.firstMarkDate).toLocaleDateString() : '-'}
+                          </span>
+                        </TableCell>
+                        
+                        {/* 6. Last Raised Date */}
+                        <TableCell className="text-center py-3 px-4">
+                          <span className="text-sm">
+                            {issue.lastMarkDate ? new Date(issue.lastMarkDate).toLocaleDateString() : '-'}
+                          </span>
+                        </TableCell>
+                        
+                        {/* 7. Last Resolved At */}
+                        <TableCell className="text-center py-3 px-4">
+                          <span className="text-sm">
+                            {issue.lastResolvedAt ? new Date(issue.lastResolvedAt).toLocaleDateString() : '-'}
+                          </span>
+                        </TableCell>
+                        
+                        {/* 8. After Resolve */}
                         <TableCell className="text-center py-3 px-4">
                           <span className="text-sm font-medium">
                             {issue.occurrence.afterLastResolved > 0 ? (
