@@ -208,7 +208,15 @@ export default function IssueCallsPage() {
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={() => router.back()}
+                    onClick={() => {
+                      // Navigate back to dashboard with preserved filters from URL
+                      const currentParams = new URLSearchParams(searchParams.toString())
+                      // Remove issue-specific params but keep filter params
+                      currentParams.delete("title")
+                      currentParams.delete("code")
+                      const filterParams = currentParams.toString()
+                      router.push(`/dashboard${filterParams ? `?${filterParams}` : ""}`)
+                    }}
                     className="text-muted-foreground hover:text-foreground p-2 h-8 w-8"
                   >
                     <ArrowLeft className="h-4 w-4" />
