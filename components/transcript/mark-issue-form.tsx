@@ -403,25 +403,58 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
     
     // Auto-scroll to summary bar (Short note section) after selecting an issue
     // Scroll so the whole section is visible, accounting for sticky footer buttons
+    // IMPORTANT: Only scroll within the mark issue panel, not the whole page
     setTimeout(() => {
       const summaryBar = document.getElementById('summary-bar')
-      if (summaryBar) {
-        // Scroll into view with 'start' alignment to show from the top of the section
-        // This ensures the whole section is visible above the sticky footer
-        summaryBar.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      if (!summaryBar) return
+      
+      // Find the form element to establish the boundary
+      const formElement = summaryBar.closest('form')
+      if (!formElement) return
+      
+      // Traverse up from the summary bar to find the scrollable container
+      // Stop at the mark issue panel container (the one with overflow-y-scroll and h-full)
+      let scrollableContainer: HTMLElement | null = null
+      let parent = summaryBar.parentElement
+      
+      while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent)
+        const classes = parent.className || ''
         
-        // Additional scroll adjustment to account for sticky footer height (~80px)
-        // Scroll a bit more to ensure the section is fully visible
-        setTimeout(() => {
-          const scrollableParent = summaryBar.closest('[style*="overflow"], .overflow-y-scroll, .overflow-y-auto') as HTMLElement
-          if (scrollableParent) {
-            const currentScroll = scrollableParent.scrollTop
-            scrollableParent.scrollTo({
-              top: currentScroll - 20, // Extra padding to ensure full visibility
-              behavior: 'smooth'
-            })
-          }
-        }, 100)
+        // Look for the mark issue panel container - it has overflow-y-scroll and h-full or h-screen
+        // This is the container we want to scroll, not the page-level container
+        if ((style.overflowY === 'scroll' || style.overflowY === 'auto') &&
+            (classes.includes('h-full') || classes.includes('h-screen') || 
+             parent.classList.contains('h-full') || parent.classList.contains('h-screen'))) {
+          scrollableContainer = parent as HTMLElement
+          break
+        }
+        
+        // Stop if we've gone beyond the form's context (safety check)
+        if (!formElement.contains(parent)) {
+          break
+        }
+        
+        parent = parent.parentElement
+      }
+      
+      if (scrollableContainer) {
+        // Calculate scroll position to show the summary bar at the top with padding
+        const containerRect = scrollableContainer.getBoundingClientRect()
+        const elementRect = summaryBar.getBoundingClientRect()
+        const scrollTop = scrollableContainer.scrollTop
+        const relativeTop = elementRect.top - containerRect.top
+        const targetScroll = scrollTop + relativeTop - 20 // 20px padding from top
+        
+        scrollableContainer.scrollTo({
+          top: Math.max(0, targetScroll),
+          behavior: 'smooth'
+        })
+      } else {
+        // Fallback: use scrollIntoView but only if element is within form context
+        if (formElement.contains(summaryBar)) {
+          summaryBar.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
       }
     }, 200)
   }, [selectedIssues.length, toast])

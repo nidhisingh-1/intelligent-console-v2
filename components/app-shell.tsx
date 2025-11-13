@@ -42,7 +42,7 @@ export function AppShell({ children, statsChips }: AppShellProps) {
   
 
   const MobileNavigation = () => (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white sticky top-0">
       {/* Mobile Header */}
       <div className="flex items-center justify-between p-6 border-b border-border">
         <div className="flex items-center gap-3">
