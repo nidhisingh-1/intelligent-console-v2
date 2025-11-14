@@ -56,6 +56,7 @@ function IssuesManagement() {
   const [searchTerm, setSearchTerm] = useState(DEFAULT_FILTERS.searchTerm)
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [filtersReady, setFiltersReady] = useState(false)
   
   // Enterprise search states
   const [isEnterpriseDropdownOpen, setIsEnterpriseDropdownOpen] = useState(false)
@@ -269,6 +270,25 @@ function IssuesManagement() {
     }
   }, [hasNextPage, isLoadingMore, loadMoreIssues])
 
+  // Update enterprise name whenever selection or data changes
+  useEffect(() => {
+    if (selectedEnterpriseId === "all" || !selectedEnterpriseId) {
+      setSelectedEnterpriseName("All Enterprises")
+      return
+    }
+
+    const matchingEnterprise = enterprises.find(
+      (enterprise) => (enterprise.enterpriseId || enterprise.id) === selectedEnterpriseId
+    )
+
+    if (matchingEnterprise) {
+      setSelectedEnterpriseName(matchingEnterprise.name)
+    } else {
+      // fallback to showing the raw ID until list loads
+      setSelectedEnterpriseName(selectedEnterpriseId)
+    }
+  }, [selectedEnterpriseId, enterprises])
+
   // Track if we're syncing from URL to prevent loops
   const isSyncingFromUrlRef = useRef(false)
 
@@ -313,6 +333,7 @@ function IssuesManagement() {
     setTimeout(() => {
       isSyncingFromUrlRef.current = false
     }, 100)
+    setFiltersReady(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.toString()]) // Sync when URL params change (using toString() to detect changes)
 
@@ -348,8 +369,9 @@ function IssuesManagement() {
 
   // Initial load and filter changes
   useEffect(() => {
+    if (!filtersReady) return
     loadIssues(1, true)
-  }, [loadIssues])
+  }, [loadIssues, filtersReady])
 
   // Setup observer when issues change
   useEffect(() => {

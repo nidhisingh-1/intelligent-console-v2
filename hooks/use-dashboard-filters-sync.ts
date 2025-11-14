@@ -82,7 +82,8 @@ export function useDashboardFiltersSync() {
   // Update URL with current filters
   const updateUrlWithFilters = useCallback(
     (filters: Partial<DashboardFilterState>) => {
-      const params = new URLSearchParams(searchParams.toString())
+      const currentParamsString = searchParams.toString()
+      const params = new URLSearchParams(currentParamsString)
 
       // Update category
       if (filters.selectedCategory && filters.selectedCategory !== "all") {
@@ -153,8 +154,15 @@ export function useDashboardFiltersSync() {
         params.delete("search")
       }
 
+      const newParamsString = params.toString()
+
+      // Skip if nothing changed to avoid unnecessary router.replace
+      if (newParamsString === currentParamsString) {
+        return
+      }
+
       // Update URL without scrolling
-      const newUrl = `${pathname}?${params.toString()}`
+      const newUrl = newParamsString ? `${pathname}?${newParamsString}` : pathname
       router.replace(newUrl, { scroll: false })
     },
     [searchParams, router, pathname]
