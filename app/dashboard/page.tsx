@@ -21,6 +21,7 @@ import { getEnumCategoryLabel } from "@/lib/enum-api"
 import { useEnterprise } from "@/lib/enterprise-context"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { useDashboardFiltersSync } from "@/hooks/use-dashboard-filters-sync"
 
 
 
@@ -39,19 +40,23 @@ function IssuesManagement() {
     clearSearchAndReload 
   } = useEnterprise()
   
-  // Filter states
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [selectedStatus, setSelectedStatus] = useState("all")
-  const [selectedDateRange, setSelectedDateRange] = useState("all")
-  const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>(undefined)
-  const [customDateTo, setCustomDateTo] = useState<Date | undefined>(undefined)
-  const [selectedSeverity, setSelectedSeverity] = useState("all")
-  const [selectedAgentType, setSelectedAgentType] = useState("all")
-  const [selectedAgentCallType, setSelectedAgentCallType] = useState("all")
-  const [selectedEnterpriseId, setSelectedEnterpriseId] = useState("all")
-  const [searchTerm, setSearchTerm] = useState("")
+  // URL sync hook for filters
+  const { parseFiltersFromUrl, updateUrlWithFilters, DEFAULT_FILTERS } = useDashboardFiltersSync()
+  
+  // Filter states - initialize with defaults, will sync from URL on mount
+  const [selectedCategory, setSelectedCategory] = useState(DEFAULT_FILTERS.selectedCategory)
+  const [selectedStatus, setSelectedStatus] = useState(DEFAULT_FILTERS.selectedStatus)
+  const [selectedDateRange, setSelectedDateRange] = useState(DEFAULT_FILTERS.selectedDateRange)
+  const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>(DEFAULT_FILTERS.customDateFrom)
+  const [customDateTo, setCustomDateTo] = useState<Date | undefined>(DEFAULT_FILTERS.customDateTo)
+  const [selectedSeverity, setSelectedSeverity] = useState(DEFAULT_FILTERS.selectedSeverity)
+  const [selectedAgentType, setSelectedAgentType] = useState(DEFAULT_FILTERS.selectedAgentType)
+  const [selectedAgentCallType, setSelectedAgentCallType] = useState(DEFAULT_FILTERS.selectedAgentCallType)
+  const [selectedEnterpriseId, setSelectedEnterpriseId] = useState(DEFAULT_FILTERS.selectedEnterpriseId)
+  const [searchTerm, setSearchTerm] = useState(DEFAULT_FILTERS.searchTerm)
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [filtersReady, setFiltersReady] = useState(false)
   
   // Enterprise search states
   const [isEnterpriseDropdownOpen, setIsEnterpriseDropdownOpen] = useState(false)
@@ -265,10 +270,108 @@ function IssuesManagement() {
     }
   }, [hasNextPage, isLoadingMore, loadMoreIssues])
 
+  // Update enterprise name whenever selection or data changes
+  useEffect(() => {
+    if (selectedEnterpriseId === "all" || !selectedEnterpriseId) {
+      setSelectedEnterpriseName("All Enterprises")
+      return
+    }
+
+    const matchingEnterprise = enterprises.find(
+      (enterprise) => (enterprise.enterpriseId || enterprise.id) === selectedEnterpriseId
+    )
+
+    if (matchingEnterprise) {
+      setSelectedEnterpriseName(matchingEnterprise.name)
+    } else {
+      // fallback to showing the raw ID until list loads
+      setSelectedEnterpriseName(selectedEnterpriseId)
+    }
+  }, [selectedEnterpriseId, enterprises])
+
+  // Track if we're syncing from URL to prevent loops
+  const isSyncingFromUrlRef = useRef(false)
+
+  // Load filters from URL when searchParams change (e.g., when navigating back)
+  useEffect(() => {
+    isSyncingFromUrlRef.current = true
+    const urlFilters = parseFiltersFromUrl()
+    
+    // Update all filters from URL (only if they exist in URL)
+    if (urlFilters.selectedCategory !== undefined) {
+      setSelectedCategory(urlFilters.selectedCategory)
+    }
+    if (urlFilters.selectedStatus !== undefined) {
+      setSelectedStatus(urlFilters.selectedStatus)
+    }
+    if (urlFilters.selectedDateRange !== undefined) {
+      setSelectedDateRange(urlFilters.selectedDateRange)
+    }
+    if (urlFilters.customDateFrom !== undefined) {
+      setCustomDateFrom(urlFilters.customDateFrom)
+    }
+    if (urlFilters.customDateTo !== undefined) {
+      setCustomDateTo(urlFilters.customDateTo)
+    }
+    if (urlFilters.selectedSeverity !== undefined) {
+      setSelectedSeverity(urlFilters.selectedSeverity)
+    }
+    if (urlFilters.selectedAgentType !== undefined) {
+      setSelectedAgentType(urlFilters.selectedAgentType)
+    }
+    if (urlFilters.selectedAgentCallType !== undefined) {
+      setSelectedAgentCallType(urlFilters.selectedAgentCallType)
+    }
+    if (urlFilters.selectedEnterpriseId !== undefined) {
+      setSelectedEnterpriseId(urlFilters.selectedEnterpriseId)
+    }
+    if (urlFilters.searchTerm !== undefined) {
+      setSearchTerm(urlFilters.searchTerm)
+    }
+    
+    // Reset flag after a short delay
+    setTimeout(() => {
+      isSyncingFromUrlRef.current = false
+    }, 100)
+    setFiltersReady(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.toString()]) // Sync when URL params change (using toString() to detect changes)
+
+  // Sync filters to URL whenever they change (but skip if we're syncing from URL)
+  useEffect(() => {
+    if (!isSyncingFromUrlRef.current) {
+      updateUrlWithFilters({
+        selectedCategory,
+        selectedStatus,
+        selectedDateRange,
+        customDateFrom,
+        customDateTo,
+        selectedSeverity,
+        selectedAgentType,
+        selectedAgentCallType,
+        selectedEnterpriseId,
+        searchTerm,
+      })
+    }
+  }, [
+    selectedCategory,
+    selectedStatus,
+    selectedDateRange,
+    customDateFrom,
+    customDateTo,
+    selectedSeverity,
+    selectedAgentType,
+    selectedAgentCallType,
+    selectedEnterpriseId,
+    searchTerm,
+    updateUrlWithFilters,
+  ])
+
   // Initial load and filter changes
   useEffect(() => {
+    if (!filtersReady) return
     loadIssues(1, true)
-  }, [loadIssues])
+  }, [loadIssues, filtersReady])
 
   // Setup observer when issues change
   useEffect(() => {
@@ -443,10 +546,10 @@ function IssuesManagement() {
   )
 
   const handleIssueClick = (issueId: string, issueTitle: string, issueCode: string) => {
-    const params = new URLSearchParams({
-      title: issueTitle,
-      code: issueCode
-    })
+    // Preserve current filters in URL when navigating to issue page
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("title", issueTitle)
+    params.set("code", issueCode)
     router.push(`/dashboard/issues/${issueId}?${params.toString()}`)
   }
 

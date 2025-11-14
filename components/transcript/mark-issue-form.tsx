@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Search, X, Filter, ArrowRight, ArrowLeft, Clock, Loader2, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { enumApiService, getAllEnumCategories, getEnumCategoryLabel, getSeverityColor } from "@/lib/enum-api"
+import { EnumsService } from "@/services"
+import { getAllEnumCategories, getEnumCategoryLabel, getSeverityColor } from "@/lib/enum-api"
 
 import { useToast } from "@/hooks/use-toast"
 
@@ -129,7 +130,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
 
     setIsCreatingNewIssue(true)
     try {
-      const newIssue = await enumApiService.createIssueMaster({
+      const newIssue = await EnumsService.createIssueMaster({
         title: newIssueForm.title.trim(),
         description: newIssueForm.description.trim(),
         code: newIssueForm.category as any,
@@ -194,7 +195,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
       }
       setError(null)
       
-      const response = await enumApiService.getIssueMasters({ isActive: true, limit: 100, page })
+      const response = await EnumsService.getIssueMasters({ isActive: true, limit: 100, page })
       
       // Transform API data to IssueType format and filter out inactive issues
       const transformedIssues: IssueType[] = response.data
@@ -217,10 +218,10 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
       
       // Update pagination state
       const pagination = response.pagination
-      setHasMoreIssues(pagination ? pagination.currentPage < pagination.totalPages : false)
+      setHasMoreIssues(pagination ? pagination.page < pagination.totalPages : false)
       setCurrentPage(page)
-      if (pagination?.totalCount) {
-        setTotalIssuesCount(pagination.totalCount)
+      if (pagination?.total) {
+        setTotalIssuesCount(pagination.total)
       }
     } catch (error) {
       console.error('Error loading enums:', error)
@@ -400,24 +401,65 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
     }
     setSelectedIssues([newSelectedIssue]) // Replace array instead of adding to it
     
-    // Auto-scroll to severity selection after a short delay
+    // Auto-scroll to summary bar (Short note section) after selecting an issue
+    // Scroll so the whole section is visible, accounting for sticky footer buttons
+    // IMPORTANT: Only scroll within the mark issue panel, not the whole page
+    // COMMENTED OUT - Auto-scroll disabled
+    /*
     setTimeout(() => {
-      const selectedSection = document.querySelector('[data-selected-issues-form]')
-      const markIssueContainer = document.querySelector('.flex-1.overflow-y-auto.min-h-0')
+      const summaryBar = document.getElementById('summary-bar')
+      if (!summaryBar) return
       
-      if (selectedSection && markIssueContainer) {
-        // Calculate position relative to the container
-        const containerRect = markIssueContainer.getBoundingClientRect()
-        const sectionRect = selectedSection.getBoundingClientRect()
-        const relativeTop = sectionRect.top - containerRect.top
+      // Find the form element to establish the boundary
+      const formElement = summaryBar.closest('form')
+      if (!formElement) return
+      
+      // Traverse up from the summary bar to find the scrollable container
+      // Stop at the mark issue panel container (the one with overflow-y-scroll and h-full)
+      let scrollableContainer: HTMLElement | null = null
+      let parent = summaryBar.parentElement
+      
+      while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent)
+        const classes = parent.className || ''
         
-        // Scroll within the container only
-        markIssueContainer.scrollTo({
-          top: markIssueContainer.scrollTop + relativeTop - 20,
+        // Look for the mark issue panel container - it has overflow-y-scroll and h-full or h-screen
+        // This is the container we want to scroll, not the page-level container
+        if ((style.overflowY === 'scroll' || style.overflowY === 'auto') &&
+            (classes.includes('h-full') || classes.includes('h-screen') || 
+             parent.classList.contains('h-full') || parent.classList.contains('h-screen'))) {
+          scrollableContainer = parent as HTMLElement
+          break
+        }
+        
+        // Stop if we've gone beyond the form's context (safety check)
+        if (!formElement.contains(parent)) {
+          break
+        }
+        
+        parent = parent.parentElement
+      }
+      
+      if (scrollableContainer) {
+        // Calculate scroll position to show the summary bar at the top with padding
+        const containerRect = scrollableContainer.getBoundingClientRect()
+        const elementRect = summaryBar.getBoundingClientRect()
+        const scrollTop = scrollableContainer.scrollTop
+        const relativeTop = elementRect.top - containerRect.top
+        const targetScroll = scrollTop + relativeTop - 20 // 20px padding from top
+        
+        scrollableContainer.scrollTo({
+          top: Math.max(0, targetScroll),
           behavior: 'smooth'
         })
+      } else {
+        // Fallback: use scrollIntoView but only if element is within form context
+        if (formElement.contains(summaryBar)) {
+          summaryBar.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
       }
-    }, 100)
+    }, 200)
+    */
   }, [selectedIssues.length, toast])
 
   const removeIssue = React.useCallback((issueId: string) => {
@@ -455,7 +497,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
         isActive: true
       }
       
-      const createdIssue = await enumApiService.createIssueMaster(createRequest)
+      const createdIssue = await EnumsService.createIssueMaster(createRequest)
       
       // Add the created issue to selected issues
       const newSelectedIssue: SelectedIssue = {
@@ -475,7 +517,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
       setShowCustomIssueForm(false)
       
       // Reload the issue types to include the new issue
-      const response = await enumApiService.getIssueMasters({ isActive: true, limit: 100 })
+      const response = await EnumsService.getIssueMasters({ isActive: true, limit: 100 })
       const transformedIssues: IssueType[] = response.data
         .filter(issue => issue.isActive === true)
         .map(issue => ({
@@ -549,7 +591,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
   }))
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 overflow-y-scroll">
       {/* Transcript Context */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">Transcript Context</Label>
@@ -1064,7 +1106,7 @@ export const MarkIssueForm = React.forwardRef<MarkIssueFormRef, MarkIssueFormPro
 
 
       {/* Short Note */}
-      <div className="space-y-2">
+      <div id="summary-bar" className="space-y-2">
         <Label className="text-sm font-medium">Short note (optional)</Label>
         <Textarea
           placeholder="Add a brief note to describe the issue context (max 200 chars)"
