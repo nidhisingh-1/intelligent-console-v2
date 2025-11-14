@@ -1,6 +1,6 @@
 # 🎯 Unique Automotive Call Center QA Category Buckets
 
-This document outlines the **8 unique, industry-specific category buckets** designed specifically for automotive dealership call center quality assurance.
+This document outlines the **8 unique, industry-specific category buckets** designed specifically for automotive dealership call center quality assurance
 
 ## 🏗️ **Category Architecture**
 
