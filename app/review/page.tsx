@@ -89,6 +89,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Phone, CheckCircle, Clock, Copy, Loader2, Trash2 } from "lucide-react"
+import { TestCallToggle } from "@/components/review/test-call-toggle"
 
 type TransformedQCStats = {
   total: number
@@ -1560,6 +1561,11 @@ export default function ReviewPage() {
                 {/* Call Content Header - Fixed */}
                 <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-card flex-shrink-0">
                   <h3 className="text-[17px] font-semibold text-foreground">Call Recording & Transcript</h3>
+                  <TestCallToggle
+                    callDetails={callDetails}
+                    selectedCallId={selectedCall?.id || null}
+                    isCallCompleted={isCallCompleted}
+                  />
                 </div>
 
                 {/* Call Content - Fixed Layout */}

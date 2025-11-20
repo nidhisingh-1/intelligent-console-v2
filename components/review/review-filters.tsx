@@ -10,6 +10,7 @@ import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, Searc
 import { format, startOfMonth, addMonths, isSameMonth, isSameDay } from "date-fns"
 import { EnterpriseTeamSelector } from "@/components/enterprise/enterprise-team-selector"
 import { ReviewFilterState, ReviewFilterUpdate } from "@/lib/types"
+import { getOutcomesByAgentType } from "@/lib/outcome-enums"
 import { useAppDispatch, useAppSelector } from "@/store"
 import { updateReviewFilters } from "@/store/slices/filtersSlice"
 import { selectReviewFilters } from "@/store/selectors/filtersSelectors"
@@ -28,7 +29,8 @@ export function ReviewFilters({
   const dispatch = useAppDispatch()
   const storeFilters = useAppSelector(selectReviewFilters)
   const activeFilters = filters ?? storeFilters
-  const { statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType, callId } = activeFilters
+  const { statusFilter, startDate, endDate, selectedAgentName, selectedAgentType, selectedCallType, callId, durationRange, outcome } = activeFilters
+  
   const handleChange = useCallback((updates: ReviewFilterUpdate) => {
     if (onFiltersChange) {
       onFiltersChange(updates)
@@ -36,6 +38,18 @@ export function ReviewFilters({
       dispatch(updateReviewFilters(updates))
     }
   }, [dispatch, onFiltersChange])
+
+  // Get available outcomes based on selected agent type
+  const availableOutcomes = useMemo(() => {
+    return getOutcomesByAgentType(selectedAgentType)
+  }, [selectedAgentType])
+
+  // Reset outcome when agent type changes if current outcome is not available
+  useEffect(() => {
+    if (outcome && outcome !== 'all' && !availableOutcomes.includes(outcome)) {
+      handleChange({ outcome: 'all' })
+    }
+  }, [selectedAgentType, availableOutcomes, outcome, handleChange])
   const [rangePopoverOpen, setRangePopoverOpen] = useState(false)
   const [tempStartDate, setTempStartDate] = useState<Date | undefined>(undefined)
 
@@ -260,7 +274,6 @@ export function ReviewFilters({
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="sales">Sales</SelectItem>
                 <SelectItem value="service">Service</SelectItem>
-                <SelectItem value="support">Support</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -322,6 +335,48 @@ export function ReviewFilters({
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Duration Range Filter */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <span className="text-sm font-medium text-foreground whitespace-nowrap">Duration:</span>
+            <Select 
+              value={durationRange || 'all'} 
+              onValueChange={(value: string) => handleChange({ durationRange: value })}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="All Durations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Durations</SelectItem>
+                <SelectItem value="0-30">0-30s</SelectItem>
+                <SelectItem value="0-60">0-60s</SelectItem>
+                <SelectItem value="60-120">60-120s</SelectItem>
+                <SelectItem value="120-240">120-240s</SelectItem>
+                <SelectItem value=">240">&gt;240s</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Outcome Filter */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <span className="text-sm font-medium text-foreground whitespace-nowrap">Outcome:</span>
+            <Select 
+              value={outcome || 'all'} 
+              onValueChange={(value: string) => handleChange({ outcome: value })}
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="All Outcomes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Outcomes</SelectItem>
+                {availableOutcomes.map((outcomeOption) => (
+                  <SelectItem key={outcomeOption} value={outcomeOption}>
+                    {outcomeOption}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
