@@ -99,6 +99,8 @@ const callsSlice = createSlice({
       state.callDetails = null
       state.callDetailsStatus = action.payload ? 'loading' : 'idle'
       state.callDetailsError = null
+      state.testCallUpdateError = null
+      state.isUpdatingTestCall = false
     },
     
     // Update a single call
@@ -145,6 +147,8 @@ const callsSlice = createSlice({
     setCallDetailsLoading: (state) => {
       state.callDetailsStatus = 'loading'
       state.callDetailsError = null
+      state.testCallUpdateError = null
+      state.isUpdatingTestCall = false
     },
 
     setCallDetails: (state, action: PayloadAction<CallData | null>) => {

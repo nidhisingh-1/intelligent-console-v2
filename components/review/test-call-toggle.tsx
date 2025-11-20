@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -35,6 +35,18 @@ export function TestCallToggle({
   const isUpdatingTestCall = useAppSelector(selectIsUpdatingTestCall)
   const testCallUpdateError = useAppSelector(selectTestCallUpdateError)
   const isUpdatingTestCallRef = useRef<boolean>(false)
+  const previousCallIdRef = useRef<string | null>(null)
+
+  // Reset error state when call changes
+  useEffect(() => {
+    if (previousCallIdRef.current !== null && previousCallIdRef.current !== selectedCallId) {
+      // Call has changed, reset error state
+      dispatch(setTestCallUpdateError(null))
+      dispatch(setIsUpdatingTestCall(false))
+      isUpdatingTestCallRef.current = false
+    }
+    previousCallIdRef.current = selectedCallId
+  }, [selectedCallId, dispatch])
 
   const handleToggleTestCall = async (isTestCall: boolean) => {
     // Prevent multiple clicks - check ref immediately (synchronous)
@@ -135,9 +147,9 @@ export function TestCallToggle({
           </TooltipProvider>
         </div>
       )}
-      {testCallUpdateError && (
+      {/* {testCallUpdateError && (
         <span className="text-xs text-destructive">{testCallUpdateError}</span>
-      )}
+      )} */}
     </div>
   )
 }
