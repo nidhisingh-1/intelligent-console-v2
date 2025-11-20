@@ -93,6 +93,16 @@ export interface MarkIssueResponse {
   message?: string
 }
 
+export interface DeleteIssueRequest {
+  callId: string
+  id: string
+}
+
+export interface DeleteIssueResponse {
+  success: boolean
+  message?: string
+}
+
 export interface AssignQCRequest {
   callId: string
   qcStatus: 'yet_to_start' | 'in_progress' | 'done'

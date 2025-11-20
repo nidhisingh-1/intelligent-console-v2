@@ -5,6 +5,8 @@ import type {
   CallIssuesResponse,
   MarkIssueRequest,
   MarkIssueResponse,
+  DeleteIssueRequest,
+  DeleteIssueResponse,
   AssignQCRequest,
   AssignQCResponse,
   QCStatsResponse,
@@ -53,6 +55,16 @@ export class CallsService {
    */
   static async markCallIssues(request: MarkIssueRequest): Promise<MarkIssueResponse> {
     return apiClient.post<MarkIssueResponse>(
+      '/conversation/converse-qc/issues',
+      request
+    )
+  }
+
+  /**
+   * Delete a specific issue from a call
+   */
+  static async deleteCallIssue(request: DeleteIssueRequest): Promise<DeleteIssueResponse> {
+    return apiClient.delete<DeleteIssueResponse>(
       '/conversation/converse-qc/issues',
       request
     )

@@ -88,7 +88,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Phone, CheckCircle, Clock, Copy, Loader2 } from "lucide-react"
+import { Phone, CheckCircle, Clock, Copy, Loader2, Trash2 } from "lucide-react"
 
 type TransformedQCStats = {
   total: number
@@ -152,6 +152,7 @@ export default function ReviewPage() {
   const qcStatsStatus = useAppSelector(selectQCStatsStatus)
   const resolvedIssueGroups = issueGroupsCallId && selectedCall?.id === issueGroupsCallId ? issueGroups : []
   const isQcStatsLoading = qcStatsStatus === 'loading'
+  const isCallCompleted = selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed'
 
   const transcriptContainerRef = React.useRef<HTMLDivElement>(null)
   const audioPlayerRef = useRef<AudioPlayerRef>(null)
@@ -168,6 +169,7 @@ export default function ReviewPage() {
   const [lastUserScrollTime, setLastUserScrollTime] = useState(0)
   const [autoScrollPaused, setAutoScrollPaused] = useState(false)
   const [lastAutoScrollTime, setLastAutoScrollTime] = useState(0)
+  const [deletingIssues, setDeletingIssues] = useState<Record<string, boolean>>({})
   
   // Filter update function
   const handleFiltersChange = useCallback((updates: ReviewFilterUpdate) => {
@@ -874,6 +876,42 @@ export default function ReviewPage() {
       dispatch(setIssuesLoadingAction(false))
     }
   }, [dispatch])
+
+  const handleDeleteIssue = useCallback(async (issueId: string, issueTitle?: string) => {
+    if (!selectedCall?.id || !issueId) return
+
+    const confirmed = confirm(`Delete "${issueTitle || 'this issue'}"?`)
+    if (!confirmed) return
+
+    setDeletingIssues((prev) => ({ ...prev, [issueId]: true }))
+
+    try {
+      await CallsService.deleteCallIssue({
+        callId: selectedCall.id,
+        id: issueId,
+      })
+
+      toast({
+        title: "Issue Deleted",
+        description: issueTitle ? `"${issueTitle}" was deleted.` : "Issue deleted successfully.",
+      })
+
+      await loadCallIssues(selectedCall.id)
+    } catch (error) {
+      console.error('Error deleting issue:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete issue.",
+        variant: "destructive",
+      })
+    } finally {
+      setDeletingIssues((prev) => {
+        const updated = { ...prev }
+        delete updated[issueId]
+        return updated
+      })
+    }
+  }, [selectedCall?.id, toast, loadCallIssues])
 
   // Function to fetch QC stats from API
   const loadCallStats = useCallback(async () => {
@@ -1726,7 +1764,7 @@ export default function ReviewPage() {
                                           
                                           return (
                                             <div className="flex items-center gap-1">
-                                              {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') ? (
+                                              {isCallCompleted ? (
                                                 // Enhanced view for completed calls
                                                 <div className="flex flex-col items-end gap-1">
                                                 <Badge 
@@ -1773,7 +1811,7 @@ export default function ReviewPage() {
                                               className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:bg-destructive/80 transition-colors"
                                               onClick={(e) => {
                                                 e.stopPropagation()
-                                                if (!(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed')) {
+                                                if (!isCallCompleted) {
                                                   handleMarkIssue(message.message, message.secondsFromStart || 0, index)
                                                 }
                                                 setTimeout(() => dispatch(setActiveTab('previous-issues')), 100)
@@ -1810,7 +1848,7 @@ export default function ReviewPage() {
                                                   : 'opacity-0 group-hover:opacity-100 bg-secondary hover:bg-muted text-secondary-foreground'
                                               }`}
                                             >
-                                              {hasIssues ? 'Mark more issues' : 'Mark issue'}
+                                              {isCallCompleted ? "View marked issues" : hasIssues ? 'Mark more issues' : 'Mark issue'}
                                             </button>
                                           </div>
                                         )
@@ -2071,8 +2109,8 @@ export default function ReviewPage() {
           </div>
         )}
 
-        {/* Mark Issue Panel - Responsive - Allow marking issues even for completed calls */}
-        {markIssueData && selectedCall && (
+        {/* Mark Issue Panel - hidden for completed/done calls */}
+        {markIssueData && selectedCall && !isCallCompleted && (
           <div className="w-full sm:w-[380px] md:w-[400px] bg-white absolute right-0 top-0 h-full overflow-y-scroll lg:w-[480px] xl:w-[520px] bg-card border-l-2 border-l-primary/20 transition-all duration-300 shadow-xl flex-shrink-0">
             <div className="flex flex-col">
               {/* Header */}
@@ -2112,7 +2150,7 @@ export default function ReviewPage() {
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                    {(isCallCompleted) 
                       ? 'Add More Issues' 
                       : 'New Issue'
                     }
@@ -2126,7 +2164,7 @@ export default function ReviewPage() {
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                    {(isCallCompleted) 
                       ? 'Existing Issues' 
                       : 'Previous Issues'
                     }
@@ -2206,13 +2244,13 @@ export default function ReviewPage() {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-medium text-foreground">
-                            {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                            {(isCallCompleted) 
                               ? 'Issues Found During QC Review' 
                               : 'All Issues in This Call'
                             }
                           </h3>
                           <div className="flex items-center gap-2">
-                            {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
+                            {(isCallCompleted) && (
                               <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
                                 Review Complete
                               </Badge>
@@ -2224,7 +2262,7 @@ export default function ReviewPage() {
                         </div>
                         
                         {/* Enhanced summary for completed calls */}
-                        {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && resolvedIssueGroups.length > 0 && (
+                        {(isCallCompleted) && resolvedIssueGroups.length > 0 && (
                           <div className="bg-card border rounded-lg p-4 mb-4">
                             <h4 className="text-sm font-medium text-foreground mb-3">QC Review Summary</h4>
                             <div className="grid grid-cols-3 gap-4 text-center">
@@ -2272,17 +2310,28 @@ export default function ReviewPage() {
                                   </span>
                                 </div>
                                 <div className="flex flex-wrap gap-1 justify-end max-w-[70%]">
-                                  {issueGroup.issues.map((issue, issueIndex) => (
-                                    <Badge
-                                      key={issueIndex}
-                                      variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
-                                      className="text-xs max-w-full"
-                                      title={`${issue.severity.toUpperCase()} - ${issue.title}`}
-                                    >
-                                      <span className="truncate">
-                                        {issue.severity.toUpperCase()} - {issue.title}
-                                      </span>
-                                    </Badge>
+                                  {issueGroup.issues.map((issue) => (
+                                    <div key={issue._id} className="flex items-center gap-1">
+                                      <Badge
+                                        variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
+                                        className="text-xs max-w-full"
+                                        title={`${issue.severity.toUpperCase()} - ${issue.title}`}
+                                      >
+                                        <span className="truncate">
+                                          {issue.severity.toUpperCase()} - {issue.title}
+                                        </span>
+                                      </Badge>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteIssue(issue._id, issue.title)}
+                                        disabled={!!deletingIssues[issue._id]}
+                                        className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                                        title="Delete issue"
+                                        aria-label={`Delete ${issue.title}`}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
                                   ))}
                                 </div>
                               </div>
@@ -2381,7 +2430,7 @@ export default function ReviewPage() {
                                 })()}
                               </div>
                               {/* Enhanced issue details for completed calls */}
-                              {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
+                              {(isCallCompleted) && (
                                 <div className="space-y-2">
                                   {issueGroup.issues.map((issue, issueIndex) => (
                                     <div key={issueIndex} className="bg-background/70 rounded p-3 border group/issue hover:border-primary/30 transition-colors">
@@ -2464,18 +2513,18 @@ export default function ReviewPage() {
                           </svg>
                         </div>
                         <h3 className="text-lg font-medium text-foreground mb-2">
-                          {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                          {(isCallCompleted) 
                             ? 'No issues found during QC review' 
                             : 'No issues for this call'
                           }
                         </h3>
                         <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-                          {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                          {(isCallCompleted) 
                             ? 'This call passed QC review with no issues identified. The call quality met all standards.' 
                             : 'No issues have been marked for this call yet. Switch to the "New Issue" tab to add some.'
                           }
                         </p>
-                        {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
+                        {(isCallCompleted) && (
                           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="text-sm text-green-800">
                               ✓ QC Review completed by: <span className="font-medium">{selectedCall?.qcAssignedTo?.name || 'Unknown'}</span>
