@@ -1402,8 +1402,9 @@ export default function ReviewPage() {
                                         )
                                         
                                         const totalIssuesAtTimestamp = transcriptIssues.reduce((total, group) => total + group.issues.length, 0)
+                                        const hasApiIssues = resolvedIssueGroups.length > 0
                                         
-                                        if (totalIssuesAtTimestamp > 0) {
+                                        if (hasApiIssues && totalIssuesAtTimestamp > 0) {
                                           const highSeverityCount = transcriptIssues.reduce((total, group) => 
                                             total + group.issues.filter(issue => issue.severity === 'high').length, 0
                                           )
@@ -1413,7 +1414,7 @@ export default function ReviewPage() {
                                               {isCallCompleted ? (
                                                 // Enhanced view for completed calls
                                                 <div className="flex flex-col items-end gap-1">
-                                                <Badge 
+                                                  <Badge 
                                                     variant={highSeverityCount > 0 ? "destructive" : "default"} 
                                                     className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
                                                     onClick={(e) => {
@@ -1449,8 +1450,8 @@ export default function ReviewPage() {
                                           )
                                         }
                                         
-                                        // Fallback to issueCount if no API data matches
-                                        if (issueCount > 0) {
+                                        // Fallback to issueCount only if API issues are not loaded
+                                        if (!hasApiIssues && issueCount > 0) {
                                           return (
                                             <Badge 
                                               variant="destructive" 
@@ -1479,7 +1480,10 @@ export default function ReviewPage() {
                                           Math.abs(group.secondsFromStart - (message.secondsFromStart || 0)) < 1
                                         )
                                         const totalIssuesAtTimestamp = transcriptIssues.reduce((total, group) => total + group.issues.length, 0)
-                                        const hasIssues = totalIssuesAtTimestamp > 0 || issueCount > 0
+                                        const hasApiIssues = resolvedIssueGroups.length > 0
+                                        const hasIssues = hasApiIssues
+                                          ? totalIssuesAtTimestamp > 0
+                                          : issueCount > 0
                                         
                                         return (
                                           <div className="flex items-center gap-1.5">
@@ -1963,15 +1967,15 @@ export default function ReviewPage() {
                                 <div className="flex flex-wrap gap-1 justify-end max-w-[70%]">
                                   {issueGroup.issues.map((issue) => (
                                     <div key={issue._id} className="flex items-center gap-1">
-                                      <Badge
-                                        variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
-                                        className="text-xs max-w-full"
-                                        title={`${issue.severity.toUpperCase()} - ${issue.title}`}
-                                      >
-                                        <span className="truncate">
-                                          {issue.severity.toUpperCase()} - {issue.title}
-                                        </span>
-                                      </Badge>
+                                    <Badge
+                                      variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
+                                      className="text-xs max-w-full"
+                                      title={`${issue.severity.toUpperCase()} - ${issue.title}`}
+                                    >
+                                      <span className="truncate">
+                                        {issue.severity.toUpperCase()} - {issue.title}
+                                      </span>
+                                    </Badge>
                                       {selectedCall?.id && (
                                         <DeleteIssueDialog
                                           callId={selectedCall.id}
