@@ -745,6 +745,18 @@ export default function ReviewPage() {
         if (callData) {
           dispatch(setCallDetails(callData as CallData))
 
+          // Update selectedCall with QC timing fields from detailed call data
+          if (callData.qcStartTime || callData.qcEndTime || callData.qcTimeTaken) {
+            dispatch(updateCall({
+              callId: callData.callId,
+              updates: {
+                qcStartTime: callData.qcStartTime,
+                qcEndTime: callData.qcEndTime,
+                qcTimeTaken: callData.qcTimeTaken,
+              },
+            }))
+          }
+
           const deriveDurationSeconds = (data: CallData): number | null => {
             if (typeof data.callDuration === 'number' && data.callDuration > 0) {
               return data.callDuration > 1000 ? Math.round(data.callDuration / 1000) : data.callDuration
@@ -1034,7 +1046,7 @@ export default function ReviewPage() {
             </div>
             
             {/* Call List - Independent scrolling */}
-            <div className="flex-1 min-h-0 overflow-y-scroll scrollbar-hidden">
+            <div className="flex-1 min-h-0 overflow-y-scroll scrollbar-visible-dark">
               <CallsTable 
                 ref={callsTableRef} 
                 onCallSelect={(call) => dispatch(selectCall(call as any))} 
@@ -1300,7 +1312,7 @@ export default function ReviewPage() {
                         </div>
                       )}
                       
-                      <div className="space-y-4 h-[550px] overflow-y-auto scrollbar-visible-dark" style={{ scrollbarGutter: 'stable' }}>
+                      <div className="space-y-4" style={{ scrollbarGutter: 'stable' }}>
                         {resolvedIssueGroups
                           .slice()
                           .sort((a, b) => b.secondsFromStart - a.secondsFromStart)
