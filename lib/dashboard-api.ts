@@ -59,6 +59,7 @@ export interface DashboardApiResponse {
 }
 
 export interface IssueCall {
+  _id: string
   callId: string
   enterpriseId: string
   enterpriseName: string
@@ -66,6 +67,7 @@ export interface IssueCall {
   teamName: string
   note: string
   severity: 'high' | 'medium' | 'low'
+  status: 'resolved' | 'unresolved'
   callRecordingUrl: string
   secondsFromStart: number
   transcript: string,
@@ -195,6 +197,25 @@ export class DashboardApiService {
       return response
     } catch (error) {
       console.error('Error fetching issue calls:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update individual issue call status
+   */
+  async updateIssueCallStatus(
+    _id: string, 
+    status: 'resolved' | 'unresolved'
+  ): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await this.apiClient.put<{ success: boolean; message?: string }>(
+        `/conversation/converse-qc/update-issue-status`,
+        { _id, status }
+      )
+      return response
+    } catch (error) {
+      console.error('Error updating issue call status:', error)
       throw error
     }
   }

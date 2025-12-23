@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Switch } from "@/components/ui/switch"
 import { ArrowLeft, FileX } from "lucide-react"
 import { dashboardApiService, type IssueCall } from "@/lib/dashboard-api"
 import { useToast } from "@/hooks/use-toast"
@@ -38,6 +39,9 @@ export default function IssueCallsPage() {
 
   // Audio player state - track which row is currently playing (by index)
   const [playingIndex, setPlayingIndex] = useState<number | null>(null)
+
+  // Track which items are being updated
+  const [updatingStatus, setUpdatingStatus] = useState<Set<string>>(new Set())
 
   // Infinite scroll ref
   const observerRef = useRef<IntersectionObserver | null>(null)
@@ -170,6 +174,46 @@ export default function IssueCallsPage() {
     setPlayingIndex(prev => prev === index ? null : index)
   }, [])
 
+  const handleStatusToggle = useCallback(async (_id: string, currentStatus: 'resolved' | 'unresolved') => {
+    // Prevent multiple updates to the same item
+    if (updatingStatus.has(_id)) return
+
+    try {
+      // Add to updating set
+      setUpdatingStatus(prev => new Set(prev).add(_id))
+
+      // Toggle the status
+      const newStatus = currentStatus === 'resolved' ? 'unresolved' : 'resolved'
+
+      // Call API to update status
+      await dashboardApiService.updateIssueCallStatus(_id, newStatus)
+
+      // Update local state
+      setCalls(prev => prev.map(call => 
+        call._id === _id ? { ...call, status: newStatus } : call
+      ))
+
+      toast({
+        title: "Status Updated",
+        description: `Issue status updated to ${newStatus}`,
+      })
+    } catch (error) {
+      console.error('Error updating status:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update status. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      // Remove from updating set
+      setUpdatingStatus(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(_id)
+        return newSet
+      })
+    }
+  }, [updatingStatus, toast])
+
   // Commented out: Click handler for future implementation
   // const handleCallClick = (callId: string) => {
   //   router.push(`/review?callId=${callId}`)
@@ -297,6 +341,7 @@ export default function IssueCallsPage() {
                           <TableHead className="font-semibold text-foreground py-3 px-4">Time in Call</TableHead>
                           <TableHead className="font-semibold text-foreground py-3 px-4">Created At</TableHead>
                           <TableHead className="font-semibold text-foreground py-3 px-4">Audio</TableHead>
+                          <TableHead className="font-semibold text-foreground py-3 px-4">Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -385,12 +430,25 @@ export default function IssueCallsPage() {
                                   <span className="text-xs text-muted-foreground">No audio</span>
                                 )}
                               </TableCell>
+                              <TableCell className="py-4 px-4">
+                                <div className="flex items-center gap-2">
+                                  <Switch
+                                    checked={call.status === 'resolved'}
+                                    onCheckedChange={() => handleStatusToggle(call._id, call.status)}
+                                    disabled={updatingStatus.has(call._id)}
+                                    className="data-[state=checked]:bg-green-500"
+                                  />
+                                  <span className={`text-xs font-medium ${call.status === 'resolved' ? 'text-green-600' : 'text-amber-600'}`}>
+                                    {call.status === 'resolved' ? 'Resolved' : 'Unresolved'}
+                                  </span>
+                                </div>
+                              </TableCell>
                             </TableRow>
                           )
                         })}
                         {isLoadingMore && (
                           <TableRow>
-                            <TableCell colSpan={11} className="text-center py-4">
+                            <TableCell colSpan={12} className="text-center py-4">
                               <div className="flex items-center justify-center space-x-2">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                                 <span className="text-sm text-muted-foreground">Loading more calls...</span>
