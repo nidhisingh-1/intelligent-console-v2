@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, FileX, Search, X } from "lucide-react"
+import { ArrowLeft, FileX } from "lucide-react"
 import { dashboardApiService, type IssueCall } from "@/lib/dashboard-api"
 import { useToast } from "@/hooks/use-toast"
 import { getEnumCategoryLabel } from "@/lib/enum-api"
@@ -40,19 +39,12 @@ export default function IssueCallsPage() {
   // Audio player state - track which row is currently playing (by index)
   const [playingIndex, setPlayingIndex] = useState<number | null>(null)
 
-  // Track which items are being updated
-  const [updatingStatus, setUpdatingStatus] = useState<Set<string>>(new Set())
-
-  // Search state
-  const [searchQuery, setSearchQuery] = useState("")
-  const [activeSearch, setActiveSearch] = useState("")
-
   // Infinite scroll ref
   const observerRef = useRef<IntersectionObserver | null>(null)
   const lastElementRef = useRef<HTMLTableRowElement | null>(null)
 
   // Load calls from API
-  const loadCalls = useCallback(async (page: number = 1, resetData: boolean = true, callIdSearch?: string) => {
+  const loadCalls = useCallback(async (page: number = 1, resetData: boolean = true) => {
     try {
       if (page === 1) {
         setIsLoading(true)
@@ -60,7 +52,7 @@ export default function IssueCallsPage() {
         setIsLoadingMore(true)
       }
 
-      const response = await dashboardApiService.getIssueCalls(issueId, page, 10, callIdSearch || undefined)
+      const response = await dashboardApiService.getIssueCalls(issueId, page, 10)
       
       if (resetData || page === 1) {
         setCalls(response.data)
@@ -91,21 +83,8 @@ export default function IssueCallsPage() {
   // Load more calls for infinite scroll
   const loadMoreCalls = useCallback(async () => {
     if (!hasNextPage || isLoadingMore) return
-    await loadCalls(currentPage + 1, false, activeSearch)
-  }, [hasNextPage, isLoadingMore, currentPage, loadCalls, activeSearch])
-
-  // Handle search button click
-  const handleSearch = useCallback(() => {
-    setActiveSearch(searchQuery)
-    loadCalls(1, true, searchQuery)
-  }, [searchQuery, loadCalls])
-
-  // Handle cancel/clear search
-  const handleClearSearch = useCallback(() => {
-    setSearchQuery("")
-    setActiveSearch("")
-    loadCalls(1, true, "")
-  }, [loadCalls])
+    await loadCalls(currentPage + 1, false)
+  }, [hasNextPage, isLoadingMore, currentPage, loadCalls])
 
   // Setup intersection observer for infinite scroll
   const setupObserver = useCallback(() => {
@@ -160,22 +139,6 @@ export default function IssueCallsPage() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
   }
 
-  const formatDate = (dateString: string): string => {
-    if (!dateString) return '-'
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    } catch (error) {
-      return '-'
-    }
-  }
-
   const truncateNote = (note: string, maxLength: number = 30) => {
     if (!note || note.length <= maxLength) return note || '-'
     return note.substring(0, maxLength) + '...'
@@ -190,46 +153,6 @@ export default function IssueCallsPage() {
     // If this row is already playing, pause it; otherwise play it
     setPlayingIndex(prev => prev === index ? null : index)
   }, [])
-
-  const handleStatusToggle = useCallback(async (_id: string, currentStatus: 'resolved' | 'unresolved') => {
-    // Prevent multiple updates to the same item
-    if (updatingStatus.has(_id)) return
-
-    try {
-      // Add to updating set
-      setUpdatingStatus(prev => new Set(prev).add(_id))
-
-      // Toggle the status
-      const newStatus = currentStatus === 'resolved' ? 'unresolved' : 'resolved'
-
-      // Call API to update status
-      await dashboardApiService.updateIssueCallStatus(_id, newStatus)
-
-      // Update local state
-      setCalls(prev => prev.map(call => 
-        call._id === _id ? { ...call, status: newStatus } : call
-      ))
-
-      toast({
-        title: "Status Updated",
-        description: `Issue status updated to ${newStatus}`,
-      })
-    } catch (error) {
-      console.error('Error updating status:', error)
-      toast({
-        title: "Error",
-        description: "Failed to update status. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      // Remove from updating set
-      setUpdatingStatus(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(_id)
-        return newSet
-      })
-    }
-  }, [updatingStatus, toast])
 
   // Commented out: Click handler for future implementation
   // const handleCallClick = (callId: string) => {
@@ -307,37 +230,6 @@ export default function IssueCallsPage() {
                   All calls where this issue was identified ({totalItems} total)
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <input 
-                    type="text" 
-                    placeholder="Search by Call ID..." 
-                    value={searchQuery}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setSearchQuery(value)
-                      // Auto-clear when input is emptied and there was an active search
-                      if (!value.trim() && activeSearch) {
-                        handleClearSearch()
-                      }
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    className="w-64 h-9 pl-9 pr-4 rounded-lg border border-border bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring transition-all duration-200 shadow-sm hover:border-muted-foreground/50"
-                  />
-                </div>
-                <Button 
-                  variant={activeSearch ? "outline" : "default"} 
-                  size="sm" 
-                  onClick={activeSearch ? handleClearSearch : handleSearch}
-                  disabled={!searchQuery.trim()}
-                  className="h-9 "
-                >
-                 { activeSearch ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-                 { activeSearch ? 'Clear' : 'Search' }
-                </Button>
-          
-              </div>
             </div>
 
             {/* Commented out: Filters section for future implementation */}
@@ -387,9 +279,7 @@ export default function IssueCallsPage() {
                           <TableHead className="font-semibold text-foreground py-3 px-4">Transcript</TableHead>
                           <TableHead className="font-semibold text-foreground py-3 px-4">Severity</TableHead>
                           <TableHead className="font-semibold text-foreground py-3 px-4">Time in Call</TableHead>
-                          <TableHead className="font-semibold text-foreground py-3 px-4">Created At</TableHead>
                           <TableHead className="font-semibold text-foreground py-3 px-4">Audio</TableHead>
-                          <TableHead className="font-semibold text-foreground py-3 px-4">Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -464,9 +354,6 @@ export default function IssueCallsPage() {
                                 <span className="text-sm text-foreground">{formatSeconds(call.secondsFromStart)}</span>
                               </TableCell>
                               <TableCell className="py-4 px-4">
-                                <span className="text-sm text-foreground">{formatDate(call.createdAt)}</span>
-                              </TableCell>
-                              <TableCell className="py-4 px-4">
                                 {call.callRecordingUrl ? (
                                   <InlineAudioPlayer
                                     recordingUrl={call.callRecordingUrl}
@@ -478,25 +365,12 @@ export default function IssueCallsPage() {
                                   <span className="text-xs text-muted-foreground">No audio</span>
                                 )}
                               </TableCell>
-                              <TableCell className="py-4 px-4">
-                                <div className="flex items-center gap-2">
-                                  <Switch
-                                    checked={call.status === 'resolved'}
-                                    onCheckedChange={() => handleStatusToggle(call._id, call.status)}
-                                    disabled={updatingStatus.has(call._id)}
-                                    className="data-[state=checked]:bg-green-500"
-                                  />
-                                  <span className={`text-xs font-medium ${call.status === 'resolved' ? 'text-green-600' : 'text-amber-600'}`}>
-                                    {call.status === 'resolved' ? 'Resolved' : 'Unresolved'}
-                                  </span>
-                                </div>
-                              </TableCell>
                             </TableRow>
                           )
                         })}
                         {isLoadingMore && (
                           <TableRow>
-                            <TableCell colSpan={12} className="text-center py-4">
+                            <TableCell colSpan={10} className="text-center py-4">
                               <div className="flex items-center justify-center space-x-2">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                                 <span className="text-sm text-muted-foreground">Loading more calls...</span>

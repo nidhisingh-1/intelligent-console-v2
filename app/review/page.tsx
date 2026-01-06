@@ -9,7 +9,7 @@ import { CallsService, IssuesService, type AssignQCRequest, type MarkIssueReques
 import { useToast } from "@/hooks/use-toast"
 import { useEnterprise } from "@/lib/enterprise-context"
 import { getCurrentUserId } from "@/lib/auth-utils"
-import { ReviewFilters } from "@/components/review/ReviewFilters"
+import { ReviewFilters } from "@/components/review/review-filters"
 import { ReviewFilterUpdate } from "@/lib/types"
 import { useAppDispatch, useAppSelector } from "@/store"
 import { updateReviewFilters } from "@/store/slices/filtersSlice"
@@ -27,6 +27,8 @@ import {
   setCallStatsLoading,
   setCallStats,
   setCallStatsError,
+  setIsAssigning,
+  setIsUnassigning,
   setClassificationDialogOpen,
   setSelectedClassification as setSelectedClassificationAction,
 } from "@/store/slices/callsSlice"
@@ -52,9 +54,17 @@ import {
   selectSelectedCall,
   selectCallDetails,
   selectCallDetailsStatus,
+  selectCallDetailsError,
   selectCurrentPlaybackTime,
   selectAudioDuration,
+  selectIsDurationLoading,
   selectCurrentCallId,
+  selectQCStats,
+  selectQCStatsStatus,
+  selectQCStatsError,
+  selectIsAssigning,
+  selectIsUnassigning,
+  selectIsClassificationDialogOpen,
   selectSelectedClassification,
   selectUniqueAgentNames,
 } from "@/store/selectors/callsSelectors"
@@ -65,6 +75,8 @@ import {
   selectIssuesCallId,
   selectIsIssuesPanelOpen,
   selectActiveIssuesTab,
+  selectMarkIssueStatus,
+  selectMarkIssueError,
   selectEditingNoteId,
   selectEditNoteText,
   selectMarkIssueDraft,
@@ -73,18 +85,10 @@ import {
 } from "@/store/selectors/issuesSelectors"
 
 import { Badge } from "@/components/ui/badge"
-import { DeleteIssueDialog } from "@/components/review/DeleteIssueDialog"
-import { Trash2 } from "lucide-react"
-import { TestCallToggle } from "@/components/review/TestCallToggle"
-import { CallHeader } from "@/components/review/CallHeader"
-import { QCStatsChips } from "@/components/review/QcStatsChips"
-import { ClassificationDialog } from "@/components/review/ClassificationDialog"
-import { IssueStickyActions } from "@/components/review/IssueStickyActions"
-import { ReviewLoadingShimmer } from "@/components/review/ReviewLoadingShimmer"
-import { TranscriptSection } from "@/components/review/TranscriptSection"
-import SidePanelWrapper from '@/components/common/SidePanelWrapper'
-import SidePanelHeader from '@/components/common/SidePanelHeader'
-import SidePanelEmptyState from '@/components/common/SidePanelEmptyState'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Phone, CheckCircle, Clock, Copy, Loader2 } from "lucide-react"
 
 type TransformedQCStats = {
   total: number
@@ -134,16 +138,20 @@ export default function ReviewPage() {
   const currentCallId = useAppSelector(selectCurrentCallId)
   const currentPlaybackTime = useAppSelector(selectCurrentPlaybackTime)
   const audioDuration = useAppSelector(selectAudioDuration)
+  const isDurationLoading = useAppSelector(selectIsDurationLoading)
   const issueGroups = useAppSelector(selectIssueGroups)
   const isLoadingIssues = useAppSelector(selectIssuesLoading)
   const issuesError = useAppSelector(selectIssuesError)
   const issueGroupsCallId = useAppSelector(selectIssuesCallId)
   const showIssuesPanel = useAppSelector(selectIsIssuesPanelOpen)
   const activeTab = useAppSelector(selectActiveIssuesTab)
+  const markIssueStatus = useAppSelector(selectMarkIssueStatus)
+  const isSubmitting = markIssueStatus === 'loading'
+  const isSubmitted = markIssueStatus === 'succeeded'
+  const qcStats = useAppSelector(selectQCStats)
+  const qcStatsStatus = useAppSelector(selectQCStatsStatus)
   const resolvedIssueGroups = issueGroupsCallId && selectedCall?.id === issueGroupsCallId ? issueGroups : []
-  // Track if we have loaded API issues (even if empty) vs not loaded yet
-  const hasLoadedApiIssues = issueGroupsCallId === selectedCall?.id
-  const isCallCompleted = selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed'
+  const isQcStatsLoading = qcStatsStatus === 'loading'
 
   const transcriptContainerRef = React.useRef<HTMLDivElement>(null)
   const audioPlayerRef = useRef<AudioPlayerRef>(null)
@@ -213,7 +221,8 @@ export default function ReviewPage() {
   const [totalChanges, setTotalChanges] = useState(0)
   const formRef = React.useRef<MarkIssueFormRef>(null)
   
-  // Call classification state (used in handleClassificationSubmit)
+  // Call classification dialog state
+  const showClassificationDialog = useAppSelector(selectIsClassificationDialogOpen)
   const selectedClassification = useAppSelector(selectSelectedClassification)
   
   // Note editing state
@@ -221,6 +230,8 @@ export default function ReviewPage() {
   const editNoteText = useAppSelector(selectEditNoteText)
   
   // Submission state
+  const isAssigning = useAppSelector(selectIsAssigning)
+  const isUnassigning = useAppSelector(selectIsUnassigning)
 
   // Memoized form change handler to prevent unnecessary re-renders
   const handleFormChange = useCallback((isValid: boolean, changes: number) => {
@@ -237,6 +248,8 @@ export default function ReviewPage() {
       Math.abs(group.secondsFromStart - markIssueData.timestamp) < 1
     )?.issues || []
   }, [resolvedIssueGroups, issueGroupsCallId, markIssueData?.timestamp, selectedCall?.id])
+
+  const markedTranscriptSet = useMemo(() => new Set(markedTranscriptIndices), [markedTranscriptIndices])
 
   const severityCounts = useMemo(() => {
     return resolvedIssueGroups.reduce(
@@ -261,6 +274,52 @@ export default function ReviewPage() {
   const handleNewIssue = useCallback(() => {
     dispatch(setActiveTab('new-issue'))
   }, [dispatch])
+  
+  // Tab state for Mark Issue panel
+  // Helper function to format customer name in proper case
+  const formatCustomerName = (name: string) => {
+    if (!name) return 'Customer'
+    return name.split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ')
+  }
+
+  // Helper function to generate pastel colors based on name
+  const getAvatarColor = (name: string) => {
+    if (!name) return { bg: 'bg-slate-200', text: 'text-slate-700' }
+    
+    const firstLetter = name.charAt(0).toLowerCase()
+    const colors = {
+      a: { bg: 'bg-red-200', text: 'text-red-800' },
+      b: { bg: 'bg-orange-200', text: 'text-orange-800' },
+      c: { bg: 'bg-amber-200', text: 'text-amber-800' },
+      d: { bg: 'bg-yellow-200', text: 'text-yellow-800' },
+      e: { bg: 'bg-lime-200', text: 'text-lime-800' },
+      f: { bg: 'bg-green-200', text: 'text-green-800' },
+      g: { bg: 'bg-emerald-200', text: 'text-emerald-800' },
+      h: { bg: 'bg-teal-200', text: 'text-teal-800' },
+      i: { bg: 'bg-cyan-200', text: 'text-cyan-800' },
+      j: { bg: 'bg-sky-200', text: 'text-sky-800' },
+      k: { bg: 'bg-blue-200', text: 'text-blue-800' },
+      l: { bg: 'bg-indigo-200', text: 'text-indigo-800' },
+      m: { bg: 'bg-violet-200', text: 'text-violet-800' },
+      n: { bg: 'bg-purple-200', text: 'text-purple-800' },
+      o: { bg: 'bg-fuchsia-200', text: 'text-fuchsia-800' },
+      p: { bg: 'bg-pink-200', text: 'text-pink-800' },
+      q: { bg: 'bg-rose-200', text: 'text-rose-800' },
+      r: { bg: 'bg-red-200', text: 'text-red-800' },
+      s: { bg: 'bg-orange-200', text: 'text-orange-800' },
+      t: { bg: 'bg-amber-200', text: 'text-amber-800' },
+      u: { bg: 'bg-yellow-200', text: 'text-yellow-800' },
+      v: { bg: 'bg-lime-200', text: 'text-lime-800' },
+      w: { bg: 'bg-green-200', text: 'text-green-800' },
+      x: { bg: 'bg-emerald-200', text: 'text-emerald-800' },
+      y: { bg: 'bg-teal-200', text: 'text-teal-800' },
+      z: { bg: 'bg-cyan-200', text: 'text-cyan-800' },
+    }
+    
+    return colors[firstLetter as keyof typeof colors] || { bg: 'bg-slate-200', text: 'text-slate-700' }
+  }
 
   // Function to scroll to current transcript line
   const scrollToCurrentTranscriptLine = (currentTime: number) => {
@@ -564,6 +623,98 @@ export default function ReviewPage() {
     }
   }
 
+  const handleAssignQC = async () => {
+    if (!selectedCall?.id) return
+    
+    dispatch(setIsAssigning(true))
+    try {
+      const assignRequest: AssignQCRequest = {
+        callId: selectedCall.id,
+        qcStatus: 'in_progress'
+      }
+      
+      const response = await CallsService.assignQC(assignRequest)
+      
+      // Check if we have a valid response with message and updatedFields
+      if (response.message && response.updatedFields) {
+        // Store current user ID for authorization checks
+        if (response.updatedFields.qcAssignedTo?.id) {
+          localStorage.setItem('qa_dashboard_user_id', response.updatedFields.qcAssignedTo.id)
+        }
+        
+        // Update the selectedCall to reflect the new assignment
+        const nextStatus = normalizeQcStatus(response.updatedFields.qcStatus)
+
+        dispatch(updateCall({
+          callId: selectedCall.id,
+          updates: {
+            qcAssignedTo: response.updatedFields.qcAssignedTo,
+            qcStatus: nextStatus,
+          },
+        }))
+        
+        // Optimistic update - immediately update the calls list to show the avatar
+        callsTableRef.current?.updateCallStatus(
+          selectedCall.id,
+          nextStatus,
+          response.updatedFields.qcAssignedTo
+        )
+        
+        toast({
+          title: "QC Assigned Successfully",
+          description: response.message,
+          variant: "default",
+        })
+      } else {
+        toast({
+          title: "Error Assigning QC",
+          description: "Failed to assign QC. Please try again.",
+          variant: "destructive",
+        })
+      }
+  } catch (error: any) {
+    console.error('Error assigning QC:', error)
+    
+    // Extract validation error message if available
+    let errorMessage = "An unexpected error occurred. Please try again."
+    if (error?.validationErrors && error.validationErrors.length > 0) {
+      errorMessage = error.validationErrors[0].rule
+    } else if (error?.message) {
+      errorMessage = error.message
+    }
+    
+    toast({
+      title: "Error Assigning QC",
+      description: errorMessage,
+      variant: "destructive",
+    })
+  } finally {
+    dispatch(setIsAssigning(false))
+  }
+  }
+
+  const handleQCDone = async () => {
+    if (!selectedCall?.id) return
+    
+    // Check if call is assigned and if current user is authorized
+    if (selectedCall?.qcAssignedTo) {
+      const currentUserId = getCurrentUserId()
+      // The qcAssignedTo object might have userId instead of id
+      const assignedUserId = selectedCall.qcAssignedTo.userId || selectedCall.qcAssignedTo.id
+      
+      if (currentUserId && assignedUserId && assignedUserId !== currentUserId) {
+        toast({
+          title: "Unauthorized Action",
+          description: `This call is assigned to ${selectedCall.qcAssignedTo.name}. Only the assigned QC reviewer can mark the call as done.`,
+          variant: "destructive",
+        })
+        return
+      }
+    }
+    
+    // Show classification dialog instead of directly marking as done
+    dispatch(setClassificationDialogOpen(true))
+  }
   
   const handleClassificationSubmit = async () => {
     if (!selectedCall?.id || !selectedClassification) return
@@ -641,6 +792,70 @@ export default function ReviewPage() {
     dispatch(setEditNoteText(''))
   }
 
+  const handleUnassign = async () => {
+    if (!selectedCall?.id) return
+    
+    dispatch(setIsUnassigning(true))
+    try {
+      // Use the same assignQC endpoint but with qcStatus: 'yet_to_start' to unassign
+      const unassignRequest: AssignQCRequest = {
+        callId: selectedCall.id,
+        qcStatus: 'yet_to_start',
+        qcAssignedTo: null
+      }
+      
+      const response = await CallsService.assignQC(unassignRequest)
+      
+      if (response.message && response.updatedFields) {
+        toast({
+          title: "Unassign Successful",
+          description: response.message,
+          variant: "default",
+        })
+        
+        // Update the selectedCall to reflect unassignment
+        // Note: The API might return qcAssignedTo as null when unassigned
+        dispatch(updateCall({
+          callId: selectedCall.id,
+          updates: {
+            qcAssignedTo: null,
+            qcStatus: 'yet_to_start',
+          },
+        }))
+        
+        // Update the calls table
+        callsTableRef.current?.updateCallStatus(
+          selectedCall.id,
+          'yet_to_start',
+          null
+        )
+      } else {
+        toast({
+          title: "Error Unassigning",
+          description: "Failed to unassign the call. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      console.error('Error unassigning call:', error)
+      
+      // Extract validation error message if available
+      let errorMessage = "An unexpected error occurred. Please try again."
+      if (error?.validationErrors && error.validationErrors.length > 0) {
+        errorMessage = error.validationErrors[0].rule
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      toast({
+        title: "Error Unassigning",
+        description: errorMessage,
+        variant: "destructive",
+      })
+  } finally {
+    dispatch(setIsUnassigning(false))
+  }
+  }
 
   // Function to load call issues from API with fallback to mock data
   const loadCallIssues = useCallback(async (callId: string) => {
@@ -744,18 +959,6 @@ export default function ReviewPage() {
 
         if (callData) {
           dispatch(setCallDetails(callData as CallData))
-
-          // Update selectedCall with QC timing fields from detailed call data
-          if (callData.qcStartTime || callData.qcEndTime || callData.qcTimeTaken) {
-            dispatch(updateCall({
-              callId: callData.callId,
-              updates: {
-                qcStartTime: callData.qcStartTime,
-                qcEndTime: callData.qcEndTime,
-                qcTimeTaken: callData.qcTimeTaken,
-              },
-            }))
-          }
 
           const deriveDurationSeconds = (data: CallData): number | null => {
             if (typeof data.callDuration === 'number' && data.callDuration > 0) {
@@ -1013,7 +1216,67 @@ export default function ReviewPage() {
   if (isLoadingEnterpriseData) {
     return (
       <AppShell>
-        <ReviewLoadingShimmer />
+        <div className="flex h-full bg-background">
+          {/* Left Panel - Shimmer */}
+          <div className="w-96 flex flex-col border-r border-border bg-card">
+            {/* Enterprise/Team Selector Shimmer */}
+            <div className="px-6 py-4 border-b border-border bg-muted/20 flex-shrink-0">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-muted rounded animate-pulse" />
+                  <div className="w-20 h-5 bg-muted rounded animate-pulse" />
+                  <div className="w-48 h-9 bg-muted rounded animate-pulse" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-muted rounded animate-pulse" />
+                  <div className="w-20 h-5 bg-muted rounded animate-pulse" />
+                  <div className="w-48 h-9 bg-muted rounded animate-pulse" />
+                </div>
+              </div>
+            </div>
+            
+            {/* Header Shimmer */}
+            <div className="px-6 py-5 border-b border-border bg-muted/20 flex-shrink-0">
+              <div className="w-32 h-6 bg-muted rounded animate-pulse mb-1" />
+              <div className="w-48 h-4 bg-muted rounded animate-pulse" />
+            </div>
+            
+            {/* Call List Shimmer */}
+            <div className="flex-1 min-h-0 overflow-y-scroll scrollbar-hidden">
+              <div className="space-y-2 p-4">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div key={index} className="p-4 border rounded-lg animate-pulse">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-muted rounded-full" />
+                      <div className="flex-1">
+                        <div className="w-24 h-4 bg-muted rounded mb-1" />
+                        <div className="w-32 h-3 bg-muted rounded" />
+                      </div>
+                      <div className="w-16 h-5 bg-muted rounded" />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="w-20 h-3 bg-muted rounded" />
+                      <div className="w-16 h-3 bg-muted rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Main Panel Shimmer */}
+          <div className="flex-1 transition-all duration-300">
+            <div className="h-full flex flex-col">
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-muted rounded-3xl flex items-center justify-center mx-auto mb-6 animate-pulse" />
+                  <div className="w-32 h-6 bg-muted rounded mx-auto mb-2 animate-pulse" />
+                  <div className="w-48 h-4 bg-muted rounded mx-auto animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </AppShell>
     )
   }
@@ -1021,7 +1284,43 @@ export default function ReviewPage() {
   return (
     <AppShell 
       statsChips={
-        <QCStatsChips />
+        <div className="flex items-center gap-3 flex-nowrap ">
+          {/* Total Calls Chip */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full text-sm whitespace-nowrap">
+            <Phone className="h-3 w-3 text-blue-600 flex-shrink-0" />
+            <span className="font-medium text-blue-900">
+              Total: {isQcStatsLoading ? (
+                <span className="inline-block w-6 h-3 bg-blue-200 animate-pulse rounded" />
+              ) : (
+                qcStats.total.toLocaleString()
+              )}
+            </span>
+          </div>
+
+          {/* Reviewed Calls Chip */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full text-sm whitespace-nowrap">
+            <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
+            <span className="font-medium text-green-900">
+              Reviewed: {isQcStatsLoading ? (
+                <span className="inline-block w-6 h-3 bg-green-200 animate-pulse rounded" />
+              ) : (
+                qcStats.reviewed.toLocaleString()
+              )}
+            </span>
+          </div>
+
+          {/* Pending Review Chip */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-full text-sm whitespace-nowrap">
+            <Clock className="h-3 w-3 text-orange-600 flex-shrink-0" />
+            <span className="font-medium text-orange-900">
+              Pending: {isQcStatsLoading ? (
+                <span className="inline-block w-6 h-3 bg-orange-200 animate-pulse rounded" />
+              ) : (
+                qcStats.pending.toLocaleString()
+              )}
+            </span>
+          </div>
+        </div>
       }
     >
       <div className="flex flex-col h-full overflow-y-auto bg-background">
@@ -1046,7 +1345,7 @@ export default function ReviewPage() {
             </div>
             
             {/* Call List - Independent scrolling */}
-            <div className="flex-1 min-h-0 overflow-y-scroll scrollbar-visible-dark">
+            <div className="flex-1 min-h-0 overflow-y-scroll scrollbar-hidden">
               <CallsTable 
                 ref={callsTableRef} 
                 onCallSelect={(call) => dispatch(selectCall(call as any))} 
@@ -1063,19 +1362,166 @@ export default function ReviewPage() {
             {selectedCall ? (
               <div className="flex-1 flex flex-col">
                 {/* Call Header - Compact */}
-                <CallHeader 
-                  selectedCall={selectedCall}
-                  callsTableRef={callsTableRef}
-                />
+                <div className="px-4 lg:px-6 py-4 lg:py-5 border-b border-border bg-card">
+                  <div className="flex items-start gap-4">
+                    {(() => {
+                      const avatarColor = getAvatarColor(selectedCall.customerName)
+                      return (
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${avatarColor.bg}`}>
+                          <span className={`font-semibold text-lg ${avatarColor.text}`}>{selectedCall.customerInitials}</span>
+                        </div>
+                      )
+                    })()}
+                    <div className="flex-1 min-w-0">
+                      <div className={`flex items-center ${markIssueData ? 'gap-2' : 'gap-3'} mb-1 flex-wrap`}>
+                        <h1 className={`font-semibold text-foreground ${markIssueData ? 'text-xl' : 'text-2xl'}`}>{selectedCall.customerName}</h1>
+                        <div className={`flex items-center gap-1 text-muted-foreground ${markIssueData ? 'text-xs' : 'text-sm'}`}>
+                          <span>Phone:</span>
+                          <span className="text-foreground break-all">{selectedCall.phoneNumber}</span>
+                        </div>
+                        <div className={`flex items-center gap-1 text-muted-foreground ${markIssueData ? 'text-xs' : 'text-sm'}`}>
+                          <span>Duration:</span>
+                          {isDurationLoading || audioDuration === 0 || currentCallId !== selectedCall?.id ? (
+                            <span className="inline-block w-12 h-3 bg-muted animate-pulse rounded"></span>
+                          ) : (
+                            <span className="text-foreground whitespace-nowrap">
+                              {`${Math.floor(audioDuration / 60)}:${Math.floor(audioDuration % 60).toString().padStart(2, '0')}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Call ID with Copy Icon */}
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">Call ID:</span>
+                        <span className="text-xs text-foreground">{selectedCall.id}</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(selectedCall.id)
+                                  toast({
+                                    title: "Copied!",
+                                    description: `Call ID "${selectedCall.id}" copied to clipboard`,
+                                    duration: 2000,
+                                  })
+                                }}
+                                className="p-1 hover:bg-muted rounded transition-colors"
+                              >
+                                <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy Call ID</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      {/* Completed Review Status on separate line */}
+                      {(selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="default" className="bg-green-100 text-green-800">
+                            ✓ Review Completed
+                          </Badge>
+                          <button
+                            onClick={() => dispatch(setIssuePanelOpen(!showIssuesPanel))}
+                            className="text-xs px-2 py-1 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
+                          >
+                            {showIssuesPanel ? 'Hide Issues' : 'Show Issues'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* QC Status and Actions */}
+                    {selectedCall.qcAssignedTo === null ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                  onClick={handleAssignQC}
+                                  disabled={isAssigning}
+                                  
+                                  className="inline-flex cursor-pointer items-center px-5 py-2 bg-primary text-primary-foreground rounded-sm text-sm font-semibold hover:bg-primary/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isAssigning ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Assigning...
+                                    </>
+                                  ) : (
+                                    'Assign Call'
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{isAssigning ? 'Assigning call...' : 'Assign Call'}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    ) : selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed' ? (
+                      null
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center gap-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={handleQCDone}
+                                  className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-sm text-sm font-semibold hover:bg-emerald-700 transition-all duration-200"
+                                >
+                                  Mark Completed
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Mark Completed</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </div>
+                    )}
+                    {/* Only show Unassign button when call is assigned and not completed */}
+                    {selectedCall.qcAssignedTo !== null && 
+                     selectedCall.qcStatus !== 'done' && 
+                     selectedCall.qcStatus !== 'completed' && (
+                      <div>
+                        <div className="flex flex-col items-center gap-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={handleUnassign}
+                                  disabled={isUnassigning}
+                                  className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-sm text-sm font-semibold hover:bg-red-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isUnassigning ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Unassigning...
+                                    </>
+                                  ) : (
+                                    'Unassign'
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{isUnassigning ? 'Unassigning call...' : 'Unassign Call'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Call Content Header - Fixed */}
                 <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-card flex-shrink-0">
                   <h3 className="text-[17px] font-semibold text-foreground">Call Recording & Transcript</h3>
-                  <TestCallToggle
-                    callDetails={callDetails}
-                    selectedCallId={selectedCall?.id || null}
-                    isCallCompleted={isCallCompleted}
-                  />
                 </div>
 
                 {/* Call Content - Fixed Layout */}
@@ -1167,20 +1613,231 @@ export default function ReviewPage() {
                     </div>
 
                     {/* Transcript Section */}
-                    <TranscriptSection
-                      callDetailsStatus={callDetailsStatus}
-                      callDetails={callDetails}
-                      selectedCall={selectedCall}
-                      currentPlaybackTime={currentPlaybackTime}
-                      markedTranscriptIndices={markedTranscriptIndices}
-                      resolvedIssueGroups={resolvedIssueGroups}
-                      hasLoadedApiIssues={hasLoadedApiIssues}
-                      isCallCompleted={isCallCompleted}
-                      transcriptContainerRef={transcriptContainerRef}
-                      selectedTranscriptIndex={selectedTranscriptIndex}
-                      seekToTime={seekToTime}
-                      handleMarkIssue={handleMarkIssue}
-                    />
+                    <div className="flex-1 flex flex-col min-h-0 mt-4">
+                      {callDetailsStatus === 'loading' ? (
+                        <div className="space-y-4 px-4 lg:px-6">
+                          <h3 className="attio-heading-3 mb-4">Transcript</h3>
+                          {/* Transcript Skeleton - Attio Style */}
+                          {Array.from({ length: 6 }).map((_, index) => (
+                            <div key={index} className="attio-card p-4 animate-pulse">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="w-20 h-4 bg-muted rounded"></div>
+                                <div className="w-16 h-3 bg-muted rounded"></div>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="w-full h-3 bg-muted rounded"></div>
+                                <div className="w-4/5 h-3 bg-muted rounded"></div>
+                                <div className="w-3/5 h-3 bg-muted rounded"></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : callDetails?.callDetails?.messages && callDetails.callDetails.messages.length > 0 ? (
+                        <div className="flex flex-col flex-1 min-h-0">
+                          <h4 className="text-[15px] font-semibold text-foreground mb-3 px-4 lg:px-6 flex-shrink-0">Transcript</h4>
+                          <div ref={transcriptContainerRef} className="space-y-2 pb-6 overflow-y-auto max-h-[calc(100vh-400px)] px-4 lg:px-6  scrollbar-thin scrollbar-thumb-muted-foreground/20  scrollbar-track-transparent">
+                            {(callDetails.callDetails?.messages ?? []).map((message: any, index: number) => {
+                              const isAI = message.role === 'bot'
+                              const speaker = isAI ? 'Agent' : formatCustomerName(callDetails.callDetails?.name || '')
+                              
+                              // Format timestamp from secondsFromStart to [MM:SS] format
+                              const timestamp = message.secondsFromStart !== undefined && message.secondsFromStart !== null
+                                ? (() => {
+                                    const seconds = Math.max(0, message.secondsFromStart); // Ensure non-negative
+                                    const mins = Math.floor(seconds / 60);
+                                    const secs = Math.floor(seconds % 60);
+                                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                                  })()
+                                : null
+                              
+                              // Determine if this is the currently active transcript line
+                              // Use exact current time for perfect sync accuracy
+                              const adjustedPlaybackTime = currentPlaybackTime
+                              const messageStart = message.secondsFromStart
+                              
+                              let isCurrentLine = false
+                              if (messageStart !== undefined && messageStart !== null) {
+                                const nextMessageStart = callDetails.callDetails?.messages?.[index + 1]?.secondsFromStart ?? Infinity
+                                // Use exact timing for precise highlighting
+                                isCurrentLine = adjustedPlaybackTime >= messageStart && adjustedPlaybackTime < nextMessageStart
+                              }
+                              
+                              const shouldHighlight = selectedTranscriptIndex !== null 
+                                ? selectedTranscriptIndex === index 
+                                : isCurrentLine
+                              
+                              const hasIssue = markedTranscriptSet.has(index)
+                              
+                              // Get issue count from API response (prioritize API data over local calculation)
+                              const issueCount = message.issueCount || 0
+                              
+                              return (
+                                <div 
+                                  key={index} 
+                                  className={`p-4 rounded-lg border cursor-pointer relative group transition-all duration-200 ${
+                                    shouldHighlight 
+                                      ? 'bg-primary/5 border-primary/20 shadow-sm' 
+                                      : issueCount > 0
+                                      ? 'bg-red-50 border-red-200 shadow-sm'
+                                      : 'bg-card border-border hover:bg-muted/50'
+                                  }`}
+                                  onClick={() => {
+                                    // Use the actual timestamp from the message instead of estimating
+                                    const timestamp = message.secondsFromStart || 0;
+                                    
+                                    seekToTime(timestamp);
+                                    dispatch(setSelectedTranscriptIndex(index));
+                                  }}
+                                  title="Click to jump to this point in audio"
+                                >
+                                  <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
+                                        isAI 
+                                          ? 'bg-primary/12 text-primary' 
+                                          : 'bg-green-100 text-green-700'
+                                      }`}>
+                                        {isAI ? 'AI' : selectedCall?.customerInitials || 'CU'}
+                                      </div>
+                                      <div>
+                                        <div className="text-[13px] font-semibold text-foreground">{speaker}</div>
+                                        {timestamp && (
+                                          <div className="text-[11px] text-muted-foreground/70 font-medium">{timestamp}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Issue Indicator and Mark Issue Button */}
+                                    <div className="flex items-center gap-2">
+                                      {/* Enhanced issue indicator for completed calls */}
+                                      {(() => {
+                                        // Find issues for this timestamp from API data
+                                        // Only show badge if issue is marked at this exact timestamp (within 1 second)
+                                        const transcriptIssues = resolvedIssueGroups.filter(group => 
+                                          Math.abs(group.secondsFromStart - (message.secondsFromStart || 0)) < 1
+                                        )
+                                        
+                                        const totalIssuesAtTimestamp = transcriptIssues.reduce((total, group) => total + group.issues.length, 0)
+                                        
+                                        if (totalIssuesAtTimestamp > 0) {
+                                          const highSeverityCount = transcriptIssues.reduce((total, group) => 
+                                            total + group.issues.filter(issue => issue.severity === 'high').length, 0
+                                          )
+                                          
+                                          return (
+                                            <div className="flex items-center gap-1">
+                                              {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') ? (
+                                                // Enhanced view for completed calls
+                                                <div className="flex flex-col items-end gap-1">
+                                                <Badge 
+                                                    variant={highSeverityCount > 0 ? "destructive" : "default"} 
+                                                    className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      dispatch(setActiveTab('previous-issues'))
+                                                    }}
+                                                    title={`${totalIssuesAtTimestamp} issue${totalIssuesAtTimestamp > 1 ? 's' : ''} found at this timestamp`}
+                                                  >
+                                                    {totalIssuesAtTimestamp}
+                                                  </Badge>
+                                                  {highSeverityCount > 0 && (
+                                                    <span className="text-xs text-destructive font-medium">
+                                                      {highSeverityCount} HIGH
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                // Original view for pending calls
+                                                <Badge 
+                                                  variant="destructive" 
+                                                  className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:bg-destructive/80 transition-colors"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleMarkIssue(message.message, message.secondsFromStart || 0, index)
+                                                    setTimeout(() => dispatch(setActiveTab('previous-issues')), 100)
+                                                  }}
+                                                  title={`Click to view ${totalIssuesAtTimestamp} issue${totalIssuesAtTimestamp > 1 ? 's' : ''} for this transcript`}
+                                                >
+                                                  {totalIssuesAtTimestamp}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          )
+                                        }
+                                        
+                                        // Fallback to issueCount if no API data matches
+                                        if (issueCount > 0) {
+                                          return (
+                                            <Badge 
+                                              variant="destructive" 
+                                              className="text-xs px-1.5 py-0.5 h-5 min-w-5 flex items-center justify-center cursor-pointer hover:bg-destructive/80 transition-colors"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                if (!(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed')) {
+                                                  handleMarkIssue(message.message, message.secondsFromStart || 0, index)
+                                                }
+                                                setTimeout(() => dispatch(setActiveTab('previous-issues')), 100)
+                                              }}
+                                              title={`Click to view ${issueCount} issue${issueCount > 1 ? 's' : ''} for this transcript`}
+                                            >
+                                              {issueCount}
+                                            </Badge>
+                                          )
+                                        }
+                                        
+                                        return null
+                                      })()}
+                                      {/* Show Mark Issue button when QC is assigned - allow for completed calls too */}
+                                      {selectedCall?.qcAssignedTo !== null && (() => {
+                                        // Find issues for this timestamp from API data
+                                        // Only show issues if marked at this exact timestamp (within 1 second)
+                                        const transcriptIssues = resolvedIssueGroups.filter(group => 
+                                          Math.abs(group.secondsFromStart - (message.secondsFromStart || 0)) < 1
+                                        )
+                                        const totalIssuesAtTimestamp = transcriptIssues.reduce((total, group) => total + group.issues.length, 0)
+                                        const hasIssues = totalIssuesAtTimestamp > 0 || issueCount > 0
+                                        
+                                        return (
+                                          <div className="flex items-center gap-1.5">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleMarkIssue(message.message, message.secondsFromStart || 0, index)
+                                              }}
+                                              className={`transition-opacity text-[11px] px-2.5 py-1.5 rounded-md font-medium ${
+                                                hasIssues
+                                                  ? 'opacity-100 bg-red-100 hover:bg-red-200 text-red-700' 
+                                                  : 'opacity-0 group-hover:opacity-100 bg-secondary hover:bg-muted text-secondary-foreground'
+                                              }`}
+                                            >
+                                              {hasIssues ? 'Mark more issues' : 'Mark issue'}
+                                            </button>
+                                          </div>
+                                        )
+                                      })()}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="text-[14px] text-foreground/90 leading-relaxed font-normal mt-1">
+                                    {message.message}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 px-6">
+                          <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                          </div>
+                          <h3 className="attio-heading-3 mb-2">No transcript available</h3>
+                          <p className="attio-body-small">This call doesn't have transcript data.</p>
+                        </div>
+                      )}
+                    </div>
                 </div>
               </div>
             ) : (
@@ -1208,22 +1865,35 @@ export default function ReviewPage() {
 
         {/* Issues Panel for Completed Calls - Collapsible */}
         {showIssuesPanel && selectedCall && (selectedCall.qcStatus === 'done' || selectedCall.qcStatus === 'completed') && (
-          <SidePanelWrapper>
-              <SidePanelHeader
-                iconBgColor="bg-green-100"
-                iconTextColor="text-green-600"
-                iconSize="w-10 h-10"
-                svgIconSize="w-5 h-5"
-                iconSvg={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />}
-                title="QC Review Issues"
-                titleTag="h3"
-                titleClassName="text-xl font-semibold text-foreground"
-                description="Issues found during quality review"
-                descriptionClassName="text-sm text-muted-foreground mt-1"
-                contentGap="gap-4"
-                onClose={() => dispatch(setIssuePanelOpen(false))}
-                closeButtonVariant="simple"
-              />
+          <div className="w-full  sm:w-[380px] md:w-[400px] lg:w-[480px] xl:w-[520px] bg-card border-l-2 border-l-green-500/20 transition-all duration-300 shadow-xl flex-shrink-0">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="px-4 lg:px-6 py-4 lg:py-6 border-b border-border bg-muted/20 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-4">
+                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                       <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                       </svg>
+                     </div>
+                     <div>
+                       <h3 className="text-xl font-semibold text-foreground">QC Review Issues</h3>
+                       <p className="text-sm text-muted-foreground mt-1">Issues found during quality review</p>
+                     </div>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     {/* Removed Add More Issues button for completed calls */}
+                     <button
+                       onClick={() => dispatch(setIssuePanelOpen(false))}
+                       className="p-2 hover:bg-muted rounded-lg transition-colors"
+                     >
+                       <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                       </svg>
+                     </button>
+                   </div>
+                 </div>
+              </div>
 
               {/* Issues Content */}
               <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
@@ -1312,7 +1982,7 @@ export default function ReviewPage() {
                         </div>
                       )}
                       
-                      <div className="space-y-4" style={{ scrollbarGutter: 'stable' }}>
+                      <div className="space-y-4">
                         {resolvedIssueGroups
                           .slice()
                           .sort((a, b) => b.secondsFromStart - a.secondsFromStart)
@@ -1367,11 +2037,6 @@ export default function ReviewPage() {
                                       {issue.description}
                                     </p>
                                   )}
-                                  {issue.note && (
-                                    <p className="text-sm text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-lg">
-                                      Note added: {issue.note}
-                                    </p>
-                                  )}
                                 </div>
                               ))}
                             </div>
@@ -1381,41 +2046,59 @@ export default function ReviewPage() {
                     </div>
                   ) : (
                     // Empty state
-                    <SidePanelEmptyState
-                      iconSvg={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />}
-                      title="No issues found during QC review"
-                      description="This call passed QC review with no issues identified. The call quality met all standards."
-                      showBadge={true}
-                      badgeAssignedTo={selectedCall?.qcAssignedTo?.name || 'Unknown'}
-                    />
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+                        <svg className="w-8 h-8 text-muted-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-foreground mb-2">
+                        No issues found during QC review
+                      </h3>
+                      <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+                        This call passed QC review with no issues identified. The call quality met all standards.
+                      </p>
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="text-sm text-green-800">
+                          ✓ QC Review completed by: <span className="font-medium">{selectedCall?.qcAssignedTo?.name || 'Unknown'}</span>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
-          </SidePanelWrapper>
+            </div>
+          </div>
         )}
 
-        {/* Mark Issue Panel - hidden for completed/done calls */}
-        {markIssueData && selectedCall && !isCallCompleted && (
-          <SidePanelWrapper>
-            <SidePanelHeader
-              iconBgColor="bg-red-100"
-              iconTextColor="text-red-600"
-              iconSize="w-8 h-8"
-              svgIconSize="w-4 h-4"
-              iconSvg={<path fillRule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clipRule="evenodd" />}
-              svgFill="currentColor"
-              svgStroke="none"
-              svgViewBox="0 0 20 20"
-              title="Mark Issue"
-              titleTag="h2"
-              titleClassName="text-base lg:text-lg font-semibold text-foreground mb-1"
-              description="Identify quality concerns"
-              descriptionClassName="text-xs lg:text-[13px] text-muted-foreground/80"
-              contentGap="gap-3"
-              paddingY="py-4 lg:py-5"
-              onClose={handleCancelMarkIssue}
-              closeButtonVariant="bordered"
-            />
+        {/* Mark Issue Panel - Responsive - Allow marking issues even for completed calls */}
+        {markIssueData && selectedCall && (
+          <div className="w-full sm:w-[380px] md:w-[400px] bg-white absolute right-0 top-0 h-full overflow-y-scroll lg:w-[480px] xl:w-[520px] bg-card border-l-2 border-l-primary/20 transition-all duration-300 shadow-xl flex-shrink-0">
+            <div className="flex flex-col">
+              {/* Header */}
+              <div className="px-4 lg:px-6 py-4 lg:py-5 border-b border-border bg-muted/20 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-base lg:text-lg font-semibold text-foreground mb-1">Mark Issue</h2>
+                      <p className="text-xs lg:text-[13px] text-muted-foreground/80">Identify quality concerns</p>
+                    </div>
+                  </div>
+                <button 
+                  onClick={handleCancelMarkIssue}
+                  className="w-8 h-8 rounded-lg border border-input hover:bg-muted hover:border-border flex items-center justify-center transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                </div>
+              </div>
               
               {/* Tabs Navigation */}
               <div className="pt-4 pb-0">
@@ -1429,7 +2112,7 @@ export default function ReviewPage() {
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {(isCallCompleted) 
+                    {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
                       ? 'Add More Issues' 
                       : 'New Issue'
                     }
@@ -1443,7 +2126,7 @@ export default function ReviewPage() {
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {(isCallCompleted) 
+                    {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
                       ? 'Existing Issues' 
                       : 'Previous Issues'
                     }
@@ -1472,6 +2155,8 @@ export default function ReviewPage() {
                         existingIssuesAtTimestamp={existingIssuesAtTimestamp}
                         onNewIssue={handleNewIssue}
                       />
+                      // <>
+                      // hello world</>
                     ) : (
                       <div className="text-sm text-muted-foreground">
                         Select a transcript snippet to start marking issues.
@@ -1521,13 +2206,13 @@ export default function ReviewPage() {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-medium text-foreground">
-                            {(isCallCompleted) 
+                            {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
                               ? 'Issues Found During QC Review' 
                               : 'All Issues in This Call'
                             }
                           </h3>
                           <div className="flex items-center gap-2">
-                            {(isCallCompleted) && (
+                            {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
                               <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
                                 Review Complete
                               </Badge>
@@ -1537,6 +2222,34 @@ export default function ReviewPage() {
                             </Badge>
                           </div>
                         </div>
+                        
+                        {/* Enhanced summary for completed calls */}
+                        {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && resolvedIssueGroups.length > 0 && (
+                          <div className="bg-card border rounded-lg p-4 mb-4">
+                            <h4 className="text-sm font-medium text-foreground mb-3">QC Review Summary</h4>
+                            <div className="grid grid-cols-3 gap-4 text-center">
+                              <div>
+                                <div className="text-lg font-semibold text-destructive">
+                                  {severityCounts.high}
+                                </div>
+                                <div className="text-xs text-muted-foreground">High Severity</div>
+                              </div>
+                              <div>
+                                <div className="text-lg font-semibold text-orange-600">
+                                  {severityCounts.medium}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Medium Severity</div>
+                              </div>
+                              <div>
+                                <div className="text-lg font-semibold text-muted-foreground">
+                                  {severityCounts.low}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Low Severity</div>
+                              </div>
+                            </div>
+
+                          </div>
+                        )}
                         
                         <div className="space-y-3">
                           {resolvedIssueGroups
@@ -1559,9 +2272,9 @@ export default function ReviewPage() {
                                   </span>
                                 </div>
                                 <div className="flex flex-wrap gap-1 justify-end max-w-[70%]">
-                                  {issueGroup.issues.map((issue) => (
-                                    <div key={issue._id} className="flex items-center gap-1">
+                                  {issueGroup.issues.map((issue, issueIndex) => (
                                     <Badge
+                                      key={issueIndex}
                                       variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
                                       className="text-xs max-w-full"
                                       title={`${issue.severity.toUpperCase()} - ${issue.title}`}
@@ -1570,24 +2283,6 @@ export default function ReviewPage() {
                                         {issue.severity.toUpperCase()} - {issue.title}
                                       </span>
                                     </Badge>
-                                      {selectedCall?.id && (
-                                        <DeleteIssueDialog
-                                          callId={selectedCall.id}
-                                          issueId={issue._id}
-                                          issueTitle={issue.title}
-                                          onDeleted={() => loadCallIssues(selectedCall.id)}
-                                        >
-                                          <button
-                                            type="button"
-                                            className="text-muted-foreground hover:text-destructive transition-colors"
-                                            title="Delete issue"
-                                            aria-label={`Delete ${issue.title}`}
-                                          >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                          </button>
-                                        </DeleteIssueDialog>
-                                      )}
-                                    </div>
                                   ))}
                                 </div>
                               </div>
@@ -1685,39 +2380,210 @@ export default function ReviewPage() {
                                   return null
                                 })()}
                               </div>
+                              {/* Enhanced issue details for completed calls */}
+                              {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
+                                <div className="space-y-2">
+                                  {issueGroup.issues.map((issue, issueIndex) => (
+                                    <div key={issueIndex} className="bg-background/70 rounded p-3 border group/issue hover:border-primary/30 transition-colors">
+                                      <div className="flex items-start justify-between gap-2 mb-2">
+                                        <div className="flex-1">
+                                          <h4 className="text-sm font-medium text-foreground">{issue.title}</h4>
+                                          {issue.code && (
+                                            <p className="text-xs text-muted-foreground mt-1">Code: {issue.code}</p>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Badge
+                                            variant={issue.severity === 'high' ? 'destructive' : issue.severity === 'medium' ? 'default' : 'secondary'}
+                                            className="text-xs"
+                                          >
+                                            {issue.severity.toUpperCase()}
+                                          </Badge>
+                                          <button
+                                            onClick={async () => {
+                                              if (confirm(`Remove "${issue.title}" from this timestamp?`)) {
+                                                try {
+                                                  await CallsService.markCallIssues({
+                                                    callId: selectedCall.id,
+                                                    secondsFromStart: Math.floor(issueGroup.secondsFromStart),
+                                                    transcript: issueGroup.transcript,
+                                                    addIssues: [],
+                                                    updateIssues: [],
+                                                    deleteIssues: [issue._id]
+                                                  })
+                                                  toast({
+                                                    title: "Issue Removed",
+                                                    description: `"${issue.title}" has been removed.`,
+                                                  })
+                                                  await loadCallIssues(selectedCall.id)
+                                                } catch (err) {
+                                                  toast({
+                                                    title: "Error",
+                                                    description: "Failed to remove issue.",
+                                                    variant: "destructive"
+                                                  })
+                                                }
+                                              }
+                                            }}
+                                            className="opacity-0 group-hover/issue:opacity-100 text-xs px-2 py-1 text-destructive hover:bg-destructive/10 rounded transition-all"
+                                          >
+                                            Remove
+                                          </button>
+                                        </div>
+                                      </div>
+                                      {issue.description && (
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                          {issue.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))}
+                                  <button
+                                    onClick={() => {
+                                      handleMarkIssue(
+                                        issueGroup.transcript,
+                                        issueGroup.secondsFromStart
+                                      )
+                                    }}
+                                    className="w-full text-xs px-3 py-2 bg-primary/10 text-primary border border-primary/20 rounded hover:bg-primary/20 transition-colors"
+                                  >
+                                    Add/Change Issues at this Timestamp
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
                       </div>
                     ) : (
                       // Empty state
-                      <SidePanelEmptyState
-                        iconSvg={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />}
-                        title="No issues for this call"
-                        description={`No issues have been marked for this call yet. Switch to the "New Issue" tab to add some.`}
-                        showBadge={false}
-                      />
+                      <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+                          <svg className="w-8 h-8 text-muted-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-foreground mb-2">
+                          {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                            ? 'No issues found during QC review' 
+                            : 'No issues for this call'
+                          }
+                        </h3>
+                        <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+                          {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') 
+                            ? 'This call passed QC review with no issues identified. The call quality met all standards.' 
+                            : 'No issues have been marked for this call yet. Switch to the "New Issue" tab to add some.'
+                          }
+                        </p>
+                        {(selectedCall?.qcStatus === 'done' || selectedCall?.qcStatus === 'completed') && (
+                          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="text-sm text-green-800">
+                              ✓ QC Review completed by: <span className="font-medium">{selectedCall?.qcAssignedTo?.name || 'Unknown'}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
               </div>
-
+              
               {/* Sticky Actions - Only show for New Issue tab */}
-              {activeTab === 'new-issue' && ( 
-                <IssueStickyActions
-                  activeTab={activeTab}
-                  isFormValid={isFormValid}
-                  onCancel={handleCancelMarkIssue}
-                  onSubmit={() => formRef.current?.submitForm()}
-                />
+              {activeTab === 'new-issue' && (
+                <div className="flex-shrink-0 p-4 lg:p-6 border-t border-border bg-card sticky bottom-0">
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleCancelMarkIssue}
+                      className="flex-1 px-3 lg:px-4 py-2 text-sm font-medium text-foreground border border-input bg-background hover:bg-muted rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => formRef.current?.submitForm()}
+                      disabled={!isFormValid || isSubmitting || isSubmitted}
+                      className="flex-1 px-3 lg:px-4 py-2 text-sm font-medium cursor-pointer text-primary-foreground bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : isSubmitted ? (
+                        <>
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Submitted
+                        </>
+                      ) : (
+                        'Mark Issue'
+                      )}
+                    </button>
+                  </div>
+                </div>
               )}
-            </SidePanelWrapper>
+            </div>
+          </div>
         )}
         </div>
       </div>
-
+      
       {/* Call Classification Dialog */}
-      <ClassificationDialog onSubmit={handleClassificationSubmit} selectedClassification={selectedClassification} />
+      <Dialog
+        open={showClassificationDialog}
+        onOpenChange={(open) => {
+          dispatch(setClassificationDialogOpen(open))
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Classify Call Quality</DialogTitle>
+            <DialogDescription>
+              Please classify this call before marking it as completed.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 py-4">
+            {['Excellent', 'Good', 'Average', 'Poor'].map((classification) => (
+              <button
+                key={classification}
+                onClick={() => dispatch(setSelectedClassificationAction(classification))}
+                className={`w-full px-4 py-3 text-left rounded-lg border-2 transition-all ${
+                  selectedClassification === classification
+                    ? 'border-primary bg-primary/10 font-semibold'
+                    : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">{classification}</span>
+                  {selectedClassification === classification && (
+                    <CheckCircle className="h-5 w-5 text-primary" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                dispatch(setClassificationDialogOpen(false))
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleClassificationSubmit}
+              disabled={!selectedClassification}
+            >
+              Mark Completed
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   )
 }

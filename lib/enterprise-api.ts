@@ -110,7 +110,7 @@ class EnterpriseApiService {
       searchParams.append('search', params.search.trim())
     }
 
-    const url = `/conversation/enterprise-call-reports/enterprises?${searchParams}`
+    const url = `/credit/v6/conversational-ai/enterprises?${searchParams}`
     
     try {
       const response = await this.apiClient.get<EnterpriseResponse>(url)

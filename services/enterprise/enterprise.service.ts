@@ -28,7 +28,7 @@ export class EnterpriseService {
     }
 
     return apiClient.get<EnterpriseResponse>(
-      `/conversation/enterprise-call-reports/enterprises?${searchParams}`
+      `/credit/v6/conversational-ai/enterprises?${searchParams}`
     )
   }
 

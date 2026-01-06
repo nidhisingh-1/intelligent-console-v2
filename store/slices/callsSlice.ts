@@ -37,8 +37,6 @@ interface CallsState {
   isUnassigning: boolean
   isClassificationDialogOpen: boolean
   selectedClassification: string
-  isUpdatingTestCall: boolean
-  testCallUpdateError: string | null
 }
 
 const initialFilters: CallFilters = {
@@ -74,8 +72,6 @@ const initialState: CallsState = {
   isUnassigning: false,
   isClassificationDialogOpen: false,
   selectedClassification: '',
-  isUpdatingTestCall: false,
-  testCallUpdateError: null,
 }
 
 const callsSlice = createSlice({
@@ -99,8 +95,6 @@ const callsSlice = createSlice({
       state.callDetails = null
       state.callDetailsStatus = action.payload ? 'loading' : 'idle'
       state.callDetailsError = null
-      state.testCallUpdateError = null
-      state.isUpdatingTestCall = false
     },
     
     // Update a single call
@@ -147,8 +141,6 @@ const callsSlice = createSlice({
     setCallDetailsLoading: (state) => {
       state.callDetailsStatus = 'loading'
       state.callDetailsError = null
-      state.testCallUpdateError = null
-      state.isUpdatingTestCall = false
     },
 
     setCallDetails: (state, action: PayloadAction<CallData | null>) => {
@@ -230,27 +222,6 @@ const callsSlice = createSlice({
       state.selectedClassification = action.payload
     },
 
-    // Test call status update
-    setIsUpdatingTestCall: (state, action: PayloadAction<boolean>) => {
-      state.isUpdatingTestCall = action.payload
-      if (action.payload) {
-        state.testCallUpdateError = null
-      }
-    },
-
-    setTestCallUpdateError: (state, action: PayloadAction<string | null>) => {
-      state.testCallUpdateError = action.payload
-      state.isUpdatingTestCall = false
-    },
-
-    updateTestCallStatus: (state, action: PayloadAction<boolean>) => {
-      if (state.callDetails) {
-        state.callDetails.isTestCall = action.payload
-      }
-      state.isUpdatingTestCall = false
-      state.testCallUpdateError = null
-    },
-
     // Reset entire state
     reset: () => initialState,
   },
@@ -282,9 +253,6 @@ export const {
   setIsUnassigning,
   setClassificationDialogOpen,
   setSelectedClassification,
-  setIsUpdatingTestCall,
-  setTestCallUpdateError,
-  updateTestCallStatus,
   reset,
 } = callsSlice.actions
 

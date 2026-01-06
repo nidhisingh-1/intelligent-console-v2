@@ -59,7 +59,6 @@ export interface DashboardApiResponse {
 }
 
 export interface IssueCall {
-  _id: string
   callId: string
   enterpriseId: string
   enterpriseName: string
@@ -67,11 +66,9 @@ export interface IssueCall {
   teamName: string
   note: string
   severity: 'high' | 'medium' | 'low'
-  status: 'resolved' | 'unresolved'
   callRecordingUrl: string
   secondsFromStart: number
-  transcript: string,
-  createdAt: string
+  transcript: string
 }
 
 export interface IssueCallsResponse {
@@ -189,38 +186,14 @@ export class DashboardApiService {
   /**
    * Get all calls for a specific issue with pagination
    */
-  async getIssueCalls(issueId: string, page: number = 1, limit: number = 10, callId?: string): Promise<IssueCallsResponse> {
+  async getIssueCalls(issueId: string, page: number = 1, limit: number = 10): Promise<IssueCallsResponse> {
     try {
-      const queryParams = new URLSearchParams()
-      queryParams.append('page', page.toString())
-      queryParams.append('limit', limit.toString())
-      if (callId) queryParams.append('callId', callId)
-
       const response = await this.apiClient.get<IssueCallsResponse>(
-        `/conversation/converse-qc/issue-master/${issueId}?${queryParams.toString()}`
+        `/conversation/converse-qc/issue-master/${issueId}?page=${page}&limit=${limit}`
       )
       return response
     } catch (error) {
       console.error('Error fetching issue calls:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Update individual issue call status
-   */
-  async updateIssueCallStatus(
-    _id: string, 
-    status: 'resolved' | 'unresolved'
-  ): Promise<{ success: boolean; message?: string }> {
-    try {
-      const response = await this.apiClient.put<{ success: boolean; message?: string }>(
-        `/conversation/converse-qc/update-issue-status`,
-        { _id, status }
-      )
-      return response
-    } catch (error) {
-      console.error('Error updating issue call status:', error)
       throw error
     }
   }

@@ -32,9 +32,6 @@ export interface Call {
     userId?: string
     name?: string
   } | null
-  qcStartTime?: string
-  qcEndTime?: string
-  qcTimeTaken?: number
   rawApiData?: unknown
 }
 
@@ -113,9 +110,6 @@ export interface ReviewFilterState {
   selectedAgentName: string
   selectedAgentType: string
   selectedCallType: string
-  callId: string
-  durationRange: string
-  outcome: string
 }
 
 export type ReviewFilterUpdate = Partial<ReviewFilterState>
@@ -126,8 +120,5 @@ export const DEFAULT_REVIEW_FILTERS: ReviewFilterState = {
   endDate: undefined,
   selectedAgentName: 'all',
   selectedAgentType: 'all',
-  selectedCallType: 'all',
-  callId: '',
-  durationRange: 'all',
-  outcome: 'all'
+  selectedCallType: 'all'
 }

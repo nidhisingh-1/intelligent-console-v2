@@ -6,9 +6,15 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { ClipboardList, BarChart3, Settings, Menu, Bug, CheckCircle } from "lucide-react"
+import { ClipboardList, BarChart3, Settings, Menu, Bug, CheckCircle, Sparkles } from "lucide-react"
 
 const navigation = [
+  {
+    name: "Spyne Flip",
+    href: "/spyne-flip",
+    icon: Sparkles,
+    description: "Chrome plugin analytics dashboard",
+  },
   {
     name: "Review Calls",
     href: "/review",
@@ -27,7 +33,6 @@ const navigation = [
     icon: Bug,
     description: "Manage and categorize quality issues",
   },
-
 ]
 
 interface AppShellProps {
