@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { EnterpriseProvider } from "@/lib/enterprise-context"
 import { Providers } from "./providers"
+import { ChunkErrorRecovery } from "@/components/chunk-error-recovery"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -37,6 +38,7 @@ html {
         <Providers>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light" disableTransitionOnChange>
           <EnterpriseProvider>
+            <ChunkErrorRecovery />
             {children}
             <Toaster />
           </EnterpriseProvider>

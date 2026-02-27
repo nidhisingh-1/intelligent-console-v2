@@ -6,9 +6,27 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { ClipboardList, BarChart3, Settings, Menu, Bug, CheckCircle, Sparkles } from "lucide-react"
+import { ClipboardList, BarChart3, Settings, Menu, Bug, CheckCircle, Sparkles, DollarSign, Gauge, BrainCircuit } from "lucide-react"
 
 const navigation = [
+  {
+    name: "Spyne Velocity",
+    href: "/inventory",
+    icon: Gauge,
+    description: "Capital velocity & inventory aging",
+  },
+  {
+    name: "Velocity 2.0",
+    href: "/velocity-2",
+    icon: BrainCircuit,
+    description: "AI-native inventory intelligence",
+  },
+  {
+    name: "ROI Dashboard",
+    href: "/roi",
+    icon: DollarSign,
+    description: "Dealer ROI & qualified calls",
+  },
   {
     name: "Spyne Flip",
     href: "/spyne-flip",
@@ -102,7 +120,7 @@ export function AppShell({ children, statsChips }: AppShellProps) {
       </Sheet>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-y-auto">
+      <div className="flex flex-1 flex-col overflow-y-auto" data-slot="scroll-root">
         {/* Top Navigation Bar - Scrolls with content */}
         <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0">
           <div className="w-full pl-2 pr-6">

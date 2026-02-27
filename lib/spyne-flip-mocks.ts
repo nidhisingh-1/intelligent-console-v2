@@ -16,6 +16,7 @@ import type {
   WeeklyTrend,
   PerformanceMetrics,
   ReliabilityMetrics,
+  DealerDemoFeasibility,
 } from '@/services/spyne-flip/spyne-flip.types'
 
 // Overview KPIs Mock Data
@@ -647,3 +648,129 @@ export const mockSessionDurationDistribution: SessionDurationData[] = [
   { range: '>30 min', count: 61 },
 ]
 
+// Demo Feasibility Mock Data
+const CONSOLE_DEMO_BASE_URL = 'https://console.spyne.ai/demo'
+const FLIP_DEMO_BASE_URL = 'https://flip.spyne.ai/demo'
+
+export const mockDealerDemoFeasibility: DealerDemoFeasibility[] = [
+  {
+    dealerId: 'df-001',
+    dealerName: 'AutoNation Toyota Downtown',
+    websiteUrl: 'https://www.autonationtoyotadowntown.com',
+    flipDemoPossible: 'yes',
+    flipDemoLink: `${FLIP_DEMO_BASE_URL}?dealer=autonationtoyotadowntown.com`,
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-001`,
+  },
+  {
+    dealerId: 'df-002',
+    dealerName: 'Pacific Honda Group',
+    websiteUrl: 'https://www.pacifichondagroup.com',
+    flipDemoPossible: 'yes',
+    flipDemoLink: `${FLIP_DEMO_BASE_URL}?dealer=pacifichondagroup.com`,
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-002`,
+  },
+  {
+    dealerId: 'df-003',
+    dealerName: 'Luxury Motors BMW',
+    websiteUrl: 'https://www.luxurymotorsbmw.com',
+    flipDemoPossible: 'partial',
+    reason: 'Dynamic inventory loading',
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-003`,
+  },
+  {
+    dealerId: 'df-004',
+    dealerName: 'Valley Ford Dealership',
+    websiteUrl: 'https://www.valleyford.com',
+    flipDemoPossible: 'no',
+    reason: 'Website restricts live injection',
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-004`,
+  },
+  {
+    dealerId: 'df-005',
+    dealerName: 'Premier Chevrolet',
+    websiteUrl: 'https://www.premierchevrolet.com',
+    flipDemoPossible: 'yes',
+    flipDemoLink: `${FLIP_DEMO_BASE_URL}?dealer=premierchevrolet.com`,
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-005`,
+  },
+  {
+    dealerId: 'df-006',
+    dealerName: 'Sunset Nissan',
+    websiteUrl: 'https://www.sunsetnissan.com',
+    flipDemoPossible: 'no',
+    reason: 'Inventory loaded via iframe',
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-006`,
+  },
+  {
+    dealerId: 'df-007',
+    dealerName: 'Mountain View Kia',
+    websiteUrl: 'https://www.mountainviewkia.com',
+    flipDemoPossible: 'partial',
+    reason: 'Inventory structure not supported',
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-007`,
+  },
+  {
+    dealerId: 'df-008',
+    dealerName: 'Metro Hyundai',
+    websiteUrl: 'https://www.metrohyundai.com',
+    flipDemoPossible: 'yes',
+    flipDemoLink: `${FLIP_DEMO_BASE_URL}?dealer=metrohyundai.com`,
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-008`,
+  },
+  {
+    dealerId: 'df-009',
+    dealerName: 'Coastal Mazda',
+    websiteUrl: 'https://www.coastalmazda.com',
+    flipDemoPossible: 'no',
+    reason: 'Single-page application structure',
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-009`,
+  },
+  {
+    dealerId: 'df-010',
+    dealerName: 'Downtown Subaru',
+    websiteUrl: 'https://www.downtownsubaru.com',
+    flipDemoPossible: 'yes',
+    flipDemoLink: `${FLIP_DEMO_BASE_URL}?dealer=downtownsubaru.com`,
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-010`,
+  },
+  {
+    dealerId: 'df-011',
+    dealerName: 'Sterling Auto Group',
+    websiteUrl: 'https://www.sterlingautogroup.com',
+    flipDemoPossible: 'partial',
+    reason: 'CDN security restrictions',
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-011`,
+  },
+  {
+    dealerId: 'df-012',
+    dealerName: 'Capital City Motors',
+    websiteUrl: 'https://www.capitalcitymotors.com',
+    flipDemoPossible: 'yes',
+    flipDemoLink: `${FLIP_DEMO_BASE_URL}?dealer=capitalcitymotors.com`,
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-012`,
+  },
+  {
+    dealerId: 'df-013',
+    dealerName: 'Heritage Auto Mall',
+    websiteUrl: 'https://www.heritageautomall.com',
+    flipDemoPossible: 'no',
+    reason: 'Custom website framework',
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-013`,
+  },
+  {
+    dealerId: 'df-014',
+    dealerName: 'Lakeside Volkswagen',
+    websiteUrl: 'https://www.lakesidevw.com',
+    flipDemoPossible: 'yes',
+    flipDemoLink: `${FLIP_DEMO_BASE_URL}?dealer=lakesidevw.com`,
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-014`,
+  },
+  {
+    dealerId: 'df-015',
+    dealerName: 'Evergreen Audi',
+    websiteUrl: 'https://www.evergreenaudi.com',
+    flipDemoPossible: 'partial',
+    reason: 'Cross-origin restrictions',
+    consoleDemoLink: `${CONSOLE_DEMO_BASE_URL}?ref=df-015`,
+  },
+]

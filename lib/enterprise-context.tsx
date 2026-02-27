@@ -459,10 +459,28 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
     extractAuthToken()
   }, [])
 
+  // Check if auth token is available
+  const hasAuthToken = (): boolean => {
+    if (typeof window === 'undefined') return false
+    
+    const urlParams = new URLSearchParams(window.location.search)
+    const tokenFromUrl = urlParams.get('auth_key') || urlParams.get('bearerToken') || urlParams.get('token')
+    const storedToken = localStorage.getItem('qa_dashboard_token')
+    
+    return !!(tokenFromUrl || storedToken)
+  }
+
   // Initial data load
   useEffect(() => {
     const initializeData = async () => {
       setIsInitialLoading(true)
+      
+      // Skip API calls if no auth token is available
+      if (!hasAuthToken()) {
+        console.log('[EnterpriseProvider] No auth token found, skipping enterprise data load')
+        setIsInitialLoading(false)
+        return
+      }
       
       try {
         // Load ALL enterprises first instead of just first page

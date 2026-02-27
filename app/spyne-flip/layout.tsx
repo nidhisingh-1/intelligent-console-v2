@@ -18,11 +18,13 @@ import {
   Download,
   Trophy,
   Target,
-  Calendar
+  Calendar,
+  Sparkles
 } from "lucide-react"
 
 const navItems = [
   { href: '/spyne-flip', label: 'Overview', icon: LayoutDashboard },
+  { href: '/spyne-flip/demo-feasibility', label: 'Demo Feasibility', icon: Sparkles },
   { href: '/spyne-flip/leaderboard', label: 'Leaderboard', icon: Trophy },
   { href: '/spyne-flip/funnel', label: 'Demo Funnel', icon: Layers },
   { href: '/spyne-flip/dealers', label: 'Dealers', icon: Building2 },

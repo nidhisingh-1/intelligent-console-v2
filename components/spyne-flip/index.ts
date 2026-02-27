@@ -8,4 +8,5 @@ export { UsageAdoption } from './usage-adoption'
 export { ViniEngagement } from './vini-engagement'
 export { TrendsSection } from './trends-section'
 export { SystemHealth } from './system-health'
+export { DemoFeasibilityTable } from './demo-feasibility-table'
 

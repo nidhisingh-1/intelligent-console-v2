@@ -180,6 +180,40 @@ export interface ReliabilityMetrics {
   abruptSessionTerminations: number
 }
 
+// Demo Feasibility Types
+export type DemoFeasibilityStatus = 'yes' | 'no' | 'partial'
+
+export interface DealerDemoFeasibility {
+  dealerId: string
+  dealerName: string
+  websiteUrl: string
+  flipDemoPossible: DemoFeasibilityStatus
+  reason?: string // Only for 'no' or 'partial' status
+  flipDemoLink?: string // Only for 'yes' status
+  consoleDemoLink: string // Always available as guaranteed fallback
+}
+
+export type DemoFeasibilityReason =
+  | 'spa_site'
+  | 'iframe_inventory'
+  | 'bot_blocked'
+  | 'cdn_restrictions'
+  | 'inventory_not_detectable'
+  | 'dynamic_inventory_loading'
+  | 'cors_restrictions'
+  | 'custom_framework'
+
+export const DEMO_FEASIBILITY_REASONS: Record<DemoFeasibilityReason, string> = {
+  spa_site: 'Single-page application structure',
+  iframe_inventory: 'Inventory loaded via iframe',
+  bot_blocked: 'Website restricts live injection',
+  cdn_restrictions: 'CDN security restrictions',
+  inventory_not_detectable: 'Inventory structure not supported',
+  dynamic_inventory_loading: 'Dynamic inventory loading',
+  cors_restrictions: 'Cross-origin restrictions',
+  custom_framework: 'Custom website framework',
+}
+
 // API Response Types
 export interface SpyneFlipApiResponse<T> {
   data: T
