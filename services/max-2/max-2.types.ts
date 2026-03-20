@@ -198,6 +198,181 @@ export interface ServicePainPoint {
   trend: "rising" | "stable" | "declining"
 }
 
+export type ROStatus = "open" | "in-progress" | "waiting-parts" | "waiting-approval" | "completed" | "invoiced"
+
+export interface RepairOrder {
+  id: string
+  roNumber: string
+  customerName: string
+  phone: string
+  vehicle: string
+  vin: string
+  mileageIn: number
+  advisor: string
+  technician: string
+  status: ROStatus
+  openedAt: string
+  promisedTime: string
+  laborHours: number
+  partsTotal: number
+  laborTotal: number
+  totalEstimate: number
+  complaints: string[]
+  bay: string | null
+  isWaiter: boolean
+  hasConcern: boolean
+}
+
+export type BayStatus = "occupied" | "available" | "out-of-service"
+
+export interface ServiceBay {
+  id: string
+  bayNumber: string
+  type: "general" | "express" | "alignment" | "body" | "detail"
+  status: BayStatus
+  technician: string | null
+  currentRO: string | null
+  currentVehicle: string | null
+  estimatedCompletion: string | null
+}
+
+export type AppointmentStatus = "confirmed" | "checked-in" | "in-progress" | "completed" | "no-show" | "cancelled"
+
+export interface ServiceAppointment {
+  id: string
+  customerName: string
+  phone: string
+  vehicle: string
+  scheduledTime: string
+  advisor: string
+  serviceType: string
+  estimatedDuration: string
+  status: AppointmentStatus
+  isWaiter: boolean
+  notes: string
+}
+
+export type ActionItemPriority = "urgent" | "high" | "medium" | "low"
+export type ActionItemStatus = "pending" | "in-progress" | "overdue" | "completed"
+
+export interface ServiceActionItem {
+  id: string
+  title: string
+  description: string
+  roNumber: string | null
+  customerName: string | null
+  assignedTo: string
+  priority: ActionItemPriority
+  status: ActionItemStatus
+  dueDate: string
+  category: "follow-up" | "approval" | "parts" | "callback" | "warranty" | "inspection"
+}
+
+export interface ServiceSummaryData {
+  openROs: number
+  completedToday: number
+  revenueToday: number
+  avgROValue: number
+  csiScore: number
+  csiTarget: number
+  techEfficiency: number
+  partsGrossMargin: number
+  laborGrossMargin: number
+  appointmentsToday: number
+  waitersInProgress: number
+  baysOccupied: number
+  totalBays: number
+  overdueActions: number
+}
+
+export interface ServiceRevenueData {
+  day: string
+  labor: number
+  parts: number
+  total: number
+}
+
+export interface TechPerformance {
+  id: string
+  name: string
+  hoursAvailable: number
+  hoursBilled: number
+  efficiency: number
+  rosCompleted: number
+  avgROValue: number
+  comebacks: number
+}
+
+// ─── Sales (Operations) ───
+
+export interface SalesSummaryData {
+  unitsSoldMTD: number
+  unitsTarget: number
+  totalGrossMTD: number
+  avgFrontGross: number
+  avgBackGross: number
+  closeRate: number
+  appointmentsToday: number
+  testDrivesToday: number
+  pendingDeals: number
+  dealsInFI: number
+  beBackCount: number
+  avgDaysToClose: number
+  newLeadsToday: number
+  followUpsDue: number
+}
+
+export interface SalesAppointment {
+  id: string
+  customerName: string
+  phone: string
+  vehicleInterest: string
+  scheduledTime: string
+  salesperson: string
+  type: "appointment" | "test-drive" | "delivery" | "fi-signing" | "be-back"
+  status: "confirmed" | "arrived" | "completed" | "no-show" | "cancelled"
+  source: string
+  notes: string
+}
+
+export interface SalesActionItem {
+  id: string
+  title: string
+  description: string
+  customerName: string | null
+  assignedTo: string
+  priority: ActionItemPriority
+  status: ActionItemStatus
+  dueDate: string
+  category: "follow-up" | "desking" | "trade-appraisal" | "credit-app" | "delivery-prep" | "callback"
+}
+
+export interface SalespersonPerformance {
+  id: string
+  name: string
+  unitsSold: number
+  totalGross: number
+  avgFrontGross: number
+  avgBackGross: number
+  closeRate: number
+  appointments: number
+  shows: number
+  testDrives: number
+  activeLeads: number
+  avgResponseTime: string
+}
+
+export interface DailyLogEntry {
+  id: string
+  time: string
+  salesperson: string
+  activity: "up" | "phone-up" | "internet-lead" | "be-back" | "appointment" | "test-drive" | "write-up" | "sold" | "lost"
+  customerName: string
+  vehicleInterest: string
+  result: string
+  notes: string
+}
+
 // ─── Lot View ───
 
 export type LotStatus = "frontline" | "in-recon" | "arriving" | "wholesale-candidate" | "sold-pending"

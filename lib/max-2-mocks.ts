@@ -4,6 +4,9 @@ import type {
   MerchandisingVehicle, LeadFunnelStage, VehicleInquiry, FollowUpOpportunity,
   ServiceBuyOpportunity, ServicePainPoint,
   LotVehicle, LotSummary, Customer, CustomerSummary, CustomerActivity,
+  RepairOrder, ServiceBay, ServiceAppointment, ServiceActionItem, ServiceSummaryData,
+  ServiceRevenueData, TechPerformance,
+  SalesSummaryData, SalesAppointment, SalesActionItem, SalespersonPerformance, DailyLogEntry,
 } from "@/services/max-2/max-2.types"
 
 // ─── Lifecycle Strip ───
@@ -253,6 +256,134 @@ export const mockServicePainPoints: ServicePainPoint[] = [
   { id: "sp2", category: "Wait Time Complaints", mentionCount: 12, sentiment: "negative", topQuotes: ["I've been waiting 3 hours", "Nobody told me it would take this long"], trend: "stable" },
   { id: "sp3", category: "Parts Availability", mentionCount: 8, sentiment: "negative", topQuotes: ["The part won't be here for 2 weeks?", "I can't wait that long"], trend: "declining" },
   { id: "sp4", category: "Vehicle Upgrade Interest", mentionCount: 15, sentiment: "neutral", topQuotes: ["What would I get for my car?", "I've been thinking about something newer"], trend: "rising" },
+]
+
+// ─── Service Operations ───
+
+export const mockRepairOrders: RepairOrder[] = [
+  { id: "ro1", roNumber: "RO-24-1042", customerName: "Maria Gonzalez", phone: "(512) 555-0218", vehicle: "2021 Toyota Highlander XLE", vin: "5TDDZRFH0MS100001", mileageIn: 62340, advisor: "Tony R.", technician: "Mike S.", status: "in-progress", openedAt: "8:15 AM", promisedTime: "3:00 PM", laborHours: 4.2, partsTotal: 820, laborTotal: 630, totalEstimate: 1450, complaints: ["Engine light on", "Brake noise", "60k service"], bay: "Bay 3", isWaiter: false, hasConcern: false },
+  { id: "ro2", roNumber: "RO-24-1043", customerName: "Robert Kim", phone: "(512) 555-0375", vehicle: "2020 Honda Accord Sport", vin: "1HGCV1F34LA100002", mileageIn: 48200, advisor: "Lisa M.", technician: "Carlos D.", status: "in-progress", openedAt: "8:30 AM", promisedTime: "11:00 AM", laborHours: 1.5, partsTotal: 120, laborTotal: 225, totalEstimate: 345, complaints: ["Oil change", "Tire rotation"], bay: "Bay 6", isWaiter: true, hasConcern: false },
+  { id: "ro3", roNumber: "RO-24-1044", customerName: "Jennifer Walsh", phone: "(512) 555-0778", vehicle: "2019 Chevrolet Equinox LT", vin: "3GNAXUEV9NL100003", mileageIn: 78100, advisor: "Tony R.", technician: "Brian W.", status: "waiting-approval", openedAt: "7:45 AM", promisedTime: "2:00 PM", laborHours: 6.0, partsTotal: 1340, laborTotal: 900, totalEstimate: 2240, complaints: ["Transmission shudder", "AC not cold"], bay: "Bay 2", isWaiter: false, hasConcern: true },
+  { id: "ro4", roNumber: "RO-24-1045", customerName: "Thomas Brown", phone: "(512) 555-0445", vehicle: "2018 Ford Explorer XLT", vin: "1FMSK8FH7JGA00004", mileageIn: 92400, advisor: "Lisa M.", technician: "Mike S.", status: "waiting-parts", openedAt: "Yesterday", promisedTime: "Tomorrow 12:00 PM", laborHours: 3.0, partsTotal: 680, laborTotal: 450, totalEstimate: 1130, complaints: ["Water pump leak"], bay: null, isWaiter: false, hasConcern: false },
+  { id: "ro5", roNumber: "RO-24-1046", customerName: "David Park", phone: "(512) 555-0456", vehicle: "2020 Toyota Camry SE", vin: "4T1B11HK5KU100005", mileageIn: 35200, advisor: "Tony R.", technician: "Carlos D.", status: "open", openedAt: "9:00 AM", promisedTime: "1:00 PM", laborHours: 2.0, partsTotal: 95, laborTotal: 300, totalEstimate: 395, complaints: ["30k service", "Windshield wiper replacement"], bay: null, isWaiter: true, hasConcern: false },
+  { id: "ro6", roNumber: "RO-24-1047", customerName: "Amanda Chen", phone: "(512) 555-0287", vehicle: "2018 Nissan Rogue SV", vin: "JN8AT2MV5JW100006", mileageIn: 71800, advisor: "Lisa M.", technician: "Brian W.", status: "completed", openedAt: "7:30 AM", promisedTime: "11:30 AM", laborHours: 2.5, partsTotal: 340, laborTotal: 375, totalEstimate: 715, complaints: ["Brakes squealing", "Cabin filter replacement"], bay: "Bay 1", isWaiter: false, hasConcern: false },
+  { id: "ro7", roNumber: "RO-24-1048", customerName: "Sarah Thompson", phone: "(512) 555-0533", vehicle: "2018 Toyota RAV4 LE", vin: "2T3BFREV5JW100007", mileageIn: 68400, advisor: "Tony R.", technician: "Carlos D.", status: "in-progress", openedAt: "9:15 AM", promisedTime: "2:30 PM", laborHours: 3.5, partsTotal: 420, laborTotal: 525, totalEstimate: 945, complaints: ["Alignment", "Tie rod replacement", "Brake flush"], bay: "Bay 5", isWaiter: false, hasConcern: false },
+  { id: "ro8", roNumber: "RO-24-1049", customerName: "James Wilson", phone: "(512) 555-0142", vehicle: "2017 Toyota Tundra SR5", vin: "5TFDY5F17HX100008", mileageIn: 88600, advisor: "Lisa M.", technician: "Mike S.", status: "invoiced", openedAt: "Yesterday", promisedTime: "Yesterday 4:00 PM", laborHours: 5.0, partsTotal: 1150, laborTotal: 750, totalEstimate: 1900, complaints: ["Suspension noise", "4WD service", "Battery replacement"], bay: null, isWaiter: false, hasConcern: false },
+]
+
+export const mockServiceBays: ServiceBay[] = [
+  { id: "b1", bayNumber: "Bay 1", type: "general", status: "occupied", technician: "Brian W.", currentRO: "RO-24-1047", currentVehicle: "2018 Nissan Rogue SV", estimatedCompletion: "11:30 AM" },
+  { id: "b2", bayNumber: "Bay 2", type: "general", status: "occupied", technician: "Brian W.", currentRO: "RO-24-1044", currentVehicle: "2019 Chevrolet Equinox LT", estimatedCompletion: "2:00 PM" },
+  { id: "b3", bayNumber: "Bay 3", type: "general", status: "occupied", technician: "Mike S.", currentRO: "RO-24-1042", currentVehicle: "2021 Toyota Highlander XLE", estimatedCompletion: "3:00 PM" },
+  { id: "b4", bayNumber: "Bay 4", type: "alignment", status: "available", technician: null, currentRO: null, currentVehicle: null, estimatedCompletion: null },
+  { id: "b5", bayNumber: "Bay 5", type: "general", status: "occupied", technician: "Carlos D.", currentRO: "RO-24-1048", currentVehicle: "2018 Toyota RAV4 LE", estimatedCompletion: "2:30 PM" },
+  { id: "b6", bayNumber: "Bay 6", type: "express", status: "occupied", technician: "Carlos D.", currentRO: "RO-24-1043", currentVehicle: "2020 Honda Accord Sport", estimatedCompletion: "11:00 AM" },
+  { id: "b7", bayNumber: "Bay 7", type: "express", status: "available", technician: null, currentRO: null, currentVehicle: null, estimatedCompletion: null },
+  { id: "b8", bayNumber: "Bay 8", type: "body", status: "out-of-service", technician: null, currentRO: null, currentVehicle: null, estimatedCompletion: null },
+]
+
+export const mockServiceAppointments: ServiceAppointment[] = [
+  { id: "sa1", customerName: "Lisa Chang", phone: "(512) 555-0912", vehicle: "2017 Honda HR-V EX", scheduledTime: "10:30 AM", advisor: "Tony R.", serviceType: "Oil Change + Inspection", estimatedDuration: "1.5 hrs", status: "confirmed", isWaiter: true, notes: "First visit — wants prices for tires too" },
+  { id: "sa2", customerName: "Carlos Mendez", phone: "(512) 555-0391", vehicle: "2019 Ford Escape SE", scheduledTime: "11:00 AM", advisor: "Lisa M.", serviceType: "Brake Inspection", estimatedDuration: "1 hr", status: "confirmed", isWaiter: false, notes: "Heard grinding noise when braking" },
+  { id: "sa3", customerName: "Rachel Green", phone: "(512) 555-0104", vehicle: "2019 BMW X3 xDrive30i", scheduledTime: "1:00 PM", advisor: "Tony R.", serviceType: "40k Service", estimatedDuration: "3 hrs", status: "confirmed", isWaiter: false, notes: "Drop off, needs loaner" },
+  { id: "sa4", customerName: "Brian Foster", phone: "(512) 555-0855", vehicle: "2015 Chevrolet Colorado LT", scheduledTime: "2:00 PM", advisor: "Lisa M.", serviceType: "AC Recharge + Diagnostic", estimatedDuration: "2 hrs", status: "confirmed", isWaiter: true, notes: "" },
+  { id: "sa5", customerName: "Mike Rodriguez", phone: "(512) 555-0601", vehicle: "2021 Ford F-150 XLT", scheduledTime: "8:00 AM", advisor: "Tony R.", serviceType: "First Oil Change", estimatedDuration: "45 min", status: "completed", isWaiter: true, notes: "New purchase — comp'd first service" },
+  { id: "sa6", customerName: "No Name Provided", phone: "(512) 555-0999", vehicle: "2020 Hyundai Sonata SEL", scheduledTime: "9:00 AM", advisor: "Lisa M.", serviceType: "Recall — Fuel Pump", estimatedDuration: "2 hrs", status: "no-show", isWaiter: false, notes: "Recall notice mailed, never confirmed" },
+]
+
+export const mockServiceActionItems: ServiceActionItem[] = [
+  { id: "ai1", title: "Customer approval needed — RO-24-1044", description: "Jennifer Walsh needs to approve $2,240 transmission repair. Called twice, no answer.", roNumber: "RO-24-1044", customerName: "Jennifer Walsh", assignedTo: "Tony R.", priority: "urgent", status: "overdue", dueDate: "Today 10:00 AM", category: "approval" },
+  { id: "ai2", title: "Parts on order — Water pump for Explorer", description: "Water pump for 2018 Ford Explorer on order from Ford, ETA tomorrow morning.", roNumber: "RO-24-1045", customerName: "Thomas Brown", assignedTo: "Lisa M.", priority: "high", status: "in-progress", dueDate: "Tomorrow 10:00 AM", category: "parts" },
+  { id: "ai3", title: "Callback — Maria Gonzalez decline follow-up", description: "Maria declined cabin filter ($89). Follow up next visit or call in 2 weeks.", roNumber: "RO-24-1042", customerName: "Maria Gonzalez", assignedTo: "Tony R.", priority: "medium", status: "pending", dueDate: "Mar 25", category: "follow-up" },
+  { id: "ai4", title: "Warranty claim submission", description: "Submit warranty claim for Robert Kim's Honda — powertrain coverage may apply to valve adjustment.", roNumber: "RO-24-1043", customerName: "Robert Kim", assignedTo: "Lisa M.", priority: "high", status: "pending", dueDate: "Today 3:00 PM", category: "warranty" },
+  { id: "ai5", title: "Multi-point inspection results — call customer", description: "Sarah Thompson's RAV4 has worn rear brakes. Need to discuss additional work.", roNumber: "RO-24-1048", customerName: "Sarah Thompson", assignedTo: "Tony R.", priority: "high", status: "pending", dueDate: "Today 12:00 PM", category: "callback" },
+  { id: "ai6", title: "Reschedule no-show — recall appointment", description: "Hyundai Sonata recall customer didn't show. Attempt to reschedule.", roNumber: null, customerName: null, assignedTo: "Lisa M.", priority: "medium", status: "pending", dueDate: "Today 2:00 PM", category: "follow-up" },
+  { id: "ai7", title: "Vehicle inspection — pre-purchase", description: "Walk-in customer wants pre-purchase inspection on a vehicle they're buying privately.", roNumber: null, customerName: null, assignedTo: "Tony R.", priority: "low", status: "pending", dueDate: "Today 4:00 PM", category: "inspection" },
+]
+
+export const mockServiceSummary: ServiceSummaryData = {
+  openROs: 6,
+  completedToday: 2,
+  revenueToday: 4815,
+  avgROValue: 1140,
+  csiScore: 4.6,
+  csiTarget: 4.5,
+  techEfficiency: 92,
+  partsGrossMargin: 48,
+  laborGrossMargin: 72,
+  appointmentsToday: 6,
+  waitersInProgress: 2,
+  baysOccupied: 5,
+  totalBays: 8,
+  overdueActions: 1,
+}
+
+export const mockServiceRevenue: ServiceRevenueData[] = [
+  { day: "Mon", labor: 2800, parts: 1900, total: 4700 },
+  { day: "Tue", labor: 3200, parts: 2400, total: 5600 },
+  { day: "Wed", labor: 2600, parts: 1700, total: 4300 },
+  { day: "Thu", labor: 3500, parts: 2800, total: 6300 },
+  { day: "Fri", labor: 2900, parts: 2100, total: 5000 },
+  { day: "Today", labor: 1980, parts: 2835, total: 4815 },
+]
+
+export const mockTechPerformance: TechPerformance[] = [
+  { id: "tp1", name: "Mike S.", hoursAvailable: 8.0, hoursBilled: 7.8, efficiency: 97.5, rosCompleted: 3, avgROValue: 1250, comebacks: 0 },
+  { id: "tp2", name: "Carlos D.", hoursAvailable: 8.0, hoursBilled: 7.2, efficiency: 90.0, rosCompleted: 4, avgROValue: 680, comebacks: 0 },
+  { id: "tp3", name: "Brian W.", hoursAvailable: 8.0, hoursBilled: 7.0, efficiency: 87.5, rosCompleted: 2, avgROValue: 1480, comebacks: 1 },
+]
+
+// ─── Sales Operations ───
+
+export const mockSalesSummary: SalesSummaryData = {
+  unitsSoldMTD: 78,
+  unitsTarget: 100,
+  totalGrossMTD: 273000,
+  avgFrontGross: 2800,
+  avgBackGross: 1200,
+  closeRate: 73.6,
+  appointmentsToday: 5,
+  testDrivesToday: 3,
+  pendingDeals: 4,
+  dealsInFI: 2,
+  beBackCount: 1,
+  avgDaysToClose: 4.2,
+  newLeadsToday: 6,
+  followUpsDue: 4,
+}
+
+export const mockSalesAppointments: SalesAppointment[] = [
+  { id: "sap1", customerName: "David Park", phone: "(512) 555-0456", vehicleInterest: "Toyota Camry SE / Honda Civic Sport", scheduledTime: "10:00 AM", salesperson: "Sarah K.", type: "fi-signing", status: "confirmed", source: "Walk-in", notes: "Credit approved, trade appraisal done. Ready to close." },
+  { id: "sap2", customerName: "Lisa Chang", phone: "(512) 555-0912", vehicleInterest: "2021 Mazda CX-5 Touring", scheduledTime: "11:30 AM", salesperson: "Marcus D.", type: "appointment", status: "confirmed", source: "AutoTrader", notes: "First visit. Has been shopping online for 2 weeks." },
+  { id: "sap3", customerName: "Rachel Green", phone: "(512) 555-0104", vehicleInterest: "2022 Audi Q5 Premium", scheduledTime: "1:00 PM", salesperson: "Jake P.", type: "be-back", status: "confirmed", source: "Referral", notes: "Test drove yesterday. Coming back to discuss numbers." },
+  { id: "sap4", customerName: "Amanda Chen", phone: "(512) 555-0287", vehicleInterest: "2022 Honda CR-V EX-L", scheduledTime: "2:30 PM", salesperson: "Sarah K.", type: "test-drive", status: "confirmed", source: "Website", notes: "Price just dropped $1,300. Called to schedule." },
+  { id: "sap5", customerName: "James Wilson", phone: "(512) 555-0142", vehicleInterest: "2021 Ford F-150 XLT", scheduledTime: "9:00 AM", salesperson: "Marcus D.", type: "appointment", status: "no-show", source: "Website", notes: "Asked for financing info earlier. Did not show." },
+]
+
+export const mockSalesActionItems: SalesActionItem[] = [
+  { id: "sai1", title: "Call James Wilson — hot lead gone cold", description: "No-showed 9 AM appointment. Had asked about financing. Try to reschedule.", customerName: "James Wilson", assignedTo: "Marcus D.", priority: "urgent", status: "overdue", dueDate: "Today 10:00 AM", category: "follow-up" },
+  { id: "sai2", title: "Desk deal — Rachel Green (Audi Q5)", description: "Be-back at 1 PM. Prepare numbers with $6,100 trade equity. She wants payment under $650/mo.", customerName: "Rachel Green", assignedTo: "Jake P.", priority: "high", status: "pending", dueDate: "Today 12:30 PM", category: "desking" },
+  { id: "sai3", title: "Trade appraisal — Sarah Thompson", description: "Online trade tool submission for 2018 RAV4. Needs appraisal before appointment can be set.", customerName: "Sarah Thompson", assignedTo: "Jake P.", priority: "high", status: "pending", dueDate: "Today 11:00 AM", category: "trade-appraisal" },
+  { id: "sai4", title: "Follow up Carlos Mendez — lot visitor", description: "Walked the lot last week, interested in SUV under $30k. No follow-up sent yet.", customerName: "Carlos Mendez", assignedTo: "Marcus D.", priority: "medium", status: "pending", dueDate: "Today 2:00 PM", category: "follow-up" },
+  { id: "sai5", title: "Delivery prep — Mike Rodriguez (F-150)", description: "Deal closed. F&I complete. Vehicle needs detail and delivery prep for pickup tomorrow.", customerName: "Mike Rodriguez", assignedTo: "Marcus D.", priority: "high", status: "in-progress", dueDate: "Tomorrow 10:00 AM", category: "delivery-prep" },
+  { id: "sai6", title: "Run credit app — David Park", description: "Trade-in appraisal complete. Customer submitted credit app. Pull bureau and get approvals.", customerName: "David Park", assignedTo: "Sarah K.", priority: "high", status: "completed", dueDate: "Today 9:00 AM", category: "credit-app" },
+  { id: "sai7", title: "Contact be-back — Jennifer Walsh", description: "Service customer with $3,800 equity in 2019 Equinox. Wants a 3-row SUV. Not contacted in 8 days.", customerName: "Jennifer Walsh", assignedTo: "Sarah K.", priority: "medium", status: "pending", dueDate: "Today 3:00 PM", category: "callback" },
+]
+
+export const mockSalespersonPerformance: SalespersonPerformance[] = [
+  { id: "sp-1", name: "Marcus D.", unitsSold: 28, totalGross: 98000, avgFrontGross: 2800, avgBackGross: 1200, closeRate: 78, appointments: 42, shows: 35, testDrives: 30, activeLeads: 8, avgResponseTime: "1.2 hrs" },
+  { id: "sp-2", name: "Sarah K.", unitsSold: 24, totalGross: 86400, avgFrontGross: 2600, avgBackGross: 1000, closeRate: 72, appointments: 38, shows: 30, testDrives: 25, activeLeads: 6, avgResponseTime: "1.5 hrs" },
+  { id: "sp-3", name: "Jake P.", unitsSold: 26, totalGross: 93600, avgFrontGross: 3000, avgBackGross: 1400, closeRate: 76, appointments: 40, shows: 33, testDrives: 28, activeLeads: 5, avgResponseTime: "1.8 hrs" },
+]
+
+export const mockDailyLog: DailyLogEntry[] = [
+  { id: "dl1", time: "8:15 AM", salesperson: "Marcus D.", activity: "internet-lead", customerName: "Lisa Chang", vehicleInterest: "2021 Mazda CX-5", result: "Appointment set 11:30 AM", notes: "AutoTrader lead" },
+  { id: "dl2", time: "8:30 AM", salesperson: "Sarah K.", activity: "appointment", customerName: "David Park", vehicleInterest: "Toyota Camry / Honda Civic", result: "In F&I", notes: "Credit approved, closing today" },
+  { id: "dl3", time: "9:00 AM", salesperson: "Marcus D.", activity: "appointment", customerName: "James Wilson", vehicleInterest: "2021 Ford F-150 XLT", result: "No-show", notes: "Called, no answer" },
+  { id: "dl4", time: "9:20 AM", salesperson: "Jake P.", activity: "internet-lead", customerName: "Sarah Thompson", vehicleInterest: "2021 Honda CR-V EX", result: "Appraisal needed", notes: "Online trade tool submission" },
+  { id: "dl5", time: "9:45 AM", salesperson: "Sarah K.", activity: "phone-up", customerName: "New caller", vehicleInterest: "SUV under $25k", result: "Appointment tomorrow 10 AM", notes: "Budget buyer, needs financing" },
+  { id: "dl6", time: "10:15 AM", salesperson: "Jake P.", activity: "up", customerName: "Walk-in couple", vehicleInterest: "2022 Audi Q5 Premium", result: "Test drive", notes: "Serious buyers, trading 2019 Lexus RX" },
+  { id: "dl7", time: "10:30 AM", salesperson: "Marcus D.", activity: "be-back", customerName: "Rachel Green", vehicleInterest: "2022 Audi Q5 Premium", result: "Confirmed 1 PM", notes: "Coming back to discuss numbers" },
 ]
 
 // ─── Lot View ───

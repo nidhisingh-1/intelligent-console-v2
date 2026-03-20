@@ -1,6 +1,12 @@
 "use client"
 
 import {
+  ServiceSummary,
+  RepairOrdersTable,
+  ServiceBayStatus,
+  ServiceAppointments,
+  ServiceActionItems,
+  ServiceReports,
   BuyOpportunities,
   PainPoints,
   AcquisitionPipeline,
@@ -12,15 +18,30 @@ export default function ServicePage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Service</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Service-to-buy opportunities, customer intelligence, and acquisition hooks
+          Service operations — ROs, bays, appointments, and performance
         </p>
       </div>
 
-      <BuyOpportunities />
+      <ServiceSummary />
+
+      <RepairOrdersTable />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PainPoints />
-        <AcquisitionPipeline />
+        <ServiceBayStatus />
+        <ServiceAppointments />
+      </div>
+
+      <ServiceActionItems />
+
+      <ServiceReports />
+
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight mb-4">Service-to-Sales Opportunities</h2>
+        <BuyOpportunities />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <PainPoints />
+          <AcquisitionPipeline />
+        </div>
       </div>
     </div>
   )

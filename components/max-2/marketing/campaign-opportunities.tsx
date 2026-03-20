@@ -1,9 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Rocket, TrendingUp } from "lucide-react"
+import { LaunchCampaignModal } from "./launch-campaign-modal"
 
 const campaigns = [
   {
@@ -37,46 +39,62 @@ const campaigns = [
 ]
 
 export function CampaignOpportunities() {
+  const [selectedCampaign, setSelectedCampaign] = useState<(typeof campaigns)[number] | null>(null)
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Rocket className="h-5 w-5 text-blue-600" />
-          <div>
-            <CardTitle>Campaign Opportunities</CardTitle>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Vehicles ready for targeted campaigns
-            </p>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {campaigns.map((c) => (
-          <div
-            key={c.id}
-            className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border p-4"
-          >
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm">{c.vehicle}</p>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <Badge variant="outline" className="text-xs">
-                  {c.segment}
-                </Badge>
-                <span className="flex items-center gap-1 text-xs text-emerald-600">
-                  <TrendingUp className="h-3 w-3" />
-                  {c.demandTrend}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Suggested: {c.suggestedCampaign}
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Rocket className="h-5 w-5 text-blue-600" />
+            <div>
+              <CardTitle>Campaign Opportunities</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Vehicles ready for targeted campaigns
               </p>
             </div>
-            <Button size="sm" className="shrink-0">
-              Launch Campaign
-            </Button>
           </div>
-        ))}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {campaigns.map((c) => (
+            <div
+              key={c.id}
+              className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border p-4"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">{c.vehicle}</p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <Badge variant="outline" className="text-xs">
+                    {c.segment}
+                  </Badge>
+                  <span className="flex items-center gap-1 text-xs text-emerald-600">
+                    <TrendingUp className="h-3 w-3" />
+                    {c.demandTrend}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Suggested: {c.suggestedCampaign}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                className="shrink-0"
+                onClick={() => setSelectedCampaign(c)}
+              >
+                Launch Campaign
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <LaunchCampaignModal
+        campaign={selectedCampaign}
+        open={selectedCampaign !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedCampaign(null)
+        }}
+      />
+    </>
   )
 }
