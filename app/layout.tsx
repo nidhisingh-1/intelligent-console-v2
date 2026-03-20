@@ -13,8 +13,8 @@ import { ChunkErrorRecovery } from "@/components/chunk-error-recovery"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "QA Review Dashboard",
-  description: "Quality Assurance Review Dashboard for Call Center Operations",
+  title: "Intelligent Console",
+  description: "Spyne Intelligent Console for Dealer Operations",
   generator: "v0.app",
 }
 

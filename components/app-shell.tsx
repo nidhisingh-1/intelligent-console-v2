@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { ClipboardList, BarChart3, Settings, Menu, Bug, CheckCircle, Sparkles, DollarSign, Gauge, BrainCircuit, Crosshair, Crown, Zap } from "lucide-react"
+import { Menu, Gauge, BrainCircuit, Crosshair, Crown, Zap, LayoutDashboard } from "lucide-react"
 
 const navigation = [
   {
@@ -39,36 +39,6 @@ const navigation = [
     icon: BrainCircuit,
     description: "AI-native inventory intelligence",
   },
-  {
-    name: "ROI Dashboard",
-    href: "/roi",
-    icon: DollarSign,
-    description: "Dealer ROI & qualified calls",
-  },
-  {
-    name: "Spyne Flip",
-    href: "/spyne-flip",
-    icon: Sparkles,
-    description: "Chrome plugin analytics dashboard",
-  },
-  {
-    name: "Review Calls",
-    href: "/review",
-    icon: ClipboardList,
-    description: "Review and analyze customer calls",
-  },
-  {
-    name: "Issue Tracker",
-    href: "/dashboard", 
-    icon: BarChart3,
-    description: "Track and monitor quality issues",
-  },
-  {
-    name: "Issue Manager", 
-    href: "/enums",
-    icon: Bug,
-    description: "Manage and categorize quality issues",
-  },
 ]
 
 interface AppShellProps {
@@ -88,11 +58,11 @@ export function AppShell({ children, statsChips }: AppShellProps) {
       <div className="flex items-center justify-between p-6 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <ClipboardList className="h-4 w-4 text-primary-foreground" />
+            <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h2 className="font-semibold text-foreground">QA Dashboard</h2>
-            <p className="text-xs text-muted-foreground">Quality Assurance</p>
+            <h2 className="font-semibold text-foreground">Intelligent Console</h2>
+            <p className="text-xs text-muted-foreground">Dealer Operations</p>
           </div>
         </div>
       </div>

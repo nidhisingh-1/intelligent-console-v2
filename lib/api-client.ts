@@ -1,5 +1,5 @@
 /**
- * Centralized API Client for QA Dashboard
+ * Centralized API Client for Intelligent Console
  * Handles authentication, error handling, retries, and request/response formatting
  */
 
@@ -31,12 +31,12 @@ function getBearerToken(): string | null {
         : tokenFromUrl
       
       // Store in localStorage for future use
-      localStorage.setItem('qa_dashboard_token', cleanToken)
+      localStorage.setItem('ic_token', cleanToken)
       return cleanToken
     }
     
     // Fallback to localStorage
-    const storedToken = localStorage.getItem('qa_dashboard_token')
+    const storedToken = localStorage.getItem('ic_token')
     if (storedToken) {
       // Clean the stored token as well
       const cleanStoredToken = storedToken.startsWith('Bearer ') 
