@@ -44,7 +44,7 @@ export function getCurrentUserId(): string | null {
     }
     
     // Priority 2: Try multiple localStorage and sessionStorage key variations
-    const possibleKeys = ['userDetails', 'qa_dashboard_userDetails', 'qa_dashboard_user_details']
+    const possibleKeys = ['userDetails', 'ic_userDetails', 'ic_user_details']
     
     // Check localStorage
     for (const key of possibleKeys) {

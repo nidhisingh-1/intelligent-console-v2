@@ -6,26 +6,38 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { ClipboardList, BarChart3, Settings, Menu, Bug, CheckCircle } from "lucide-react"
+import { Menu, Gauge, BrainCircuit, Crosshair, Crown, Zap, LayoutDashboard } from "lucide-react"
 
 const navigation = [
   {
-    name: "Review Calls",
-    href: "/review",
-    icon: ClipboardList,
-    description: "Review and analyze customer calls",
+    name: "Spyne Velocity",
+    href: "/inventory",
+    icon: Gauge,
+    description: "Capital velocity & inventory aging",
   },
   {
-    name: "Issue Tracker",
-    href: "/dashboard", 
-    icon: BarChart3,
-    description: "Track and monitor quality issues",
+    name: "Spyne X",
+    href: "/spyne-x",
+    icon: Crosshair,
+    description: "Time-to-Sell operating system",
   },
   {
-    name: "Issue Manager", 
-    href: "/enums",
-    icon: Bug,
-    description: "Manage and categorize quality issues",
+    name: "Spyne Max",
+    href: "/spyne-max",
+    icon: Crown,
+    description: "The complete used car operating system",
+  },
+  {
+    name: "Max 2.0",
+    href: "/max-2",
+    icon: Zap,
+    description: "Flywheel-driven dealer console",
+  },
+  {
+    name: "Velocity 2.0",
+    href: "/velocity-2",
+    icon: BrainCircuit,
+    description: "AI-native inventory intelligence",
   },
 ]
 
@@ -46,11 +58,11 @@ export function AppShell({ children, statsChips }: AppShellProps) {
       <div className="flex items-center justify-between p-6 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <ClipboardList className="h-4 w-4 text-primary-foreground" />
+            <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h2 className="font-semibold text-foreground">QA Dashboard</h2>
-            <p className="text-xs text-muted-foreground">Quality Assurance</p>
+            <h2 className="font-semibold text-foreground">Intelligent Console</h2>
+            <p className="text-xs text-muted-foreground">Dealer Operations</p>
           </div>
         </div>
       </div>
@@ -96,7 +108,7 @@ export function AppShell({ children, statsChips }: AppShellProps) {
       </Sheet>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-y-auto">
+      <div className="flex flex-1 flex-col overflow-y-auto" data-slot="scroll-root">
         {/* Top Navigation Bar - Scrolls with content */}
         <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0">
           <div className="w-full pl-2 pr-6">

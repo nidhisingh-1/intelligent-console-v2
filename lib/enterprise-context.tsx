@@ -75,9 +75,9 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
   const saveSelectedEnterprise = (enterprise: Enterprise | null) => {
     if (typeof window !== 'undefined') {
       if (enterprise) {
-        localStorage.setItem('qa_dashboard_selected_enterprise', JSON.stringify(enterprise))
+        localStorage.setItem('ic_selected_enterprise', JSON.stringify(enterprise))
       } else {
-        localStorage.removeItem('qa_dashboard_selected_enterprise')
+        localStorage.removeItem('ic_selected_enterprise')
       }
     }
   }
@@ -85,9 +85,9 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
   const saveSelectedTeam = (team: Team | null) => {
     if (typeof window !== 'undefined') {
       if (team) {
-        localStorage.setItem('qa_dashboard_selected_team', JSON.stringify(team))
+        localStorage.setItem('ic_selected_team', JSON.stringify(team))
       } else {
-        localStorage.removeItem('qa_dashboard_selected_team')
+        localStorage.removeItem('ic_selected_team')
       }
     }
   }
@@ -95,7 +95,7 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
   const loadSelectedEnterprise = (): Enterprise | null => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('qa_dashboard_selected_enterprise')
+        const saved = localStorage.getItem('ic_selected_enterprise')
         return saved ? JSON.parse(saved) : null
       } catch (error) {
         console.error('Error loading saved enterprise:', error)
@@ -108,7 +108,7 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
   const loadSelectedTeam = (): Team | null => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('qa_dashboard_selected_team')
+        const saved = localStorage.getItem('ic_selected_team')
         return saved ? JSON.parse(saved) : null
       } catch (error) {
         console.error('Error loading saved team:', error)
@@ -120,8 +120,8 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
 
   const clearSavedSelections = () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('qa_dashboard_selected_enterprise')
-      localStorage.removeItem('qa_dashboard_selected_team')
+      localStorage.removeItem('ic_selected_enterprise')
+      localStorage.removeItem('ic_selected_team')
     }
   }
 
@@ -451,7 +451,7 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
             : tokenFromUrl
           
           // Store in localStorage for future use
-          localStorage.setItem('qa_dashboard_token', cleanToken)
+          localStorage.setItem('ic_token', cleanToken)
         }
       }
     }
@@ -459,10 +459,28 @@ export function EnterpriseProvider({ children }: EnterpriseProviderProps) {
     extractAuthToken()
   }, [])
 
+  // Check if auth token is available
+  const hasAuthToken = (): boolean => {
+    if (typeof window === 'undefined') return false
+    
+    const urlParams = new URLSearchParams(window.location.search)
+    const tokenFromUrl = urlParams.get('auth_key') || urlParams.get('bearerToken') || urlParams.get('token')
+    const storedToken = localStorage.getItem('ic_token')
+    
+    return !!(tokenFromUrl || storedToken)
+  }
+
   // Initial data load
   useEffect(() => {
     const initializeData = async () => {
       setIsInitialLoading(true)
+      
+      // Skip API calls if no auth token is available
+      if (!hasAuthToken()) {
+        console.log('[EnterpriseProvider] No auth token found, skipping enterprise data load')
+        setIsInitialLoading(false)
+        return
+      }
       
       try {
         // Load ALL enterprises first instead of just first page

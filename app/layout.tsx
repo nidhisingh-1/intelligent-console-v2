@@ -8,12 +8,13 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { EnterpriseProvider } from "@/lib/enterprise-context"
 import { Providers } from "./providers"
+import { ChunkErrorRecovery } from "@/components/chunk-error-recovery"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "QA Review Dashboard",
-  description: "Quality Assurance Review Dashboard for Call Center Operations",
+  title: "Intelligent Console",
+  description: "Spyne Intelligent Console for Dealer Operations",
   generator: "v0.app",
 }
 
@@ -37,6 +38,7 @@ html {
         <Providers>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light" disableTransitionOnChange>
           <EnterpriseProvider>
+            <ChunkErrorRecovery />
             {children}
             <Toaster />
           </EnterpriseProvider>

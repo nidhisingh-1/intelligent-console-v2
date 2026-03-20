@@ -1,5 +1,5 @@
 /**
- * Centralized API Client for QA Dashboard
+ * Centralized API Client for Intelligent Console
  * Handles authentication, error handling, retries, and request/response formatting
  */
 
@@ -25,10 +25,10 @@ function getBearerToken(): string | null {
       const cleanToken = tokenFromUrl.startsWith('Bearer ') 
         ? tokenFromUrl.substring(7) 
         : tokenFromUrl
-      localStorage.setItem('qa_dashboard_token', cleanToken)
+      localStorage.setItem('ic_token', cleanToken)
       return cleanToken
     }
-    return localStorage.getItem('qa_dashboard_token')
+    return localStorage.getItem('ic_token')
   }
   return null
 }

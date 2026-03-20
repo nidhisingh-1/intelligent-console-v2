@@ -17,7 +17,7 @@ export function DebugAuth() {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search)
       const tokenFromUrl = urlParams.get('auth_key') || urlParams.get('bearerToken') || urlParams.get('token')
-      const storedToken = localStorage.getItem('qa_dashboard_token')
+      const storedToken = localStorage.getItem('ic_token')
       
       setAuthStatus({
         hasToken: !!(tokenFromUrl || storedToken),
