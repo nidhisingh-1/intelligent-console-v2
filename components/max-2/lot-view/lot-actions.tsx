@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { mockLotVehicles } from "@/lib/max-2-mocks"
 import {
   Card,
@@ -9,7 +10,7 @@ import {
   CardContent,
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2, ChevronRight } from "lucide-react"
 
 type Priority = "critical" | "high" | "medium"
 
@@ -20,6 +21,7 @@ interface ActionItem {
   vehicles: { name: string; days: number; stock: string }[]
   impact: string
   count: number
+  filterParams: Record<string, string>
 }
 
 const P: Record<Priority, { dot: string; badge: string; impact: string }> = {
@@ -42,6 +44,7 @@ const ALL_ACTIONS = ([
     vehicles: aged45Cars.map((v) => ({ name: `${v.year} ${v.make} ${v.model}`, days: v.daysInStock, stock: v.stockNumber })),
     impact: `$${(aged45Cars.reduce((s, v) => s + v.holdingCostPerDay, 0) * 7).toLocaleString()} more lost in 7 days if no action`,
     count: aged45Cars.length,
+    filterParams: { age: "45+" },
   },
   {
     id: "leads",
@@ -50,6 +53,7 @@ const ALL_ACTIONS = ([
     vehicles: noLeadsCars.map((v) => ({ name: `${v.year} ${v.make} ${v.model}`, days: v.daysInStock, stock: v.stockNumber })),
     impact: `${noLeadsCars.length} frontline cars generating zero lead revenue`,
     count: noLeadsCars.length,
+    filterParams: { status: "frontline", leads: "no-leads" },
   },
   {
     id: "photos",
@@ -58,10 +62,18 @@ const ALL_ACTIONS = ([
     vehicles: noPhotoCars.map((v) => ({ name: `${v.year} ${v.make} ${v.model}`, days: v.daysInStock, stock: v.stockNumber })),
     impact: "Real photos generate 3× more leads per vehicle listing",
     count: noPhotoCars.length,
+    filterParams: { photos: "no-real-photos" },
   },
 ] as ActionItem[]).filter((a) => a.count > 0)
 
 export function LotActions() {
+  const router = useRouter()
+
+  const handleActionClick = (action: ActionItem) => {
+    const params = new URLSearchParams(action.filterParams)
+    router.push(`/max-2/lot-view/inventory?${params.toString()}`)
+  }
+
   return (
     <Card className="shadow-none gap-0">
       <CardHeader className="pb-4">
@@ -80,13 +92,18 @@ export function LotActions() {
             {ALL_ACTIONS.map((action) => {
               const cfg = P[action.priority]
               return (
-                <div key={action.id} className="rounded-xl border bg-muted/30 px-4 py-3">
-                  {/* Title + count */}
+                <div
+                  key={action.id}
+                  onClick={() => handleActionClick(action)}
+                  className="rounded-xl border bg-muted/30 px-4 py-3 cursor-pointer transition-all duration-150 hover:bg-muted/60 hover:border-gray-300 hover:shadow-sm active:scale-[0.99] group"
+                >
+                  {/* Title + count + chevron */}
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-sm font-semibold">{action.title}</span>
                     <span className={cn("ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0", cfg.badge)}>
                       {action.count} car{action.count !== 1 ? "s" : ""}
                     </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
                   </div>
                   {/* Vehicles */}
                   <p className="text-xs text-muted-foreground mb-1.5">

@@ -40,7 +40,13 @@ const navItems: NavItem[] = [
   { href: "/max-2/marketing", label: "Marketing", icon: Megaphone },
   { href: "/max-2/sales", label: "Sales", icon: ShoppingCart },
   { href: "/max-2/service", label: "Service", icon: Wrench },
-  { href: "/max-2/lot-view", label: "Lot View", icon: Car },
+  {
+    href: "/max-2/lot-view", label: "Lot View", icon: Car,
+    children: [
+      { href: "/max-2/lot-view", label: "Overview" },
+      { href: "/max-2/lot-view/inventory", label: "Lot Inventory" },
+    ],
+  },
   { href: "/max-2/customers", label: "Customers", icon: Users },
 ]
 
@@ -89,7 +95,7 @@ export default function Max2Layout({ children }: { children: React.ReactNode }) 
               >
                 <div className="ml-7 mt-0.5 flex flex-col gap-0.5 border-l border-border pl-3">
                   {item.children!.map((child) => {
-                    const childActive = child.href === "/max-2/studio"
+                    const childActive = child.href === item.href
                       ? pathname === child.href
                       : pathname.startsWith(child.href)
                     return (

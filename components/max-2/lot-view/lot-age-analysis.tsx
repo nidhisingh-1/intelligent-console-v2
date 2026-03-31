@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { mockLotVehicles } from "@/lib/max-2-mocks"
 import {
   Card,
@@ -9,6 +10,7 @@ import {
   CardContent,
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { ChevronRight } from "lucide-react"
 
 const BUCKETS = [
   {
@@ -20,6 +22,7 @@ const BUCKETS = [
     barColor: "bg-blue-200",
     accent: "border-l-blue-200",
     urgency: 0,
+    ageParam: "0-15",
   },
   {
     label: "16–30 days",
@@ -30,6 +33,7 @@ const BUCKETS = [
     barColor: "bg-blue-400",
     accent: "border-l-blue-400",
     urgency: 1,
+    ageParam: "16-30",
   },
   {
     label: "31–45 days",
@@ -40,6 +44,7 @@ const BUCKETS = [
     barColor: "bg-blue-600",
     accent: "border-l-blue-600",
     urgency: 2,
+    ageParam: "31-45",
   },
   {
     label: "46–60 days",
@@ -50,6 +55,7 @@ const BUCKETS = [
     barColor: "bg-blue-800",
     accent: "border-l-blue-800",
     urgency: 3,
+    ageParam: "45+",
   },
   {
     label: "60+ days",
@@ -60,10 +66,13 @@ const BUCKETS = [
     barColor: "bg-blue-950",
     accent: "border-l-blue-950",
     urgency: 4,
+    ageParam: "45+",
   },
 ]
 
 export function LotAgeAnalysis() {
+  const router = useRouter()
+
   const active = mockLotVehicles.filter(
     (v) => v.lotStatus !== "arriving" && v.lotStatus !== "in-recon",
   )
@@ -107,7 +116,7 @@ export function LotAgeAnalysis() {
           <div className="min-w-[540px]">
 
             {/* Column headers */}
-            <div className="grid grid-cols-[96px_80px_1fr_56px_110px_110px] gap-3 px-3 mb-2">
+            <div className="grid grid-cols-[96px_80px_1fr_56px_110px_110px_16px] gap-3 px-3 mb-2">
               {[
                 { label: "Phase",          right: false },
                 { label: "Age Range",      right: false },
@@ -127,11 +136,12 @@ export function LotAgeAnalysis() {
               {rows.map((row) => (
                 <div
                   key={row.label}
+                  onClick={row.count > 0 ? () => router.push(`/max-2/lot-view/inventory?age=${encodeURIComponent(row.ageParam)}`) : undefined}
                   className={cn(
-                    "grid grid-cols-[96px_80px_1fr_56px_110px_110px] gap-3 items-center",
-                    "rounded-lg border-l-[3px] px-3 py-2.5 bg-muted/20",
+                    "grid grid-cols-[96px_80px_1fr_56px_110px_110px_16px] gap-3 items-center",
+                    "rounded-lg border-l-[3px] px-3 py-2.5 bg-muted/20 group",
                     row.accent,
-                    row.count === 0 && "opacity-40",
+                    row.count === 0 ? "opacity-40" : "cursor-pointer transition-all duration-150 hover:bg-muted/50 hover:shadow-sm active:scale-[0.995]",
                   )}
                 >
                   {/* Phase */}
@@ -190,12 +200,19 @@ export function LotAgeAnalysis() {
                     </p>
                     <p className="text-[10px] text-muted-foreground">accrued</p>
                   </div>
+
+                  {/* Chevron */}
+                  {row.count > 0 ? (
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+                  ) : (
+                    <span />
+                  )}
                 </div>
               ))}
             </div>
 
             {/* Totals */}
-            <div className="grid grid-cols-[96px_80px_1fr_56px_110px_110px] gap-3 items-center px-3 pt-3 mt-2 border-t">
+            <div className="grid grid-cols-[96px_80px_1fr_56px_110px_110px_16px] gap-3 items-center px-3 pt-3 mt-2 border-t">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total</p>
               <span />
               <span />
