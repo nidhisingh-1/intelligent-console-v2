@@ -66,7 +66,7 @@ export function ConsoleV2SalesExperience() {
           {activePage === "appointments" && <AppointmentsPage />}
           {activePage === "customers" && (
             <CustomerListingPage
-              onViewProfile={(id) => {
+              onViewProfile={(id: string) => {
                 setSelectedCustomerId(id)
                 setActivePage("customer-profile")
               }}
@@ -317,7 +317,10 @@ function OverviewPage() {
 
   const isOutbound = activeAgent === "outbound"
   const agentData = isOutbound ? salesOutboundAgentData : salesAgentData
-  const overviewData = isOutbound ? getOutboundOverviewData(dateRange) : getOverviewData(dateRange)
+  const inboundOverview = getOverviewData(dateRange)
+  const outboundOverview = getOutboundOverviewData(dateRange)
+  const metricsBar = isOutbound ? outboundOverview.metricsBar : inboundOverview.metricsBar
+  const activityChart = isOutbound ? outboundOverview.activityChart : inboundOverview.activityChart
 
   const customLabel = customStart && customEnd ? `${customStart} – ${customEnd}` : ""
 
@@ -361,7 +364,7 @@ function OverviewPage() {
         </div>
       </div>
 
-      <MetricsBar metrics={overviewData.metricsBar} />
+      <MetricsBar metrics={metricsBar} />
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-4">
         {isOutbound ? (
@@ -370,9 +373,9 @@ function OverviewPage() {
           <LeadsBySourceCard data={leadsBySourceData} />
         )}
         {isOutbound ? (
-          <ReEngagementPanel data={overviewData.reEngagement} />
+          <ReEngagementPanel data={outboundOverview.reEngagement} />
         ) : (
-          <SpeedToLeadPanel data={overviewData.speedToLead} />
+          <SpeedToLeadPanel data={inboundOverview.speedToLead} />
         )}
       </div>
 
@@ -382,7 +385,7 @@ function OverviewPage() {
         <PriorityFollowUps followUps={priorityFollowUpsData} />
       </div>
 
-      <ActivityChart data={overviewData.activityChart} agentType={activeAgent} />
+      <ActivityChart data={activityChart} agentType={activeAgent} />
     </div>
   )
 }
