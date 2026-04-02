@@ -4,9 +4,8 @@ import {
   LotKPIStrip,
   LotAgeAnalysis,
   LotActions,
-  LotInsights,
   LotBodyAnalysis,
-  LotVehicleTable,
+  LotIssueBuckets,
   LotHoldingCostWidget,
 } from "@/components/max-2/lot-view"
 
@@ -37,15 +36,12 @@ export default function LotViewPage() {
         <LotActions />
       </div>
 
-      {/* ── 3. Insights ── */}
-      <LotInsights />
-
-      {/* ── 4. Body Type Distribution + Holding Cost ── */}
+      {/* ── 3. Body Type Distribution + Holding Cost ── */}
       <LotBodyAnalysis />
 
-      {/* ── 5. Full Inventory Table ── */}
-      <LotVehicleTable />
+      {/* ── 4. Action Items (Issue Buckets + Vehicle Table) ── */}
+      <LotIssueBuckets />
 
-    </div>
+</div>
   )
 }
