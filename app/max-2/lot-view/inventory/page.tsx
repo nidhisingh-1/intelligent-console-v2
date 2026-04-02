@@ -57,7 +57,7 @@ function LotInventoryContent() {
   const [makeFilter, setMakeFilter] = React.useState<string>("all")
   const [bodyTypeFilter, setBodyTypeFilter] = React.useState<string>("all")
   const [ageFilter, setAgeFilter] = React.useState<string>(searchParams.get("age") || "all")
-  const [priceRange, setPriceRange] = React.useState<string>("all")
+  const [priceRange, setPriceRange] = React.useState<string>(searchParams.get("priceRange") || "all")
   const [leadFilter, setLeadFilter] = React.useState<string>(searchParams.get("leads") || "all")
   const [photoFilter, setPhotoFilter] = React.useState<string>(searchParams.get("photos") || "all")
   const [sortField, setSortField] = React.useState<SortField>("daysInStock")

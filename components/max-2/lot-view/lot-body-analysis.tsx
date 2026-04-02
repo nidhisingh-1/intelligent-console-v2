@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { mockLotVehicles } from "@/lib/max-2-mocks"
 import {
   Card,
@@ -43,11 +44,11 @@ const BODY_STYLE: Record<
 
 // ── Price bucket config ───────────────────────────────────────────────────
 const PRICE_BUCKETS = [
-  { label: "Under $15K",  min: 0,     max: 15000 },
-  { label: "$15K–$25K",   min: 15000, max: 25000 },
-  { label: "$25K–$35K",   min: 25000, max: 35000 },
-  { label: "$35K–$50K",   min: 35000, max: 50000 },
-  { label: "$50K+",       min: 50000, max: Infinity },
+  { label: "Under $15K",  min: 0,     max: 15000,   filterValue: "under-15k" },
+  { label: "$15K–$25K",   min: 15000, max: 25000,   filterValue: "15k-25k" },
+  { label: "$25K–$35K",   min: 25000, max: 35000,   filterValue: "25k-35k" },
+  { label: "$35K–$50K",   min: 35000, max: 50000,   filterValue: "35k-50k" },
+  { label: "$50K+",       min: 50000, max: Infinity, filterValue: "50k+" },
 ] as const
 
 const PRICE_STYLE = [
@@ -59,6 +60,7 @@ const PRICE_STYLE = [
 ]
 
 export function LotBodyAnalysis() {
+  const router = useRouter()
   const active = mockLotVehicles.filter(
     (v) => v.lotStatus !== "arriving" && v.lotStatus !== "in-recon",
   )
@@ -121,6 +123,7 @@ export function LotBodyAnalysis() {
 
     return {
       label: bucket.label,
+      filterValue: bucket.filterValue,
       styleIdx: i,
       count: vehicles.length,
       avgPrice: Math.round(avgPrice),
@@ -234,7 +237,7 @@ export function LotBodyAnalysis() {
                   const status = STATUS_CFG[b.status]
 
                   return (
-                    <div key={b.label} className="grid grid-cols-[120px_1fr_72px_100px_120px_76px] gap-4 items-center rounded-xl border bg-muted/10 px-3 py-3.5">
+                    <div key={b.label} onClick={() => router.push(`/max-2/lot-view/inventory?priceRange=${b.filterValue}`)} className="grid grid-cols-[120px_1fr_72px_100px_120px_76px] gap-4 items-center rounded-xl border bg-muted/10 px-3 py-3.5 cursor-pointer transition-all duration-150 hover:bg-muted/40 hover:border-gray-300 hover:shadow-sm active:scale-[0.99]">
                       <div className="flex items-center gap-2">
                         <span className={cn("h-2 w-2 rounded-full shrink-0", style.dot)} />
                         <span className="text-sm font-semibold">{b.label}</span>

@@ -107,7 +107,8 @@ export function LotActions() {
                   </div>
                   {/* Vehicles */}
                   <p className="text-xs text-muted-foreground mb-1.5">
-                    {action.vehicles.map((v) => `${v.name} · ${v.days}d`).join("  ·  ")}
+                    {action.vehicles.slice(0, 2).map((v) => `${v.name} · ${v.days}d`).join("  ·  ")}
+                    {action.vehicles.length > 2 && `  +${action.vehicles.length - 2} more`}
                   </p>
                   {/* Impact */}
                   <p className={cn("text-xs font-medium", cfg.impact)}>
