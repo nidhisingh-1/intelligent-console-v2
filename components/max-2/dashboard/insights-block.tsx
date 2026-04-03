@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { spyneComponentClasses } from "@/lib/design-system/max-2"
-import { Sparkles, Send } from "lucide-react"
+import { MaterialSymbol } from "@/components/max-2/material-symbol"
+import { Send } from "lucide-react"
 
 const categoryStyle: Record<string, string> = {
   service: cn("border", spyneComponentClasses.badgeWarning),
@@ -27,7 +28,7 @@ export function InsightsBlock() {
       <CardHeader className="pb-0 relative">
         <div className="flex items-center gap-2">
           <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-spyne-primary-soft border border-spyne-border">
-            <Sparkles className="h-4 w-4 text-spyne-primary" />
+            <MaterialSymbol name="auto_awesome" size={16} className="text-spyne-primary" />
           </div>
           <div>
             <CardTitle className="text-base">Insights</CardTitle>

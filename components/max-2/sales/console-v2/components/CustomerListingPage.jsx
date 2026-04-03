@@ -2,8 +2,13 @@
 
 import React, { useState } from 'react'
 import { Search, Phone, MessageSquare, LayoutList, Columns, AlertTriangle, FileText } from 'lucide-react'
-import { customersData } from '../mockData'
+import { customersData, serviceGuestsData } from '../mockData'
+import { SERVICE_CONSOLE_TAB_CONTENT } from '@/lib/max-2/service-console-tab-content'
 import CustomerOverviewPanel from './CustomerOverviewPanel'
+import { SpyneSegmentedButton, SpyneSegmentedControl } from '@/components/max-2/spyne-toolbar-controls'
+import { max2Classes, spyneSalesLayout } from '@/lib/design-system/max-2'
+import { cn } from '@/lib/utils'
+import { CHART_SERIES, SPYNE, SPYNE_SOFT_BG } from '../spyne-palette'
 
 const STAGE_LABELS = {
   RESEARCH:    'Just Looking',
@@ -13,26 +18,27 @@ const STAGE_LABELS = {
   CLOSING:     'Ready to Buy',
 }
 
-const STAGE_STYLE = {
-  CLOSING:     { bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',          border: 'var(--spyne-brand-muted)' },
-  NEGOTIATION: { bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',          border: 'var(--spyne-brand-muted)' },
-  EVALUATION:  { bg: 'var(--spyne-warning-subtle)', color: 'var(--spyne-warning-text)',   border: 'var(--spyne-warning-muted)' },
-  SHOPPING:    { bg: 'var(--spyne-border)',          color: 'var(--spyne-text-secondary)', border: 'var(--spyne-border-strong)' },
-  RESEARCH:    { bg: 'var(--spyne-border)',          color: 'var(--spyne-text-secondary)', border: 'var(--spyne-border-strong)' },
+/** Semantic badge variants — fills from `.max2-spyne .spyne-badge-*` (design system) */
+const STAGE_BADGE_CLASS = {
+  CLOSING:     'spyne-badge-brand',
+  NEGOTIATION: 'spyne-badge-brand',
+  EVALUATION:  'spyne-badge-warning',
+  SHOPPING:    'spyne-badge-neutral',
+  RESEARCH:    'spyne-badge-neutral',
 }
 
-const SOURCE_STYLE = {
-  'Internet Lead': { bg: 'var(--spyne-info-subtle)',    color: 'var(--spyne-info-text)',      border: 'var(--spyne-info-muted)' },
-  'Phone Lead':    { bg: 'var(--spyne-success-subtle)', color: 'var(--spyne-success-text)',   border: 'var(--spyne-success-muted)' },
-  'Email Lead':    { bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',           border: 'var(--spyne-brand-muted)' },
-  'Walk-in':       { bg: 'var(--spyne-warning-subtle)', color: 'var(--spyne-warning-text)',   border: 'var(--spyne-warning-muted)' },
-  'Referral':      { bg: 'var(--spyne-border)',          color: 'var(--spyne-text-secondary)', border: 'var(--spyne-border-strong)' },
+const SOURCE_BADGE_CLASS = {
+  'Internet Lead': 'spyne-badge-info',
+  'Phone Lead':    'spyne-badge-success',
+  'Email Lead':    'spyne-badge-brand',
+  'Walk-in':       'spyne-badge-warning',
+  'Referral':      'spyne-badge-neutral',
 }
 
 const TEMP_CONFIG = {
-  HOT:  { color: '#EF4444', label: 'Hot' },
-  WARM: { color: '#F59E0B', label: 'Warm' },
-  COLD: { color: '#94A3B8', label: 'Cold' },
+  HOT:  { color: SPYNE.error, label: 'Hot' },
+  WARM: { color: SPYNE.warningInk, label: 'Warm' },
+  COLD: { color: SPYNE.textSecondary, label: 'Cold' },
 }
 const TEMP_ORDER = { HOT: 0, WARM: 1, COLD: 2 }
 
@@ -49,16 +55,16 @@ const COLS = ['Customer', 'Stage', 'Temperature', 'Vehicle', 'Last Interaction �
 
 // Swimlane columns — 5 pipeline stages
 const SWIMLANE_COLS = [
-  { key: 'NEW',               label: 'New Leads',         color: '#94A3B8', bg: '#F8FAFC' },
-  { key: 'ENGAGED',           label: 'Engaged Leads',     color: '#0EA5E9', bg: '#F0F9FF' },
-  { key: 'QUALIFIED',         label: 'Qualified',         color: '#F59E0B', bg: '#FFFBEB' },
-  { key: 'APPOINTMENT_BOOKED', label: 'Appointment Booked', color: '#4F46E5', bg: '#EEF2FF' },
-  { key: 'STORE_VISIT',       label: 'Store Visit',       color: '#10B981', bg: '#ECFDF5' },
+  { key: 'NEW',               label: 'New Leads',         color: SPYNE.textSecondary, bg: SPYNE_SOFT_BG.neutral },
+  { key: 'ENGAGED',           label: 'Engaged Leads',     color: SPYNE.info, bg: SPYNE_SOFT_BG.info },
+  { key: 'QUALIFIED',         label: 'Qualified',         color: SPYNE.warningInk, bg: SPYNE_SOFT_BG.warning },
+  { key: 'APPOINTMENT_BOOKED', label: 'Appointment Booked', color: SPYNE.primary, bg: SPYNE_SOFT_BG.primary },
+  { key: 'STORE_VISIT',       label: 'Store Visit',       color: SPYNE.success, bg: SPYNE_SOFT_BG.success },
 ]
 
 // Simple hash for avatar background
 function avatarBg(name) {
-  const colors = ['#4F46E5','#0D9488','#D97706','#7C3AED','#0EA5E9','#10B981','#EF4444','#F59E0B']
+  const colors = CHART_SERIES
   let h = 0
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length
   return colors[h]
@@ -110,7 +116,7 @@ function FunnelBar({ data }) {
 
 function SwimlaneCard({ customer, onViewProfile }) {
   const bg = avatarBg(customer.name)
-  const src = SOURCE_STYLE[customer.source] || SOURCE_STYLE['Referral']
+  const srcCls = SOURCE_BADGE_CLASS[customer.source] || SOURCE_BADGE_CLASS.Referral
   const temp = TEMP_CONFIG[customer.temperature]
 
   return (
@@ -125,7 +131,7 @@ function SwimlaneCard({ customer, onViewProfile }) {
           title={customer.attentionReason}
           style={{ position: 'absolute', top: 8, right: 8 }}
         >
-          <AlertTriangle size={13} style={{ color: '#F59E0B' }} />
+          <AlertTriangle size={13} style={{ color: SPYNE.warningInk }} />
         </div>
       )}
 
@@ -151,7 +157,7 @@ function SwimlaneCard({ customer, onViewProfile }) {
       )}
 
       {/* Source badge */}
-      <span className="spyne-badge" style={{ fontSize: 10, padding: '1px 6px', background: src.bg, color: src.color, borderColor: src.border, width: 'fit-content' }}>
+      <span className={cn('spyne-badge w-fit', srcCls)}>
         {customer.source}
       </span>
 
@@ -189,7 +195,7 @@ function SwimlaneCard({ customer, onViewProfile }) {
   )
 }
 
-function SwimlaneView({ data, onViewProfile }) {
+function SwimlaneView({ data, onViewProfile, emptyColumnLabel = 'No leads' }) {
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, alignItems: 'start' }}>
@@ -224,7 +230,7 @@ function SwimlaneView({ data, onViewProfile }) {
               <div className="flex flex-col gap-2">
                 {cards.length === 0 ? (
                   <div style={{ fontSize: 11, color: 'var(--spyne-text-muted)', textAlign: 'center', padding: '16px 8px' }}>
-                    No leads
+                    {emptyColumnLabel}
                   </div>
                 ) : (
                   cards.map((c) => (
@@ -240,7 +246,10 @@ function SwimlaneView({ data, onViewProfile }) {
   )
 }
 
-export default function CustomerListingPage({ onViewProfile }) {
+export default function CustomerListingPage({ onViewProfile, department = 'sales' }) {
+  const isService = department === 'service'
+  const roster = isService ? serviceGuestsData : customersData
+
   const [search,       setSearch]       = useState('')
   const [filter,       setFilter]       = useState('all')
   const [selectedId,   setSelectedId]   = useState(null)
@@ -249,7 +258,7 @@ export default function CustomerListingPage({ onViewProfile }) {
   const [expandedNote, setExpandedNote] = useState(null) // customer id with note open
   const [editedNotes,  setEditedNotes]  = useState({})   // local edits: { [id]: string }
 
-  const sorted = [...customersData].sort((a, b) => b.lastInteractedTs - a.lastInteractedTs)
+  const sorted = [...roster].sort((a, b) => b.lastInteractedTs - a.lastInteractedTs)
 
   const filtered = sorted.filter((c) => {
     const q = search.toLowerCase()
@@ -269,55 +278,54 @@ export default function CustomerListingPage({ onViewProfile }) {
     return editedNotes[c.id] !== undefined ? editedNotes[c.id] : (c.notes ?? '')
   }
 
-  const selectedCustomer = customersData.find((c) => c.id === selectedId) ?? null
-  const visibleCols = COLS
+  const selectedCustomer = roster.find((c) => c.id === selectedId) ?? null
+  const visibleCols = COLS.map((c) =>
+    isService && c === 'Salesperson' ? SERVICE_CONSOLE_TAB_CONTENT.customers.columnAdvisor : c,
+  )
 
   return (
-    <>
-
-      {/* ── Left: content ── */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Page header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="spyne-title" style={{ color: 'var(--spyne-text-primary)' }}>Leads</h1>
-            <p className="spyne-body-sm mt-0.5" style={{ color: 'var(--spyne-text-muted)' }}>
-              {customersData.length} total · {view === 'swimlane' ? 'pipeline view' : 'sorted by most recent interaction'}
-            </p>
-          </div>
-
-          {/* View toggle */}
-          <div className="flex" style={{ border: '1px solid var(--spyne-border)', borderRadius: 'var(--spyne-radius-md)', overflow: 'hidden' }}>
-            <button
-              onClick={() => setView('swimlane')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '0 12px', height: 32, fontSize: 12, border: 'none', cursor: 'pointer',
-                background: view === 'swimlane' ? 'var(--spyne-brand-subtle)' : 'var(--spyne-surface)',
-                color: view === 'swimlane' ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-                fontWeight: view === 'swimlane' ? 600 : 500, fontFamily: 'inherit',
-                borderRight: '1px solid var(--spyne-border)',
-              }}
+    <div className="relative min-w-0 spyne-animate-fade-in">
+      <div className={spyneSalesLayout.pageStack}>
+        {/* Sticky page header — matches Sales Overview / Appointments */}
+        <div
+          className={cn(
+            'sticky z-[30] -mx-max2-page bg-spyne-page px-max2-page pt-6 pb-3 -mt-6',
+            'top-[6rem] lg:top-10',
+          )}
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h1 className={max2Classes.pageTitle}>
+                {isService ? SERVICE_CONSOLE_TAB_CONTENT.customers.pageTitle : 'Leads'}
+              </h1>
+              <p className={`${max2Classes.pageDescription} mt-0.5`}>
+                {roster.length} total ·{' '}
+                {view === 'swimlane'
+                  ? isService
+                    ? SERVICE_CONSOLE_TAB_CONTENT.customers.pageDescriptionPipeline
+                    : 'pipeline view'
+                  : 'sorted by most recent interaction'}
+              </p>
+            </div>
+            <SpyneSegmentedControl
+              aria-label={isService ? SERVICE_CONSOLE_TAB_CONTENT.customers.viewAriaLabel : 'Leads view'}
+              className="shrink-0"
             >
-              <Columns size={12} />Pipeline
-            </button>
-            <button
-              onClick={() => setView('table')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '0 12px', height: 32, fontSize: 12, border: 'none', cursor: 'pointer',
-                background: view === 'table' ? 'var(--spyne-brand-subtle)' : 'var(--spyne-surface)',
-                color: view === 'table' ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-                fontWeight: view === 'table' ? 600 : 500, fontFamily: 'inherit',
-              }}
-            >
-              <LayoutList size={12} />Table
-            </button>
+              <SpyneSegmentedButton active={view === 'swimlane'} onClick={() => setView('swimlane')}>
+                <Columns size={14} strokeWidth={2} aria-hidden />
+                Pipeline
+              </SpyneSegmentedButton>
+              <SpyneSegmentedButton active={view === 'table'} onClick={() => setView('table')}>
+                <LayoutList size={14} strokeWidth={2} aria-hidden />
+                Table
+              </SpyneSegmentedButton>
+            </SpyneSegmentedControl>
           </div>
         </div>
 
+        <div className="min-w-0 space-y-6">
         {/* Search + filters */}
-        <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-shrink-0" style={{ width: 240 }}>
             <Search
               size={13}
@@ -327,7 +335,11 @@ export default function CustomerListingPage({ onViewProfile }) {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, vehicle, salesperson…"
+              placeholder={
+                isService
+                  ? SERVICE_CONSOLE_TAB_CONTENT.customers.searchPlaceholder
+                  : 'Search name, vehicle, salesperson…'
+              }
               className="spyne-input w-full"
               style={{ paddingLeft: 30, fontSize: 12 }}
             />
@@ -347,7 +359,11 @@ export default function CustomerListingPage({ onViewProfile }) {
 
         {/* Swimlane view */}
         {view === 'swimlane' && (
-          <SwimlaneView data={filtered} onViewProfile={(id) => setSelectedId(id)} />
+          <SwimlaneView
+            data={filtered}
+            onViewProfile={(id) => setSelectedId(id)}
+            emptyColumnLabel={isService ? SERVICE_CONSOLE_TAB_CONTENT.customers.swimlaneEmpty : 'No leads'}
+          />
         )}
 
         {/* Table view */}
@@ -373,8 +389,8 @@ export default function CustomerListingPage({ onViewProfile }) {
                 </thead>
                 <tbody>
                   {filtered.map((c) => {
-                    const ss     = STAGE_STYLE[c.buyingStage] || STAGE_STYLE.RESEARCH
-                    const src    = SOURCE_STYLE[c.source]     || SOURCE_STYLE['Referral']
+                    const stageCls = STAGE_BADGE_CLASS[c.buyingStage] || STAGE_BADGE_CLASS.RESEARCH
+                    const srcCls   = SOURCE_BADGE_CLASS[c.source]     || SOURCE_BADGE_CLASS.Referral
                     const temp   = TEMP_CONFIG[c.temperature]
                     const active = selectedId === c.id
                     const hasNote = c.notes || editedNotes[c.id]
@@ -404,19 +420,19 @@ export default function CustomerListingPage({ onViewProfile }) {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--spyne-text-primary)' }}>{c.name}</p>
                                 {c.needsAttention && (
-                                  <span title={c.attentionReason} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#FEF3C7', flexShrink: 0 }}>
-                                    <AlertTriangle size={9} style={{ color: '#D97706' }} />
+                                  <span title={c.attentionReason} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: SPYNE_SOFT_BG.warning, flexShrink: 0 }}>
+                                    <AlertTriangle size={9} style={{ color: SPYNE.warningInk }} />
                                   </span>
                                 )}
                               </div>
-                              <span className="spyne-badge" style={{ marginTop: 2, display: 'inline-flex', fontSize: 10, padding: '1px 6px', background: src.bg, color: src.color, borderColor: src.border }}>
+                              <span className={cn('spyne-badge mt-0.5 inline-flex', srcCls)}>
                                 {c.source}
                               </span>
                             </div>
                           </div>
                         </td>
                         <td style={{ padding: '12px 16px' }}>
-                          <span className="spyne-badge" style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}>
+                          <span className={cn('spyne-badge', stageCls)}>
                             {STAGE_LABELS[c.buyingStage]}
                           </span>
                         </td>
@@ -532,9 +548,9 @@ export default function CustomerListingPage({ onViewProfile }) {
             </div>
           </div>
         )}
+        </div>
       </div>
 
-      {/* ── Overlay panel ── */}
       {selectedCustomer && (
         <CustomerOverviewPanel
           customer={selectedCustomer}
@@ -545,6 +561,6 @@ export default function CustomerListingPage({ onViewProfile }) {
           }}
         />
       )}
-    </>
+    </div>
   )
 }

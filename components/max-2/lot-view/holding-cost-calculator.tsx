@@ -83,7 +83,7 @@ export function HoldingCostCalculator({
         style={{ height: "88vh" }}
       >
         {/* ── Header ── */}
-        <div className="shrink-0 border-b bg-white">
+        <div className="shrink-0 bg-white">
           <DialogHeader className="px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-spyne-primary-soft p-2 text-spyne-primary shrink-0">

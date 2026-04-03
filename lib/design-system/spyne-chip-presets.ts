@@ -33,7 +33,7 @@ export const spyneMediaStatusChipPreset: Record<MediaStatus, SpyneDomainChipPres
 export const spynePublishStatusChipPreset: Record<PublishStatus, SpyneDomainChipPreset> = {
   live: { label: "Live", tone: "success" },
   pending: { label: "Pending", tone: "warning" },
-  "not-published": { label: "Draft", tone: "neutral" },
+  "not-published": { label: "Not published", tone: "neutral" },
 }
 
 /** Labels for pricing chips / filter facets */

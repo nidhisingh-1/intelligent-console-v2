@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { mockLotVehicles } from "@/lib/max-2-mocks"
+import type { LotVehicle } from "@/services/max-2/max-2.types"
 import {
   Card,
   CardHeader,
@@ -80,15 +81,24 @@ const BUCKETS = [
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   good:  { label: "Healthy",  cls: "spyne-row-positive text-spyne-success" },
   watch: { label: "Monitor",  cls: "spyne-row-warn text-spyne-text"     },
-  risk:  { label: "At Risk",  cls: "spyne-row-error text-spyne-error"         },
+  risk:  { label: "At Risk",  cls: "border border-spyne-border bg-spyne-surface text-spyne-error" },
 }
 
-export function LotAgeDistributionPanel({ className }: { className?: string }) {
+export function LotAgeDistributionPanel({
+  className,
+  vehicles: vehiclesProp,
+}: {
+  className?: string
+  /** When set, uses this list (caller should already exclude non-lot units if desired). */
+  vehicles?: LotVehicle[]
+}) {
   const router = useRouter()
 
-  const active = mockLotVehicles.filter(
-    (v) => v.lotStatus !== "arriving" && v.lotStatus !== "in-recon",
-  )
+  const active =
+    vehiclesProp ??
+    mockLotVehicles.filter(
+      (v) => v.lotStatus !== "arriving" && v.lotStatus !== "in-recon",
+    )
   const total = active.length
 
   const rows = BUCKETS.map((b) => {

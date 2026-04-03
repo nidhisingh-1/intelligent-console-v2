@@ -2,6 +2,10 @@
 
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Phone, MessageSquare, X, Car, DollarSign, Sparkles } from 'lucide-react'
+import { max2Classes, spyneSalesLayout } from '@/lib/design-system/max-2'
+import { cn } from '@/lib/utils'
+import { SPYNE, SPYNE_SOFT_BG } from '../spyne-palette'
+import { SERVICE_CONSOLE_TAB_CONTENT } from '@/lib/max-2/service-console-tab-content'
 
 // ── Mock data (2 weeks) ───────────────────────────────────────
 
@@ -99,12 +103,39 @@ const WEEK_DATA = [
 // ── Config ────────────────────────────────────────────────────
 
 const TYPE_CONFIG = {
-  'test-drive':  { label: 'Test Drive',  color: '#4F46E5', bg: '#EEF2FF' },
-  'close-deal':  { label: 'Close Deal',  color: '#10B981', bg: '#ECFDF5' },
-  'negotiation': { label: 'Negotiation', color: '#D97706', bg: '#FFFBEB' },
-  'pickup':      { label: 'Pickup',      color: '#0EA5E9', bg: '#F0F9FF' },
-  'appointment': { label: 'Appointment', color: '#7C3AED', bg: '#F5F3FF' },
+  'test-drive':  { label: 'Test Drive',  color: SPYNE.primary, bg: SPYNE_SOFT_BG.primary },
+  'close-deal':  { label: 'Close Deal',  color: SPYNE.success, bg: SPYNE_SOFT_BG.success },
+  'negotiation': { label: 'Negotiation', color: SPYNE.warningInk, bg: SPYNE_SOFT_BG.warning },
+  'pickup':      { label: 'Pickup',      color: SPYNE.info, bg: SPYNE_SOFT_BG.info },
+  'appointment': { label: 'Appointment', color: SPYNE.pink, bg: SPYNE_SOFT_BG.pink },
 }
+
+const SERVICE_TYPE_CONFIG = {
+  ...TYPE_CONFIG,
+  mpi: { label: 'MPI / inspection', color: SPYNE.primary, bg: SPYNE_SOFT_BG.primary },
+  'oil-change': { label: 'Express service', color: SPYNE.success, bg: SPYNE_SOFT_BG.success },
+  diagnostic: { label: 'Diagnostic', color: SPYNE.warningInk, bg: SPYNE_SOFT_BG.warning },
+  repair: { label: 'Repair RO', color: SPYNE.info, bg: SPYNE_SOFT_BG.info },
+  recall: { label: 'Recall', color: SPYNE.pink, bg: SPYNE_SOFT_BG.pink },
+}
+
+function buildServiceDriveWeekData(base) {
+  const data = JSON.parse(JSON.stringify(base))
+  const thu = data[0]?.days?.find((d) => d.key === 'thu-apr3')
+  if (thu) {
+    thu.appts = [
+      { id: 'sv1', type: 'mpi', timeStart: 8, timeEnd: 8.75, customer: 'Lisa Chang', phone: '+1 (555) 555-0912', vehicle: '2017 Honda HR-V EX', budget: 'MPI + oil ~$189', agentAction: 'Express lane · advisor Tony R.', status: 'started' },
+      { id: 'sv2', type: 'oil-change', timeStart: 9, timeEnd: 9.5, customer: 'Carlos Mendez', phone: '+1 (555) 555-0391', vehicle: '2019 Ford Escape SE', budget: '$89.95 coupon', agentAction: 'Brake noise noted on check-in', status: 'upcoming' },
+      { id: 'sv3', type: 'recall', timeStart: 10, timeEnd: 11.5, customer: 'Elena Ruiz', phone: '+1 (555) 220-1144', vehicle: '2019 Toyota RAV4', budget: 'Recall · no charge', agentAction: 'Loaner reserved · bay 2', status: 'upcoming' },
+      { id: 'sv4', type: 'diagnostic', timeStart: 11.5, timeEnd: 12.5, customer: 'James Whitfield', phone: '+1 (555) 670-5512', vehicle: '2017 Tundra SR5', budget: 'Diag auth $165', agentAction: 'Declined brake revisit · priority', status: 'upcoming' },
+      { id: 'sv5', type: 'repair', timeStart: 13, timeEnd: 15, customer: 'Rachel Green', phone: '+1 (555) 555-0104', vehicle: '2019 BMW X3', budget: 'RO open · $1.2K auth', agentAction: '40k + rear brakes · loaner out', status: 'upcoming' },
+      { id: 'sv6', type: 'pickup', timeStart: 16, timeEnd: 16.5, customer: 'Maria Gonzalez', phone: '+1 (555) 555-0218', vehicle: '2021 Highlander XLE', budget: 'RO closing today', agentAction: 'Ready for pickup · cashier', status: 'upcoming' },
+    ]
+  }
+  return data
+}
+
+const SERVICE_WEEK_DATA = buildServiceDriveWeekData(WEEK_DATA)
 
 const HOUR_START = 8
 const HOUR_END   = 19
@@ -113,9 +144,9 @@ const ROW_HEIGHT = 64 // px per hour
 
 // ── Appointment Detail Overlay ────────────────────────────────
 
-function AppointmentDetailPanel({ appt, onClose }) {
+function AppointmentDetailPanel({ appt, onClose, typeConfig = TYPE_CONFIG, isService = false }) {
   if (!appt) return null
-  const cfg    = TYPE_CONFIG[appt.type] || TYPE_CONFIG['appointment']
+  const cfg    = typeConfig[appt.type] || typeConfig.appointment || TYPE_CONFIG.appointment
   const startH = Math.floor(appt.timeStart)
   const startM = ((appt.timeStart % 1) * 60).toString().padStart(2, '0')
   const endH   = Math.floor(appt.timeEnd)
@@ -161,14 +192,18 @@ function AppointmentDetailPanel({ appt, onClose }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <DollarSign size={14} style={{ color: 'var(--spyne-text-muted)', marginTop: 2, flexShrink: 0 }} />
             <div>
-              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--spyne-text-muted)', marginBottom: 2 }}>Budget</p>
+              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--spyne-text-muted)', marginBottom: 2 }}>
+                {isService ? SERVICE_CONSOLE_TAB_CONTENT.appointments.detailEstimateLabel : 'Budget'}
+              </p>
               <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--spyne-text-primary)' }}>{appt.budget}</p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <Sparkles size={14} style={{ color: 'var(--spyne-brand)', marginTop: 2, flexShrink: 0 }} />
             <div>
-              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--spyne-text-muted)', marginBottom: 2 }}>Agent Note</p>
+              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--spyne-text-muted)', marginBottom: 2 }}>
+                {isService ? SERVICE_CONSOLE_TAB_CONTENT.appointments.detailAgentNoteLabel : 'Agent Note'}
+              </p>
               <p style={{ fontSize: 13, color: 'var(--spyne-text-secondary)', lineHeight: 1.5 }}>{appt.agentAction}</p>
             </div>
           </div>
@@ -210,7 +245,7 @@ function layoutAppts(list) {
 
 // ── Week grid ─────────────────────────────────────────────────
 
-function WeekGrid({ days, onSelectAppt }) {
+function WeekGrid({ days, onSelectAppt, typeConfig = TYPE_CONFIG }) {
   const GUTTER = 52
 
   return (
@@ -309,7 +344,7 @@ function WeekGrid({ days, onSelectAppt }) {
 
               {/* Appointment blocks */}
               {laid.map(({ appt, colIdx, totalCols }) => {
-                const cfg    = TYPE_CONFIG[appt.type] || TYPE_CONFIG['appointment']
+                const cfg    = typeConfig[appt.type] || typeConfig.appointment || TYPE_CONFIG.appointment
                 const top    = (appt.timeStart - HOUR_START) * ROW_HEIGHT + 2
                 const height = Math.max((appt.timeEnd - appt.timeStart) * ROW_HEIGHT - 4, 22)
                 const width  = totalCols > 1 ? `calc(${100 / totalCols}% - 3px)` : 'calc(100% - 6px)'
@@ -356,83 +391,80 @@ function WeekGrid({ days, onSelectAppt }) {
 
 // ── Main Page ─────────────────────────────────────────────────
 
-export default function AppointmentsPage() {
+const SERVICE_LEGEND_KEYS = ['mpi', 'oil-change', 'recall', 'diagnostic', 'repair', 'pickup']
+
+export default function AppointmentsPage({ department = 'sales' }) {
+  const isService = department === 'service'
+  const weekSource = isService ? SERVICE_WEEK_DATA : WEEK_DATA
+  const typeConfig = isService ? SERVICE_TYPE_CONFIG : TYPE_CONFIG
+
   const [weekIdx,      setWeekIdx]      = useState(0)
   const [selectedAppt, setSelectedAppt] = useState(null)
 
-  const week = WEEK_DATA[weekIdx]
+  const week = weekSource[weekIdx]
   const totalAppts = week.days.reduce((s, d) => s + d.appts.length, 0)
 
   return (
-    <div className="spyne-animate-fade-in">
-      {/* Sticky header */}
-      <div style={{
-        position: 'sticky', top: 44, zIndex: 20,
-        background: 'var(--spyne-bg)',
-        paddingTop: 20, paddingBottom: 12, marginTop: -20,
-        borderBottom: '1px solid var(--spyne-border)',
-        marginLeft: -24, marginRight: -24, paddingLeft: 24, paddingRight: 24,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+    <div className={cn('spyne-animate-fade-in', spyneSalesLayout.pageStack)}>
+      {/* Sticky header — matches Sales Overview rhythm */}
+      <div
+        className={cn(
+          'sticky z-[30] -mx-max2-page bg-spyne-page px-max2-page pt-6 pb-3 -mt-6',
+          'top-[6rem] lg:top-10',
+        )}
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="spyne-title" style={{ color: 'var(--spyne-text-primary)' }}>Appointments</h1>
-            <p className="spyne-body-sm" style={{ color: 'var(--spyne-text-muted)', marginTop: 2 }}>
-              {week.weekLabel} · {totalAppts} appointment{totalAppts !== 1 ? 's' : ''}
+            <h1 className={max2Classes.pageTitle}>Appointments</h1>
+            <p className={`${max2Classes.pageDescription} mt-0.5`}>
+              {week.weekLabel} · {totalAppts}{' '}
+              {isService ? `drive appointment${totalAppts !== 1 ? 's' : ''}` : `appointment${totalAppts !== 1 ? 's' : ''}`}
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="flex flex-wrap items-center gap-2">
             {/* Legend */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 8 }}>
-              {Object.entries(TYPE_CONFIG).map(([key, cfg]) => (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: cfg.color, display: 'inline-block' }} />
-                  <span style={{ fontSize: 11, color: 'var(--spyne-text-muted)', fontWeight: 500 }}>{cfg.label}</span>
+            <div className="mr-2 flex flex-wrap items-center gap-2.5">
+              {(isService
+                ? SERVICE_LEGEND_KEYS.map((key) => [key, typeConfig[key]])
+                : Object.entries(typeConfig)
+              ).map(([key, cfg]) => (
+                <div key={key} className="flex items-center gap-1">
+                  <span className="inline-block size-2 rounded-sm" style={{ background: cfg.color }} />
+                  <span className="text-[11px] font-medium text-spyne-text-secondary">{cfg.label}</span>
                 </div>
               ))}
             </div>
 
             {/* Week navigation */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div className="flex items-center gap-1">
               <button
+                type="button"
                 onClick={() => setWeekIdx((i) => Math.max(0, i - 1))}
                 disabled={weekIdx === 0}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 32, height: 32, borderRadius: 'var(--spyne-radius-md)',
-                  border: '1px solid var(--spyne-border)', background: 'var(--spyne-surface)',
-                  cursor: weekIdx === 0 ? 'not-allowed' : 'pointer',
-                  opacity: weekIdx === 0 ? 0.4 : 1,
-                  color: 'var(--spyne-text-secondary)',
-                }}
+                className="flex size-8 cursor-pointer items-center justify-center rounded-md border border-spyne-border bg-spyne-surface text-spyne-text-secondary disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft size={15} />
               </button>
 
               <button
+                type="button"
                 onClick={() => setWeekIdx(0)}
-                style={{
-                  padding: '0 12px', height: 32, fontSize: 12, fontWeight: 600,
-                  border: '1px solid var(--spyne-border)',
-                  background: weekIdx === 0 ? 'var(--spyne-brand-subtle)' : 'var(--spyne-surface)',
-                  color: weekIdx === 0 ? 'var(--spyne-brand)' : 'var(--spyne-text-secondary)',
-                  borderRadius: 'var(--spyne-radius-md)', cursor: 'pointer', fontFamily: 'inherit',
-                }}
+                className={cn(
+                  'h-8 cursor-pointer rounded-md border border-spyne-border px-3 font-semibold text-xs',
+                  weekIdx === 0
+                    ? 'bg-spyne-primary-soft text-spyne-primary'
+                    : 'bg-spyne-surface text-spyne-text-secondary',
+                )}
               >
                 This Week
               </button>
 
               <button
-                onClick={() => setWeekIdx((i) => Math.min(WEEK_DATA.length - 1, i + 1))}
-                disabled={weekIdx === WEEK_DATA.length - 1}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 32, height: 32, borderRadius: 'var(--spyne-radius-md)',
-                  border: '1px solid var(--spyne-border)', background: 'var(--spyne-surface)',
-                  cursor: weekIdx === WEEK_DATA.length - 1 ? 'not-allowed' : 'pointer',
-                  opacity: weekIdx === WEEK_DATA.length - 1 ? 0.4 : 1,
-                  color: 'var(--spyne-text-secondary)',
-                }}
+                type="button"
+                onClick={() => setWeekIdx((i) => Math.min(weekSource.length - 1, i + 1))}
+                disabled={weekIdx === weekSource.length - 1}
+                className="flex size-8 cursor-pointer items-center justify-center rounded-md border border-spyne-border bg-spyne-surface text-spyne-text-secondary disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronRight size={15} />
               </button>
@@ -442,14 +474,19 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Week grid card */}
-      <div className="spyne-card mt-4" style={{ overflowX: 'auto' }}>
+      <div className="spyne-card overflow-x-auto">
         <div style={{ minWidth: 720 }}>
-          <WeekGrid days={week.days} onSelectAppt={setSelectedAppt} />
+          <WeekGrid days={week.days} onSelectAppt={setSelectedAppt} typeConfig={typeConfig} />
         </div>
       </div>
 
       {selectedAppt && (
-        <AppointmentDetailPanel appt={selectedAppt} onClose={() => setSelectedAppt(null)} />
+        <AppointmentDetailPanel
+          appt={selectedAppt}
+          onClose={() => setSelectedAppt(null)}
+          typeConfig={typeConfig}
+          isService={isService}
+        />
       )}
     </div>
   )

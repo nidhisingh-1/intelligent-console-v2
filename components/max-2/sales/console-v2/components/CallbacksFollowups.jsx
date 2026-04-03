@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { Info, ChevronDown, ArrowRight } from 'lucide-react'
+import { SpyneLineTab, SpyneLineTabBadge, SpyneLineTabStrip } from '@/components/max-2/spyne-line-tabs'
+import { spyneComponentClasses } from '@/lib/design-system/max-2'
 
 const ACTION_BADGE = {
   'Callback Today':    'spyne-badge-warning',
@@ -19,56 +21,28 @@ export default function CallbacksFollowups({ data }) {
   const toggleExpanded = (id) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
 
   return (
-    <div className="spyne-card p-5">
+    <div className="spyne-card p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-1.5">
-          <span className="spyne-heading">Callbacks &amp; Followups</span>
+          <span className={spyneComponentClasses.cardTitle}>Callbacks &amp; Followups</span>
           <Info size={13} style={{ color: 'var(--spyne-text-muted)' }} />
         </div>
         <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)' }}>Last 7 days</span>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-0 -mx-5 px-5 mb-4" style={{ borderBottom: '1px solid var(--spyne-border)' }}>
+      <SpyneLineTabStrip bleed compact tight>
         {[
           { id: 'needsAttention', label: 'Needs Attention', count: (data.needsAttention ?? []).filter(x => !resolved.includes(x.id)).length },
           { id: 'completed',      label: 'Completed',       count: resolved.length },
-        ].map((tab) => {
-          const active = activeTab === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-1.5 px-3 py-2.5 border-b-2 transition-colors cursor-pointer"
-              style={{
-                borderColor: active ? 'var(--spyne-brand)' : 'transparent',
-                color: active ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-                fontWeight: active ? 600 : 500,
-                fontSize: 12,
-                background: 'none',
-                border: 'none',
-                borderBottom: active ? `2px solid var(--spyne-brand)` : '2px solid transparent',
-              }}
-            >
-              {tab.label}
-              {tab.count > 0 && (
-                <span
-                  className="flex items-center justify-center min-w-[16px] h-[16px] px-1 font-bold"
-                  style={{
-                    borderRadius: 'var(--spyne-radius-pill)',
-                    background: active ? 'var(--spyne-brand)' : 'var(--spyne-border-strong)',
-                    color: active ? 'var(--spyne-brand-on)' : 'var(--spyne-text-secondary)',
-                    fontSize: 10,
-                  }}
-                >
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+        ].map((tab) => (
+          <SpyneLineTab key={tab.id} active={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}>
+            {tab.label}
+            {tab.count > 0 ? <SpyneLineTabBadge>{tab.count}</SpyneLineTabBadge> : null}
+          </SpyneLineTab>
+        ))}
+      </SpyneLineTabStrip>
 
       {/* Lead cards */}
       <div className="space-y-3">

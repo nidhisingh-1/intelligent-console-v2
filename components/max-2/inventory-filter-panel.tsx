@@ -150,7 +150,6 @@ export function SpyneFilterFacetSection({
               <Checkbox
                 checked={selectedIds.has(row.id)}
                 onCheckedChange={() => onToggle(row.id)}
-                className="border-spyne-border data-[state=checked]:bg-spyne-primary data-[state=checked]:border-spyne-primary data-[state=checked]:text-white rounded-[4px] size-4"
               />
               <span className="text-sm text-spyne-text font-normal">{row.label}</span>
               <span className={spyneComponentClasses.filterOptionCount}>({row.count})</span>

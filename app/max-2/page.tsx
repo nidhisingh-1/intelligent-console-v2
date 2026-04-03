@@ -7,22 +7,32 @@ import {
   OpportunitiesBlock,
   InsightsBlock,
 } from "@/components/max-2/dashboard"
-import { max2Classes } from "@/lib/design-system/max-2"
+import { Max2PageSection } from "@/components/max-2/max2-page-section"
+import { max2Classes, max2Layout } from "@/lib/design-system/max-2"
+import { cn } from "@/lib/utils"
 
 export default function Max2DashboardPage() {
   return (
-    <div className="flex flex-col gap-8">
-      <h1 className={max2Classes.pageTitle}>
-        What needs my attention
-      </h1>
+    <div className={cn(max2Layout.pageStack)}>
+      <div>
+        <h1 className={max2Classes.pageTitle}>What needs my attention</h1>
+        <p className={cn(max2Classes.pageDescription, "mt-1")}>
+          Lifecycle health, core metrics, and prioritized threats and opportunities.
+        </p>
+      </div>
 
       <LifecycleStrip />
 
-      <CoreMetrics />
+      <Max2PageSection title="Core metrics" description="Targets and trend sparklines at a glance.">
+        <CoreMetrics />
+      </Max2PageSection>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ThreatsBlock />
-        <OpportunitiesBlock />
+      <div className={cn(max2Layout.pageStack)}>
+        <h2 className={max2Classes.sectionTitle}>Threats and opportunities</h2>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ThreatsBlock />
+          <OpportunitiesBlock />
+        </div>
       </div>
 
       <InsightsBlock />

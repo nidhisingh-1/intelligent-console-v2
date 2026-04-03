@@ -2,10 +2,17 @@
 
 import { useState } from "react"
 import { mockMerchandisingVehicles } from "@/lib/max-2-mocks"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card"
+import { MaterialSymbol } from "@/components/max-2/material-symbol"
+import { SpyneChip } from "@/components/max-2/spyne-ui"
+import { spyneComponentClasses } from "@/lib/design-system/max-2"
 import { cn } from "@/lib/utils"
-import { TrendingUp, TrendingDown } from "lucide-react"
 import { BoostPerformerModal } from "./boost-performer-modal"
 import { ImproveListingModal } from "./improve-listing-modal"
 import type { MerchandisingVehicle } from "@/services/max-2/max-2.types"
@@ -29,59 +36,64 @@ export function ListingPerformance() {
     variant: "top" | "bottom"
   }) {
     return (
-      <div className="flex items-center gap-3 py-2.5 border-b last:border-0">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">
+      <div className="flex items-center gap-3 border-b border-spyne-border py-2.5 last:border-b-0">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-spyne-text">
             {v.year} {v.make} {v.model}
           </p>
-          <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+          <div className="mt-0.5 flex items-center gap-3 text-xs text-spyne-text-secondary">
             <span>{v.vdpViews} VDPs</span>
             <span>Score: {v.listingScore}</span>
           </div>
         </div>
-        <div
-          className={cn(
-            "text-xs font-semibold px-2 py-0.5 rounded-full shrink-0",
-            variant === "top"
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-red-100 text-red-700",
-          )}
+        <SpyneChip
+          variant="soft"
+          tone={variant === "top" ? "success" : "error"}
+          compact
+          className="shrink-0 tabular-nums"
         >
           {v.vdpViews} views
-        </div>
-        <Button
-          size="sm"
-          variant={variant === "top" ? "default" : "outline"}
+        </SpyneChip>
+        <button
+          type="button"
           className={cn(
-            "shrink-0 text-xs h-7 px-2.5",
-            variant === "bottom" && "border-red-200 text-red-700 hover:bg-red-50",
+            "shrink-0",
+            variant === "top"
+              ? spyneComponentClasses.btnPrimaryMd
+              : spyneComponentClasses.btnSecondaryMd,
           )}
           onClick={() =>
             variant === "top" ? setBoostVehicle(v) : setImproveVehicle(v)
           }
         >
           {variant === "top" ? "Boost" : "Improve"}
-        </Button>
+        </button>
       </div>
     )
   }
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card className="shadow-none gap-0">
+        <CardHeader className="pb-4">
           <CardTitle>Listing Performance</CardTitle>
+          <CardDescription>
+            Live listings ranked by VDP views (top five and lowest five).
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
-                <h3 className="text-sm font-semibold text-emerald-700">
-                  Top Performers
-                </h3>
+              <div className="mb-3 flex items-center gap-2">
+                <MaterialSymbol name="trending_up" size={16} className="text-spyne-success" />
+                <h3 className="text-sm font-semibold text-spyne-text">Top Performers</h3>
               </div>
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50/30 p-3">
+              <div
+                className={cn(
+                  spyneComponentClasses.insightRow,
+                  "rounded-lg p-3",
+                )}
+              >
                 {top5.map((v) => (
                   <VehicleRow key={v.vin} v={v} variant="top" />
                 ))}
@@ -89,13 +101,16 @@ export function ListingPerformance() {
             </div>
 
             <div>
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingDown className="h-4 w-4 text-red-600" />
-                <h3 className="text-sm font-semibold text-red-700">
-                  Needs Attention
-                </h3>
+              <div className="mb-3 flex items-center gap-2">
+                <MaterialSymbol name="trending_down" size={16} className="text-spyne-error" />
+                <h3 className="text-sm font-semibold text-spyne-text">Needs Attention</h3>
               </div>
-              <div className="rounded-lg border border-red-200 bg-red-50/30 p-3">
+              <div
+                className={cn(
+                  spyneComponentClasses.insightRow,
+                  "rounded-lg p-3",
+                )}
+              >
                 {bottom5.map((v) => (
                   <VehicleRow key={v.vin} v={v} variant="bottom" />
                 ))}

@@ -62,7 +62,7 @@ export function SpynePricingPositionChip({
   )
 }
 
-/** Live / Pending / Draft publish state. */
+/** Live / Pending / Not published state. */
 export function SpynePublishStatusChip({
   publishStatus,
   compact = false,

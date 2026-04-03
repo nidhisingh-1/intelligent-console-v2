@@ -1,19 +1,26 @@
 "use client"
 
 import {
-  DemandSignals, MarketGaps, ServiceLaneOpps, TradeInOpps,
+  SourcingDemandKpiStrip,
+  DemandSignals,
+  MarketGaps,
+  ServiceLaneOpps,
+  TradeInOpps,
 } from "@/components/max-2/sourcing"
-import { max2Classes } from "@/lib/design-system/max-2"
+import { max2Classes, max2Layout } from "@/lib/design-system/max-2"
+import { cn } from "@/lib/utils"
 
 export default function SourcingPage() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className={cn(max2Layout.pageStack)}>
       <div>
         <h1 className={max2Classes.pageTitle}>Sourcing</h1>
         <p className={max2Classes.pageDescription}>
-          Demand + acquisition opportunities — buy what your market is asking for
+          Demand and acquisition opportunities: buy what your market is asking for.
         </p>
       </div>
+
+      <SourcingDemandKpiStrip />
 
       <DemandSignals />
       <MarketGaps />

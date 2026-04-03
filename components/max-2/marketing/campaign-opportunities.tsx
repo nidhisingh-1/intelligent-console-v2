@@ -1,10 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Rocket, TrendingUp } from "lucide-react"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card"
+import { MaterialSymbol } from "@/components/max-2/material-symbol"
+import { SpyneChip } from "@/components/max-2/spyne-ui"
+import { spyneComponentClasses } from "@/lib/design-system/max-2"
+import { cn } from "@/lib/utils"
 import { LaunchCampaignModal } from "./launch-campaign-modal"
 
 const campaigns = [
@@ -43,46 +50,51 @@ export function CampaignOpportunities() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Rocket className="h-5 w-5 text-blue-600" />
-            <div>
+      <Card className="shadow-none gap-0">
+        <CardHeader className="pb-4">
+          <div className="flex items-start gap-3">
+            <span className={cn(spyneComponentClasses.kpiIcon, "bg-spyne-primary-soft text-spyne-primary")}>
+              <MaterialSymbol name="rocket_launch" size={20} />
+            </span>
+            <div className="min-w-0">
               <CardTitle>Campaign Opportunities</CardTitle>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <CardDescription>
                 Vehicles ready for targeted campaigns
-              </p>
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+        <CardContent className="flex flex-col gap-3 pt-0">
           {campaigns.map((c) => (
             <div
               key={c.id}
-              className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border p-4"
+              className={cn(
+                spyneComponentClasses.insightRow,
+                "flex flex-col gap-3 p-4 sm:flex-row sm:items-center",
+              )}
             >
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{c.vehicle}</p>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <Badge variant="outline" className="text-xs">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-spyne-text">{c.vehicle}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <SpyneChip variant="outline" tone="neutral" compact>
                     {c.segment}
-                  </Badge>
-                  <span className="flex items-center gap-1 text-xs text-emerald-600">
-                    <TrendingUp className="h-3 w-3" />
+                  </SpyneChip>
+                  <span className="inline-flex items-center gap-1 text-xs text-spyne-success">
+                    <MaterialSymbol name="trending_up" size={14} className="shrink-0" />
                     {c.demandTrend}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-spyne-text-secondary">
                   Suggested: {c.suggestedCampaign}
                 </p>
               </div>
-              <Button
-                size="sm"
-                className="shrink-0"
+              <button
+                type="button"
+                className={cn(spyneComponentClasses.btnPrimaryMd, "shrink-0")}
                 onClick={() => setSelectedCampaign(c)}
               >
                 Launch Campaign
-              </Button>
+              </button>
             </div>
           ))}
         </CardContent>

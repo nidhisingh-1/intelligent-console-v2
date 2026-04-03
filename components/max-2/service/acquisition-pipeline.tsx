@@ -13,7 +13,7 @@ export function AcquisitionPipeline() {
     <Card>
       <CardHeader>
         <CardTitle>Service-Lane Acquisition Pipeline</CardTitle>
-        <CardDescription>Customers in service with equity — appraise and acquire</CardDescription>
+        <CardDescription>Customers in service with equity: appraise and acquire</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

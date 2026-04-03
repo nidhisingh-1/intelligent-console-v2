@@ -4,36 +4,30 @@ import * as React from "react"
 import { useState, useRef, useEffect } from "react"
 import "@/styles/console-v2-sales.css"
 import SecondaryNav from "@/components/max-2/sales/console-v2/components/SecondaryNav"
-import AgentCard from "@/components/max-2/sales/console-v2/components/AgentCard"
 import UpcomingAppointments from "@/components/max-2/sales/console-v2/components/UpcomingAppointments"
 import PriorityFollowUps from "@/components/max-2/sales/console-v2/components/PriorityFollowUps"
 import MetricsBar from "@/components/max-2/sales/console-v2/components/MetricsBar"
-import SpeedToLeadPanel from "@/components/max-2/sales/console-v2/components/SpeedToLeadPanel"
 import ActivityChart from "@/components/max-2/sales/console-v2/components/ActivityChart"
-import HotVehiclesCard from "@/components/max-2/sales/console-v2/components/HotVehiclesCard"
 import ActionItemsPage from "@/components/max-2/sales/console-v2/components/ActionItemsPage"
 import AppointmentsPage from "@/components/max-2/sales/console-v2/components/AppointmentsPage"
 import CustomerListingPage from "@/components/max-2/sales/console-v2/components/CustomerListingPage"
 import CustomerProfilePage from "@/components/max-2/sales/console-v2/components/CustomerProfilePage"
 import CampaignsPage from "@/components/max-2/sales/console-v2/components/CampaignsPage"
-import LeadsBySourceCard from "@/components/max-2/sales/console-v2/components/LeadsBySourceCard"
 import OutboundCampaignsCard from "@/components/max-2/sales/console-v2/components/OutboundCampaignsCard"
-import CallbacksFollowups from "@/components/max-2/sales/console-v2/components/CallbacksFollowups"
+import ServiceAgentOverviewCard from "@/components/max-2/service/service-agent-overview-card"
+import { ServiceShowRatePanel } from "@/components/max-2/service/service-show-rate-panel"
+import { ServiceTopIntentsTable } from "@/components/max-2/service/service-top-intents-table"
 import {
-  salesAgentData,
-  salesOutboundAgentData,
+  serviceAgentData,
+  serviceOutboundAgentData,
   appointmentsData,
-  priorityFollowUpsData,
+  servicePriorityFollowUpsData,
   dateRangeOptions,
-  getOverviewData,
-  getOutboundOverviewData,
-  leadsBySourceData,
+  getServiceOverviewData,
+  getServiceOutboundOverviewData,
   outboundCampaignsData,
-  callbacksData,
-  campaignsData,
-  outboundAgentData,
-  lotInventoryData,
-  hotVehiclesData,
+  serviceCampaignsData,
+  serviceOutboundPipelineData,
   dealerData,
 } from "@/components/max-2/sales/console-v2/mockData"
 import { useMax2Ui } from "@/components/max-2/max-2-ui-context"
@@ -47,7 +41,7 @@ import {
 import { max2Classes, spyneComponentClasses, spyneSalesLayout } from "@/lib/design-system/max-2"
 import { cn } from "@/lib/utils"
 
-export function ConsoleV2SalesExperience() {
+export function ConsoleV2ServiceExperience() {
   const { sidebarCollapsed } = useMax2Ui()
   const [activePage, setActivePage] = useState<string>("overview")
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
@@ -58,21 +52,25 @@ export function ConsoleV2SalesExperience() {
 
       <main className="min-w-0 transition-all duration-200">
         <div className="px-max2-page py-6">
-          {activePage === "overview" && <OverviewPage onNavigate={setActivePage} />}
+          {activePage === "overview" && <ServiceOverviewPage onNavigate={setActivePage} />}
           {activePage === "campaigns" && (
             <CampaignsPage
-              data={campaignsData}
-              outboundData={outboundAgentData}
-              agent={salesAgentData}
+              data={serviceCampaignsData}
+              department="service"
+              outboundData={serviceOutboundPipelineData}
+              agent={serviceAgentData}
               prefillVehicles={null}
               onClearPrefill={() => {}}
-              lotData={lotInventoryData}
+              lotData={null}
             />
           )}
-          {activePage === "action-items" && <ActionItemsPage sidebarCollapsed={sidebarCollapsed} />}
-          {activePage === "appointments" && <AppointmentsPage />}
+          {activePage === "action-items" && (
+            <ActionItemsPage sidebarCollapsed={sidebarCollapsed} department="service" />
+          )}
+          {activePage === "appointments" && <AppointmentsPage department="service" />}
           {activePage === "customers" && (
             <CustomerListingPage
+              department="service"
               onViewProfile={(id: string) => {
                 setSelectedCustomerId(id)
                 setActivePage("customer-profile")
@@ -82,6 +80,7 @@ export function ConsoleV2SalesExperience() {
           {activePage === "customer-profile" && (
             <CustomerProfilePage
               customerId={selectedCustomerId}
+              department="service"
               onBack={() => setActivePage("customers")}
             />
           )}
@@ -205,7 +204,7 @@ function DateRangeFilter({
   )
 }
 
-function AgentToggle({
+function ServiceAgentToggle({
   activeAgent,
   onSwitch,
 }: {
@@ -213,18 +212,18 @@ function AgentToggle({
   onSwitch: (id: string) => void
 }) {
   const agents = [
-    { id: "inbound", data: salesAgentData },
-    { id: "outbound", data: salesOutboundAgentData },
+    { id: "inbound", data: serviceAgentData },
+    { id: "outbound", data: serviceOutboundAgentData },
   ]
 
   return (
-    <SpyneSegmentedControl aria-label="Active agent">
+    <SpyneSegmentedControl aria-label="Active service agent">
       {agents.map(({ id, data }) => {
         const active = activeAgent === id
         return (
           <SpyneSegmentedButton key={id} active={active} onClick={() => onSwitch(id)}>
             <SpyneSegmentedStatusDot live={data.status === "online"} />
-            {data.name} · {id.charAt(0).toUpperCase() + id.slice(1)}
+            {data.name} - {id.charAt(0).toUpperCase() + id.slice(1)}
           </SpyneSegmentedButton>
         )
       })}
@@ -232,18 +231,20 @@ function AgentToggle({
   )
 }
 
-function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
+function ServiceOverviewPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [activeAgent, setActiveAgent] = useState("inbound")
   const [dateRange, setDateRange] = useState("Last 30 days")
   const [customStart, setCustomStart] = useState("")
   const [customEnd, setCustomEnd] = useState("")
 
   const isOutbound = activeAgent === "outbound"
-  const agentData = isOutbound ? salesOutboundAgentData : salesAgentData
-  const inboundOverview = getOverviewData(dateRange)
-  const outboundOverview = getOutboundOverviewData(dateRange)
+  const agentData = isOutbound ? serviceOutboundAgentData : serviceAgentData
+  const inboundOverview = getServiceOverviewData(dateRange)
+  const outboundOverview = getServiceOutboundOverviewData(dateRange)
   const metricsBar = isOutbound ? outboundOverview.metricsBar : inboundOverview.metricsBar
   const activityChart = isOutbound ? outboundOverview.activityChart : inboundOverview.activityChart
+  const inboundTopIntents = inboundOverview.topIntents
+  const inboundShowRate = inboundOverview.showRate
 
   const customLabel = customStart && customEnd ? `${customStart} – ${customEnd}` : ""
   const periodLabel = dateRange === "Custom range" && customLabel ? customLabel : dateRange
@@ -265,10 +266,12 @@ function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className={max2Classes.pageTitle}>Hello {dealerData.userName}, Welcome back</h1>
-            <p className={max2Classes.pageDescription}>Sales overview · {periodLabel}</p>
+            <p className={max2Classes.pageDescription}>
+              Service overview · {periodLabel}
+            </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <AgentToggle activeAgent={activeAgent} onSwitch={setActiveAgent} />
+            <ServiceAgentToggle activeAgent={activeAgent} onSwitch={setActiveAgent} />
             <DateRangeFilter value={dateRange} onChange={handleDateChange} customLabel={customLabel} />
           </div>
         </div>
@@ -280,19 +283,25 @@ function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
         <OutboundCampaignsCard data={outboundCampaignsData} onViewCampaign={() => onNavigate?.("campaigns")} />
       ) : (
         <div className={cn("grid grid-cols-1 xl:grid-cols-[1.6fr_1fr]", spyneSalesLayout.sectionGap)}>
-          <LeadsBySourceCard data={leadsBySourceData} />
-          <SpeedToLeadPanel data={inboundOverview.speedToLead} />
+          {inboundTopIntents ? <ServiceTopIntentsTable rows={inboundTopIntents} /> : null}
+          {inboundShowRate ? (
+            <ServiceShowRatePanel
+              rateLabel={inboundShowRate.rateLabel}
+              rateCaption={inboundShowRate.rateCaption}
+              deltaLabel={inboundShowRate.deltaLabel}
+              segments={inboundShowRate.segments}
+            />
+          ) : null}
         </div>
       )}
 
-      <div className={cn("grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4", spyneSalesLayout.sectionGap)}>
-        <AgentCard agent={agentData} />
-        <UpcomingAppointments appointments={appointmentsData} />
-        <PriorityFollowUps followUps={priorityFollowUpsData} />
-        <HotVehiclesCard data={hotVehiclesData} />
+      <div className={cn("grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3", spyneSalesLayout.sectionGap)}>
+        <ServiceAgentOverviewCard agent={agentData} />
+        <UpcomingAppointments appointments={appointmentsData} variant="service" />
+        <PriorityFollowUps variant="service" items={servicePriorityFollowUpsData} urgentCount={5} />
       </div>
 
-      <ActivityChart data={activityChart} agentType={activeAgent} />
+      <ActivityChart data={activityChart} agentType={activeAgent} department="service" />
     </div>
   )
 }

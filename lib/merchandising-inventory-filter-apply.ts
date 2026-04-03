@@ -7,6 +7,37 @@ export type MerchAgeBucket = "0-30" | "31-89" | "90+"
 export type MerchPriceBucket = "u20" | "20-30" | "30-40" | "40+"
 export type MerchScoreBucket = "low" | "mid" | "high"
 
+/** Studio insight presets; matches `issue` query on `/max-2/studio/inventory`. */
+export type MerchMediaIssue = "glare" | "no360" | "incomplete" | "under8"
+
+export const MERCH_MEDIA_ISSUE_LABELS: Record<MerchMediaIssue, string> = {
+  glare: "Sun glare",
+  no360: "Missing 360 walk-around video",
+  incomplete: "10–15 photos",
+  under8: "Fewer than 8 exterior images",
+}
+
+const validMediaIssues = new Set<MerchMediaIssue>(["glare", "no360", "incomplete", "under8"])
+
+export function parseMerchMediaIssueFromSearchParams(params: URLSearchParams): MerchMediaIssue | null {
+  const issue = params.get("issue")
+  if (issue && validMediaIssues.has(issue as MerchMediaIssue)) return issue as MerchMediaIssue
+  if (params.get("photos") === "low") return "under8"
+  return null
+}
+
+/** Updates or strips `issue` / legacy `photos` query keys; leaves other params untouched. */
+export function applyMerchMediaIssueToSearchParams(
+  params: URLSearchParams,
+  mediaIssue: MerchMediaIssue | null
+): URLSearchParams {
+  const next = new URLSearchParams(params.toString())
+  next.delete("issue")
+  next.delete("photos")
+  if (mediaIssue) next.set("issue", mediaIssue)
+  return next
+}
+
 export interface MerchandisingInventoryFilters {
   search: string
   vehicleType: MerchInventoryVehicleType
@@ -25,6 +56,12 @@ export interface MerchandisingInventoryFilters {
   priceMin: number | null
   priceMax: number | null
   scoreMin: number | null
+  /** Optional capture-quality slice from Studio insights (`?issue=`). */
+  mediaIssue: MerchMediaIssue | null
+  /** Quick chip: units with no odometer reading (0 in mock DMS). */
+  missingOdometerOnly: boolean
+  /** Quick chip: units with no list price (0 in mock DMS). */
+  missingPriceOnly: boolean
 }
 
 export const merchandisingDefaultFilters: MerchandisingInventoryFilters = {
@@ -45,6 +82,9 @@ export const merchandisingDefaultFilters: MerchandisingInventoryFilters = {
   priceMin: null,
   priceMax: null,
   scoreMin: null,
+  mediaIssue: null,
+  missingOdometerOnly: false,
+  missingPriceOnly: false,
 }
 
 export function merchandisingTransmissionFromVin(vin: string): "manual" | "automatic" {
@@ -137,6 +177,23 @@ export function applyMerchandisingFilters(
     )
   }
 
+  if (filters.mediaIssue) {
+    const mi = filters.mediaIssue
+    result = result.filter((v) => {
+      if (mi === "glare") return v.hasSunGlare
+      if (mi === "no360") return v.missingWalkaroundVideo
+      if (mi === "incomplete") return v.photoCount >= 1 && v.photoCount <= 15
+      return v.photoCount > 0 && v.photoCount < 8
+    })
+  }
+
+  if (filters.missingOdometerOnly) {
+    result = result.filter((v) => v.odometer <= 0)
+  }
+  if (filters.missingPriceOnly) {
+    result = result.filter((v) => v.price <= 0)
+  }
+
   return result
 }
 
@@ -156,6 +213,9 @@ export function merchandisingFiltersActive(f: MerchandisingInventoryFilters): bo
     f.ageMax !== null ||
     f.priceMin !== null ||
     f.priceMax !== null ||
-    f.scoreMin !== null
+    f.scoreMin !== null ||
+    f.mediaIssue !== null ||
+    f.missingOdometerOnly ||
+    f.missingPriceOnly
   )
 }

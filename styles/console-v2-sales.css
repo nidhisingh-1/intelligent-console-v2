@@ -1,145 +1,130 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-:root {
-  /* Brand — Indigo (modern SaaS) */
-  --spyne-brand:          #4F46E5;
-  --spyne-brand-hover:    #4338CA;
-  --spyne-brand-subtle:   #EEF2FF;
-  --spyne-brand-muted:    #C7D2FE;
-  --spyne-brand-dark:     #3730A3;
-  --spyne-brand-on:       #FFFFFF;
-
-  /* Text */
-  --spyne-text-primary:   #0F172A;
-  --spyne-text-secondary: #475569;
-  --spyne-text-muted:     #94A3B8;
-
-  /* Surfaces */
-  --spyne-bg:             #F8FAFC;
-  --spyne-surface:        #FFFFFF;
-  --spyne-surface-hover:  #F8FAFC;
-
-  /* Borders */
-  --spyne-border:         #E2E8F0;
-  --spyne-border-strong:  #CBD5E1;
-
-  /* Status — success */
-  --spyne-success:        #10B981;
-  --spyne-success-subtle: #ECFDF5;
-  --spyne-success-muted:  #6EE7B7;
-  --spyne-success-text:   #065F46;
-
-  /* Status — warning */
-  --spyne-warning:        #F59E0B;
-  --spyne-warning-subtle: #FFFBEB;
-  --spyne-warning-muted:  #FCD34D;
-  --spyne-warning-text:   #92400E;
-
-  /* Status — danger */
-  --spyne-danger:         #EF4444;
-  --spyne-danger-subtle:  #FEF2F2;
-  --spyne-danger-muted:   #FCA5A5;
-  --spyne-danger-text:    #991B1B;
-
-  /* Status — info */
-  --spyne-info:           #0EA5E9;
-  --spyne-info-subtle:    #F0F9FF;
-  --spyne-info-muted:     #7DD3FC;
-  --spyne-info-text:      #0C4A6E;
-
-  /* Radius scale */
-  --spyne-radius-sm:   6px;
-  --spyne-radius-md:   10px;
-  --spyne-radius-lg:   14px;
-  --spyne-radius-xl:   20px;
-  --spyne-radius-pill: 9999px;
-
-  /* Shadow scale */
-  --spyne-shadow-sm:    0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --spyne-shadow-md:    0 4px 16px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
-  --spyne-shadow-lg:    0 8px 32px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.06);
-  --spyne-shadow-brand: 0 4px 16px rgba(79, 70, 229, 0.18);
-
-  /* Animation timing */
-  --spyne-duration-fast:  150ms;
-  --spyne-duration-base:  250ms;
-  --spyne-duration-slow:  350ms;
-  --spyne-ease-out:       cubic-bezier(0.0, 0, 0.2, 1);
-  --spyne-ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
-
-  /* Z-index scale */
-  --spyne-z-sticky:  20;
-  --spyne-z-nav:     999;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+/**
+ * Sales (Console V2) — legacy component classes scoped under `.console-v2-sales-root`.
+ * Colors, radii, and typography align with design-system/max-2.md; legacy `--spyne-brand*` names
+ * map to canonical `:root` Spyne tokens from app/globals.css.
+ */
 
 .console-v2-sales-root {
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  /* Legacy names → Spyne Max 2 tokens */
+  --spyne-brand: var(--spyne-primary);
+  --spyne-brand-hover: var(--spyne-primary-hover);
+  --spyne-brand-subtle: var(--spyne-primary-soft);
+  --spyne-brand-muted: color-mix(in srgb, var(--spyne-primary) 32%, var(--spyne-border));
+  --spyne-brand-dark: var(--spyne-primary-pressed);
+  --spyne-brand-on: #ffffff;
+
+  --spyne-text-muted: var(--spyne-text-secondary);
+
+  --spyne-bg: var(--spyne-page-bg);
+  --spyne-surface-hover: color-mix(in srgb, var(--spyne-text-primary) 4%, var(--spyne-surface));
+
+  --spyne-border-strong: color-mix(in srgb, var(--spyne-text-primary) 14%, var(--spyne-border));
+
+  --spyne-success-subtle: color-mix(in srgb, var(--spyne-success) 14%, #ffffff);
+  --spyne-success-muted: color-mix(in srgb, var(--spyne-success) 40%, #ffffff);
+  --spyne-success-text: var(--spyne-success);
+
+  --spyne-warning-subtle: color-mix(in srgb, var(--spyne-warning) 35%, #ffffff);
+  --spyne-warning-muted: color-mix(in srgb, var(--spyne-warning) 55%, #ffffff);
+  --spyne-warning-text: var(--spyne-warning-ink);
+
+  --spyne-danger: var(--spyne-error);
+  --spyne-danger-subtle: color-mix(in srgb, var(--spyne-error) 12%, #ffffff);
+  --spyne-danger-muted: color-mix(in srgb, var(--spyne-error) 38%, #ffffff);
+  --spyne-danger-text: var(--spyne-error);
+
+  --spyne-info-subtle: color-mix(in srgb, var(--spyne-info) 12%, #ffffff);
+  --spyne-info-muted: color-mix(in srgb, var(--spyne-info) 38%, #ffffff);
+  --spyne-info-text: var(--spyne-info);
+
+  --spyne-radius-sm: 4px;
+  --spyne-radius-md: 6px;
+  /** Large radius — aligned with Studio / Lot cards (`:root` `--spyne-card-radius`) */
+  --spyne-radius-lg: var(--spyne-card-radius);
+  --spyne-radius-xl: 12px;
+  --spyne-radius-pill: 9999px;
+
+  /** Default sm shadow — card surfaces use `--spyne-card-shadow` on `.spyne-card` */
+  --spyne-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
+  --spyne-shadow-md: 0 4px 12px rgb(15 23 42 / 0.08);
+  --spyne-shadow-lg: 0 8px 24px rgb(15 23 42 / 0.1);
+  --spyne-shadow-brand: 0 4px 16px color-mix(in srgb, var(--spyne-primary) 22%, transparent);
+
+  --spyne-duration-fast: 150ms;
+  --spyne-duration-base: 250ms;
+  --spyne-duration-slow: 350ms;
+  --spyne-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --spyne-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   color: var(--spyne-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Scrollbar ─────────────────────────────────────────────────────── */
-::-webkit-scrollbar          { width: 6px; height: 6px; }
-::-webkit-scrollbar-track    { background: transparent; }
-::-webkit-scrollbar-thumb    { background: var(--spyne-border-strong); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--spyne-text-muted); }
+.console-v2-sales-root ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.console-v2-sales-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.console-v2-sales-root ::-webkit-scrollbar-thumb {
+  background: var(--spyne-border-strong);
+  border-radius: 3px;
+}
+.console-v2-sales-root ::-webkit-scrollbar-thumb:hover {
+  background: var(--spyne-text-secondary);
+}
 
-/* ─── Typography ────────────────────────────────────────────────────── */
-.spyne-display {
+/* ─── Typography (matches .max2-spyne page scale where applicable) ─── */
+.console-v2-sales-root .spyne-display {
   font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: 1.2;
 }
-.spyne-title {
+.console-v2-sales-root .spyne-title {
   font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.018em;
-  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
 }
-.spyne-heading {
+.console-v2-sales-root .spyne-heading {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.4;
 }
-.spyne-subheading {
+.console-v2-sales-root .spyne-subheading {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--spyne-text-muted);
+  color: var(--spyne-text-secondary);
   line-height: 1.4;
 }
-.spyne-body {
+.console-v2-sales-root .spyne-body {
   font-size: 14px;
   font-weight: 400;
   line-height: 1.6;
 }
-.spyne-body-sm {
-  font-size: 13px;
+.console-v2-sales-root .spyne-body-sm {
+  font-size: 14px;
   font-weight: 400;
-  line-height: 1.55;
+  line-height: 1.5;
 }
-.spyne-label {
-  font-size: 13px;
+.console-v2-sales-root .spyne-label {
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.4;
 }
-.spyne-caption {
-  font-size: 11px;
+.console-v2-sales-root .spyne-caption {
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.4;
 }
-.spyne-number {
+.console-v2-sales-root .spyne-number {
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -147,52 +132,71 @@
   line-height: 1.1;
 }
 
-/* ─── Card Components ───────────────────────────────────────────────── */
-.spyne-card {
-  background: var(--spyne-surface);
-  border: 1px solid var(--spyne-border);
-  border-radius: var(--spyne-radius-lg);
-  box-shadow: var(--spyne-shadow-sm);
+/* ─── Card Components (match `.max2-spyne [data-slot="card"]` — see `:root` `--spyne-card-*`) ─ */
+.console-v2-sales-root .spyne-card {
+  background: var(--spyne-card-bg);
+  border: 1px solid var(--spyne-card-border);
+  border-radius: var(--spyne-card-radius);
+  box-shadow: var(--spyne-card-shadow);
 }
 
-.spyne-card-interactive {
-  background: var(--spyne-surface);
-  border: 1px solid var(--spyne-border);
-  border-radius: var(--spyne-radius-lg);
-  box-shadow: var(--spyne-shadow-sm);
+.console-v2-sales-root .spyne-card-interactive {
+  background: var(--spyne-card-bg);
+  border: 1px solid var(--spyne-card-border);
+  border-radius: var(--spyne-card-radius);
+  box-shadow: var(--spyne-card-shadow);
   cursor: pointer;
   transition:
     box-shadow var(--spyne-duration-base) var(--spyne-ease-out),
     border-color var(--spyne-duration-base) var(--spyne-ease-out),
     transform var(--spyne-duration-base) var(--spyne-ease-out);
 }
-.spyne-card-interactive:hover {
+.console-v2-sales-root .spyne-card-interactive:hover {
   box-shadow: var(--spyne-shadow-md);
   border-color: var(--spyne-border-strong);
   transform: translateY(-1px);
 }
-.spyne-card-interactive:active {
+.console-v2-sales-root .spyne-card-interactive:active {
   transform: scale(0.99);
-  box-shadow: var(--spyne-shadow-sm);
+  box-shadow: var(--spyne-card-shadow);
 }
 
-.active-action-card {
+/**
+ * In-card section titles — same as shadcn `CardTitle` / `.spyne-card-title` (14px / 600), not page `.spyne-heading` (16px).
+ */
+.console-v2-sales-root .spyne-card .spyne-heading,
+.console-v2-sales-root .spyne-card-interactive .spyne-heading {
+  font-size: var(--spyne-card-title-font-size);
+  font-weight: var(--spyne-card-title-font-weight);
+  line-height: var(--spyne-card-title-line-height);
+  letter-spacing: normal;
+  color: var(--spyne-card-title-color);
+}
+
+.console-v2-sales-root .spyne-card-title {
+  font-size: var(--spyne-card-title-font-size);
+  font-weight: var(--spyne-card-title-font-weight);
+  line-height: var(--spyne-card-title-line-height);
+  color: var(--spyne-card-title-color);
+}
+
+.console-v2-sales-root .active-action-card {
   border-color: var(--spyne-brand) !important;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--spyne-primary) 14%, transparent) !important;
 }
 
 /* ─── Buttons ───────────────────────────────────────────────────────── */
-.spyne-btn-primary {
+.console-v2-sales-root .spyne-btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   height: 36px;
   padding: 0 16px;
-  border-radius: var(--spyne-radius-md);
+  border-radius: 8px;
   background: var(--spyne-brand);
   color: var(--spyne-brand-on);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -202,27 +206,27 @@
     box-shadow var(--spyne-duration-fast) var(--spyne-ease-out),
     transform var(--spyne-duration-fast) var(--spyne-ease-out);
 }
-.spyne-btn-primary:hover {
+.console-v2-sales-root .spyne-btn-primary:hover {
   background: var(--spyne-brand-hover);
   box-shadow: var(--spyne-shadow-md);
   transform: translateY(-1px);
 }
-.spyne-btn-primary:active {
+.console-v2-sales-root .spyne-btn-primary:active {
   transform: scale(0.97);
   box-shadow: var(--spyne-shadow-sm);
 }
 
-.spyne-btn-secondary {
+.console-v2-sales-root .spyne-btn-secondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   height: 36px;
   padding: 0 14px;
-  border-radius: var(--spyne-radius-md);
+  border-radius: 8px;
   background: var(--spyne-surface);
   color: var(--spyne-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   border: 1px solid var(--spyne-border);
   cursor: pointer;
@@ -231,22 +235,22 @@
     border-color var(--spyne-duration-fast) var(--spyne-ease-out),
     transform var(--spyne-duration-fast) var(--spyne-ease-out);
 }
-.spyne-btn-secondary:hover {
+.console-v2-sales-root .spyne-btn-secondary:hover {
   background: var(--spyne-surface-hover);
   border-color: var(--spyne-border-strong);
 }
-.spyne-btn-secondary:active {
+.console-v2-sales-root .spyne-btn-secondary:active {
   transform: scale(0.97);
 }
 
-.spyne-btn-ghost {
+.console-v2-sales-root .spyne-btn-ghost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   height: 32px;
   padding: 0 10px;
-  border-radius: var(--spyne-radius-md);
+  border-radius: 8px;
   background: transparent;
   color: var(--spyne-text-secondary);
   font-size: 12px;
@@ -257,57 +261,27 @@
     background var(--spyne-duration-fast) var(--spyne-ease-out),
     color var(--spyne-duration-fast) var(--spyne-ease-out);
 }
-.spyne-btn-ghost:hover {
+.console-v2-sales-root .spyne-btn-ghost:hover {
   background: var(--spyne-surface-hover);
   color: var(--spyne-text-primary);
 }
 
-/* ─── Badges ────────────────────────────────────────────────────────── */
-.spyne-badge {
+/* ─── Badges (shape + type — semantic fills from `.max2-spyne .spyne-badge-*` in globals.css) ─ */
+.console-v2-sales-root .spyne-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: var(--spyne-radius-sm);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.4;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--spyne-radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
   white-space: nowrap;
   border: 1px solid transparent;
 }
-.spyne-badge-brand {
-  background: var(--spyne-brand-subtle);
-  color: var(--spyne-brand);
-  border-color: var(--spyne-brand-muted);
-}
-.spyne-badge-success {
-  background: var(--spyne-success-subtle);
-  color: var(--spyne-success-text);
-  border-color: var(--spyne-success-muted);
-}
-.spyne-badge-warning {
-  background: var(--spyne-warning-subtle);
-  color: var(--spyne-warning-text);
-  border-color: var(--spyne-warning-muted);
-}
-.spyne-badge-danger {
-  background: var(--spyne-danger-subtle);
-  color: var(--spyne-danger-text);
-  border-color: var(--spyne-danger-muted);
-}
-.spyne-badge-info {
-  background: var(--spyne-info-subtle);
-  color: var(--spyne-info-text);
-  border-color: var(--spyne-info-muted);
-}
-.spyne-badge-neutral {
-  background: var(--spyne-border);
-  color: var(--spyne-text-secondary);
-  border-color: var(--spyne-border-strong);
-}
 
 /* ─── Filter Pills ──────────────────────────────────────────────────── */
-.spyne-pill {
+.console-v2-sales-root .spyne-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -326,44 +300,46 @@
     border-color var(--spyne-duration-fast) var(--spyne-ease-out);
   white-space: nowrap;
 }
-.spyne-pill:hover {
+.console-v2-sales-root .spyne-pill:hover {
   color: var(--spyne-text-primary);
   border-color: var(--spyne-border-strong);
 }
-.spyne-pill-active {
+.console-v2-sales-root .spyne-pill-active {
   background: var(--spyne-brand-subtle);
   color: var(--spyne-brand);
   border-color: var(--spyne-brand-muted);
 }
 
 /* ─── Input ─────────────────────────────────────────────────────────── */
-.spyne-input {
+.console-v2-sales-root .spyne-input {
   height: 36px;
   padding: 0 12px;
   border-radius: var(--spyne-radius-md);
   background: var(--spyne-surface);
   color: var(--spyne-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-family: inherit;
   border: 1px solid var(--spyne-border);
   outline: none;
-  transition: border-color var(--spyne-duration-fast) var(--spyne-ease-out),
-              box-shadow var(--spyne-duration-fast) var(--spyne-ease-out);
+  transition:
+    border-color var(--spyne-duration-fast) var(--spyne-ease-out),
+    box-shadow var(--spyne-duration-fast) var(--spyne-ease-out);
 }
-.spyne-input:focus {
+.console-v2-sales-root .spyne-input:focus {
   border-color: var(--spyne-brand);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--spyne-primary) 14%, transparent);
 }
 
 /* ─── Divider ───────────────────────────────────────────────────────── */
-.spyne-divider {
+.console-v2-sales-root .spyne-divider {
   height: 1px;
   background: var(--spyne-border);
 }
 
 /* ─── Skeleton ──────────────────────────────────────────────────────── */
-.spyne-skeleton {
-  background: linear-gradient(90deg,
+.console-v2-sales-root .spyne-skeleton {
+  background: linear-gradient(
+    90deg,
     var(--spyne-border) 25%,
     var(--spyne-surface-hover) 50%,
     var(--spyne-border) 75%
@@ -375,40 +351,86 @@
 
 /* ─── Animations ────────────────────────────────────────────────────── */
 @keyframes spyne-shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 @keyframes spyne-fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes spyne-slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes spyne-scale-in {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 @keyframes spyne-slide-in-right {
-  from { opacity: 0; transform: translateX(12px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-.spyne-animate-fade-in    { animation: spyne-fade-in    var(--spyne-duration-base) var(--spyne-ease-out) both; }
-.spyne-animate-slide-up   { animation: spyne-slide-up   var(--spyne-duration-slow) var(--spyne-ease-out) both; }
-.spyne-animate-scale-in   { animation: spyne-scale-in   var(--spyne-duration-base) var(--spyne-ease-spring) both; }
+.console-v2-sales-root .spyne-animate-fade-in {
+  animation: spyne-fade-in var(--spyne-duration-base) var(--spyne-ease-out) both;
+}
+.console-v2-sales-root .spyne-animate-slide-up {
+  animation: spyne-slide-up var(--spyne-duration-slow) var(--spyne-ease-out) both;
+}
+.console-v2-sales-root .spyne-animate-scale-in {
+  animation: spyne-scale-in var(--spyne-duration-base) var(--spyne-ease-spring) both;
+}
 
 /* Staggered list entry */
-.spyne-stagger > *:nth-child(1) { animation-delay: 0ms; }
-.spyne-stagger > *:nth-child(2) { animation-delay: 50ms; }
-.spyne-stagger > *:nth-child(3) { animation-delay: 100ms; }
-.spyne-stagger > *:nth-child(4) { animation-delay: 150ms; }
-.spyne-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.console-v2-sales-root .spyne-stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.console-v2-sales-root .spyne-stagger > *:nth-child(2) {
+  animation-delay: 50ms;
+}
+.console-v2-sales-root .spyne-stagger > *:nth-child(3) {
+  animation-delay: 100ms;
+}
+.console-v2-sales-root .spyne-stagger > *:nth-child(4) {
+  animation-delay: 150ms;
+}
+.console-v2-sales-root .spyne-stagger > *:nth-child(5) {
+  animation-delay: 200ms;
+}
 
 /* ─── Reduced Motion ────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  .console-v2-sales-root *,
+  .console-v2-sales-root *::before,
+  .console-v2-sales-root *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }

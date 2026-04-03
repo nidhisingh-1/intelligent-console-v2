@@ -74,16 +74,7 @@ function CallCard({ entry }) {
               <span style={{ fontSize: 11, color: 'var(--spyne-text-muted)' }}>· {entry.duration}</span>
             )}
             {entry.agent && (
-              <span
-                className="spyne-badge"
-                style={{
-                  fontSize: 10,
-                  padding: '1px 6px',
-                  background: 'var(--spyne-brand-subtle)',
-                  color: 'var(--spyne-brand)',
-                  borderColor: 'var(--spyne-brand-muted)',
-                }}
-              >
+              <span className="spyne-badge spyne-badge-brand">
                 Vini AI
               </span>
             )}
@@ -190,11 +181,7 @@ function AppointmentChip({ entry }) {
   const upcoming  = !apptStatus || apptStatus === 'Upcoming' || apptStatus === 'Confirmed' || apptStatus === 'Scheduled'
   const missed    = apptStatus === 'Missed' || apptStatus === 'No-show'
 
-  const statusStyle = attended
-    ? { bg: 'var(--spyne-success-subtle)', color: 'var(--spyne-success-text)', border: 'var(--spyne-success-muted)' }
-    : missed
-    ? { bg: 'var(--spyne-danger-subtle)',  color: 'var(--spyne-danger-text)',  border: 'var(--spyne-danger-muted)' }
-    : { bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',        border: 'var(--spyne-brand-muted)' }
+  const statusBadgeClass = attended ? 'spyne-badge-success' : missed ? 'spyne-badge-danger' : 'spyne-badge-brand'
 
   return (
     <div
@@ -214,10 +201,7 @@ function AppointmentChip({ entry }) {
               {apptType}
             </span>
             {apptStatus && (
-              <span
-                className="spyne-badge"
-                style={{ fontSize: 10, padding: '1px 6px', background: statusStyle.bg, color: statusStyle.color, borderColor: statusStyle.border }}
-              >
+              <span className={`spyne-badge ${statusBadgeClass}`}>
                 {apptStatus}
               </span>
             )}

@@ -1,6 +1,7 @@
 "use client"
 
 import { ArrowRight } from 'lucide-react'
+import { spyneComponentClasses } from '@/lib/design-system/max-2'
 import InfoTooltip from './InfoTooltip'
 
 export default function OutboundCampaignsCard({ data, onViewCampaign }) {
@@ -16,10 +17,10 @@ export default function OutboundCampaignsCard({ data, onViewCampaign }) {
   })()
 
   return (
-    <div className="spyne-card p-5 h-full flex flex-col">
+    <div className="spyne-card p-4 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-1.5 mb-4">
-        <div className="spyne-heading">Campaign Performance</div>
+        <div className={spyneComponentClasses.cardTitle}>Campaign Performance</div>
         <InfoTooltip text="Tracks how each outbound campaign is converting dormant CRM leads. Re-engaged = a cold lead replied. Appts Booked = Vini converted the re-engagement into a confirmed visit." />
       </div>
 

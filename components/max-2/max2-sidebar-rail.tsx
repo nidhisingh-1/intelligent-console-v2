@@ -14,6 +14,37 @@ export function Max2SidebarRailDivider({ className }: { className?: string }) {
   return <hr className={cn(spyneComponentClasses.sidebarRailDivider, className)} aria-hidden />
 }
 
+export type Max2SidebarRailChildLinkProps = {
+  href: string
+  label: string
+  active: boolean
+  onNavigate?: () => void
+  className?: string
+}
+
+/** Sub-item under a parent with `children` (e.g. Studio AI, Lot View) — tokens in `spyne-sidebar-rail__child-*`. */
+export function Max2SidebarRailChildLink({
+  href,
+  label,
+  active,
+  onNavigate,
+  className,
+}: Max2SidebarRailChildLinkProps) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={cn(
+        spyneComponentClasses.sidebarRailChildLink,
+        active && spyneComponentClasses.sidebarRailChildLinkActive,
+        className
+      )}
+    >
+      {label}
+    </Link>
+  )
+}
+
 export type Max2SidebarRailNavLinkProps = {
   href: string
   label: string

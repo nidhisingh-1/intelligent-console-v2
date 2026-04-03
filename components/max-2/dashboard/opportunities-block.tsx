@@ -5,10 +5,11 @@ import Link from "next/link"
 import { mockOpportunities } from "@/lib/max-2-mocks"
 import type { Opportunity } from "@/services/max-2/max-2.types"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { spyneComponentClasses } from "@/lib/design-system/max-2"
-import { TrendingUp, ArrowRight, ChevronRight, ChevronDown } from "lucide-react"
+import { SpyneChip } from "@/components/max-2/spyne-ui"
+import { MaterialSymbol } from "@/components/max-2/material-symbol"
+import { ArrowRight, ChevronRight, ChevronDown } from "lucide-react"
 
 const sorted = [...mockOpportunities].sort((a, b) => {
   if (a.impact === "high" && b.impact !== "high") return -1
@@ -21,46 +22,55 @@ function OpportunityCard({ opp }: { opp: Opportunity }) {
   const isHigh = opp.impact === "high"
 
   return (
-    <div
-      className={cn(
-        "rounded-lg border transition-all border-spyne-border border-l-[3px]",
-        isHigh
-          ? cn(spyneComponentClasses.rowPositive, "border-l-spyne-success")
-          : cn("bg-card", "border-l-spyne-success/40"),
-      )}
-    >
+    <div className={cn(spyneComponentClasses.insightRow, "p-0 overflow-hidden")}>
       <button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 p-3 text-left group"
+        className="w-full text-left px-4 py-[14px]"
       >
-        <Badge className="text-xs font-bold px-2 py-0.5 shrink-0 bg-spyne-success hover:bg-spyne-success/90 text-white border-0">
-          {opp.count}
-        </Badge>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold truncate">{opp.label}</span>
-            {isHigh && (
-              <Badge className="text-[10px] px-1.5 py-0 h-4 bg-spyne-success hover:bg-spyne-success/90 text-white border-0">
-                High Impact
-              </Badge>
+        <div className={spyneComponentClasses.insightRowBody}>
+          <div
+            className={cn(
+              spyneComponentClasses.insightRowIconWell,
+              spyneComponentClasses.insightRowIconWellSuccess
             )}
+          >
+            <MaterialSymbol name="trending_up" size={16} className="text-spyne-success" />
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">
-            {opp.description}
-          </p>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
+          <div className={spyneComponentClasses.insightRowMain}>
+            <div className={spyneComponentClasses.insightRowTitleRow}>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <p className={cn(spyneComponentClasses.insightRowTitle, "truncate")}>
+                  {opp.label}
+                </p>
+                {isHigh && (
+                  <SpyneChip variant="outline" tone="success" compact className="shrink-0">
+                    High Impact
+                  </SpyneChip>
+                )}
+              </div>
+              <SpyneChip
+                variant="outline"
+                tone="success"
+                compact
+                className="shrink-0 tabular-nums"
+              >
+                {opp.count}
+              </SpyneChip>
+            </div>
+            <p className={spyneComponentClasses.insightRowMeta}>{opp.description}</p>
+          </div>
           {open ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className={spyneComponentClasses.insightRowChevron} />
           ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className={spyneComponentClasses.insightRowChevron} />
           )}
         </div>
       </button>
 
       {open && opp.items && opp.items.length > 0 && (
-        <div className="px-3 pb-3 space-y-1.5">
-          <div className="border-t border-spyne-border pt-2">
+        <div className="px-4 pb-3 space-y-1.5 border-t border-spyne-border">
+          <div className="pt-2">
             {opp.items.map((item) => (
               <div
                 key={item.id}
@@ -94,20 +104,20 @@ export function OpportunitiesBlock() {
           <div
             className={cn(
               "flex items-center justify-center h-7 w-7 rounded-lg border border-spyne-border",
-              spyneComponentClasses.rowPositive,
+              spyneComponentClasses.rowPositive
             )}
           >
-            <TrendingUp className="h-4 w-4 text-spyne-success" />
+            <MaterialSymbol name="trending_up" size={16} className="text-spyne-success" />
           </div>
           <div>
             <CardTitle className="text-base">Opportunities</CardTitle>
             <CardDescription className="text-xs">
-              Upside — growth & acceleration
+              Upside: growth and acceleration
             </CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-3">
         {sorted.map((o) => (
           <OpportunityCard key={o.id} opp={o} />
         ))}

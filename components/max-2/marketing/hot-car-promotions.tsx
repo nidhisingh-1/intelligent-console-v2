@@ -2,10 +2,17 @@
 
 import { useState } from "react"
 import { mockOpportunities } from "@/lib/max-2-mocks"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Flame, TrendingUp } from "lucide-react"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card"
+import { MaterialSymbol } from "@/components/max-2/material-symbol"
+import { SpyneChip } from "@/components/max-2/spyne-ui"
+import { spyneComponentClasses } from "@/lib/design-system/max-2"
+import { cn } from "@/lib/utils"
 import { PromoteVehicleModal } from "./promote-vehicle-modal"
 import type { OpportunityItem } from "@/services/max-2/max-2.types"
 
@@ -16,47 +23,50 @@ export function HotCarPromotions() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Flame className="h-5 w-5 text-orange-500" />
-            <div>
+      <Card className="shadow-none gap-0">
+        <CardHeader className="pb-4">
+          <div className="flex items-start gap-3">
+            <span className={cn(spyneComponentClasses.kpiIcon, "bg-spyne-primary-soft text-spyne-warning-ink")}>
+              <MaterialSymbol name="local_fire_department" size={20} />
+            </span>
+            <div className="min-w-0">
               <CardTitle>Hot Car Promotions</CardTitle>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Rising demand + strong inventory
-              </p>
+              <CardDescription>
+                Rising demand and strong inventory
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+        <CardContent className="flex flex-col gap-3 pt-0">
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border p-4"
+              className={cn(
+                spyneComponentClasses.insightRow,
+                "flex flex-col gap-3 p-4 sm:flex-row sm:items-center",
+              )}
             >
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{item.title}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-spyne-text">{item.title}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <SpyneChip
                     variant="outline"
-                    className="bg-orange-50 text-orange-700 border-orange-200"
+                    tone="warning"
+                    compact
+                    leading={<MaterialSymbol name="trending_up" size={14} className="shrink-0" />}
                   >
-                    <TrendingUp className="h-3 w-3 mr-1" />
                     Hot
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {item.detail}
-                  </span>
+                  </SpyneChip>
+                  <span className="text-xs text-spyne-text-secondary">{item.detail}</span>
                 </div>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="shrink-0"
+              <button
+                type="button"
+                className={cn(spyneComponentClasses.btnSecondaryMd, "shrink-0")}
                 onClick={() => setSelectedVehicle(item)}
               >
                 Promote
-              </Button>
+              </button>
             </div>
           ))}
         </CardContent>

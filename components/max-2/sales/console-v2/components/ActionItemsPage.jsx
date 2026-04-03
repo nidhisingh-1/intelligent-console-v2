@@ -2,6 +2,13 @@
 
 import { useState, useMemo } from 'react'
 import { Phone, MessageSquare, Eye, ArrowRight, Calendar, Zap, Package, Star, X, Sparkles, LayoutList, Columns, Archive } from 'lucide-react'
+import { SpyneLineTab, SpyneLineTabBadge, SpyneLineTabStrip } from '@/components/max-2/spyne-line-tabs'
+import { SpyneSegmentedButton, SpyneSegmentedControl } from '@/components/max-2/spyne-toolbar-controls'
+import { max2Classes, spyneSalesLayout } from '@/lib/design-system/max-2'
+import { cn } from '@/lib/utils'
+import { SPYNE, SPYNE_DRAWER_SHADOW, SPYNE_SOFT_BG } from '../spyne-palette'
+import { SERVICE_CONSOLE_TAB_CONTENT } from '@/lib/max-2/service-console-tab-content'
+import { SERVICE_ACTION_QUEUE } from '../mockData'
 
 function daysSince(isoDate) {
   const diff = Date.now() - new Date(isoDate).getTime()
@@ -83,18 +90,20 @@ const OUTCOME_LABEL = {
 }
 
 const PRIORITY_CONFIG = {
-  HIGH:   { dot: '#EF4444', label: 'High',   order: 0 },
-  MEDIUM: { dot: '#F59E0B', label: 'Med',    order: 1 },
-  NORMAL: { dot: '#94A3B8', label: 'Normal', order: 2 },
+  HIGH:   { dot: SPYNE.error, label: 'High',   order: 0 },
+  MEDIUM: { dot: SPYNE.warningInk, label: 'Med',    order: 1 },
+  NORMAL: { dot: SPYNE.textSecondary, label: 'Normal', order: 2 },
+}
+
+const STAGE_TEMP_BADGE = {
+  hot:  'spyne-badge-brand',
+  warm: 'spyne-badge-warning',
+  cool: 'spyne-badge-neutral',
 }
 
 function StageBadge({ label, cls }) {
-  const styles = {
-    hot:  { background: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',        border: '1px solid var(--spyne-brand-muted)' },
-    warm: { background: 'var(--spyne-warning-subtle)', color: 'var(--spyne-warning-text)', border: '1px solid var(--spyne-warning-muted)' },
-    cool: { background: 'var(--spyne-border)',         color: 'var(--spyne-text-secondary)', border: '1px solid var(--spyne-border-strong)' },
-  }
-  return <span className="spyne-badge" style={styles[cls]}>{label}</span>
+  const variant = STAGE_TEMP_BADGE[cls] || STAGE_TEMP_BADGE.cool
+  return <span className={cn('spyne-badge', variant)}>{label}</span>
 }
 
 function TypeBadge({ type }) {
@@ -349,9 +358,9 @@ function TableView({ queue, onOpen, onMarkDone }) {
 
 function SwimlaneView({ queue, onOpen }) {
   const groups = [
-    { key: 'HIGH',   label: 'High Priority',  color: '#EF4444', bg: '#FEF2F2', border: '#FECACA' },
-    { key: 'MEDIUM', label: 'Medium',          color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
-    { key: 'NORMAL', label: 'Normal',          color: '#94A3B8', bg: 'var(--spyne-bg)', border: 'var(--spyne-border)' },
+    { key: 'HIGH',   label: 'High Priority',  color: SPYNE.error, bg: SPYNE_SOFT_BG.error, border: SPYNE_SOFT_BG.errorBorder },
+    { key: 'MEDIUM', label: 'Medium',          color: SPYNE.warningInk, bg: SPYNE_SOFT_BG.warning, border: SPYNE_SOFT_BG.warningBorder },
+    { key: 'NORMAL', label: 'Normal',          color: SPYNE.textSecondary, bg: 'var(--spyne-bg)', border: 'var(--spyne-border)' },
   ]
 
   return (
@@ -402,7 +411,7 @@ function Panel({ card, onClose, onSave }) {
           width: 420,
           background: 'var(--spyne-surface)',
           borderLeft: '1px solid var(--spyne-border)',
-          boxShadow: '-4px 0 32px rgba(79,70,229,0.12)',
+          boxShadow: SPYNE_DRAWER_SHADOW,
           zIndex: 60,
           overflowY: 'auto',
         }}
@@ -493,20 +502,24 @@ function Panel({ card, onClose, onSave }) {
   )
 }
 
-export default function ActionItemsPage({ sidebarCollapsed }) {
+export default function ActionItemsPage({ sidebarCollapsed, department = 'sales' }) {
+  const isService = department === 'service'
+  const baseQueue = isService ? SERVICE_ACTION_QUEUE : QUEUE
   const [activeTab, setActiveTab]   = useState('act')
   const [view, setView]             = useState('table')
   const [activeCard, setActiveCard] = useState(null)
   const [filter, setFilter]         = useState('All')
   const [resolvedIds, setResolvedIds] = useState(new Set())
-  const [actQueue, setActQueue]     = useState(QUEUE)
+  const [actQueue, setActQueue]     = useState(baseQueue)
   const [doneQueue, setDoneQueue]   = useState([])
   const [toast, setToast]           = useState(null)
 
+  const sourceQueue = isService ? SERVICE_ACTION_QUEUE : QUEUE
+
   // Auto-archive: items older than 3 days not yet resolved
   const archivedItems = useMemo(
-    () => QUEUE.filter(c => daysSince(c.createdAt) > 3 && !resolvedIds.has(c.id)),
-    [resolvedIds]
+    () => sourceQueue.filter(c => daysSince(c.createdAt) > 3 && !resolvedIds.has(c.id)),
+    [resolvedIds, sourceQueue]
   )
   const archivedIds = useMemo(() => new Set(archivedItems.map(c => c.id)), [archivedItems])
 
@@ -537,112 +550,91 @@ export default function ActionItemsPage({ sidebarCollapsed }) {
   const activeQueue = actQueue.filter(c => !archivedIds.has(c.id))
 
   const filtered = (list) => {
-    if (filter === 'New')  return list.filter(c => c.category === 'New')
-    if (filter === 'Used') return list.filter(c => c.category === 'Used')
+    if (isService) {
+      if (filter === SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterExpress) {
+        return list.filter((c) => c.category === 'Express')
+      }
+      if (filter === SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterMainShop) {
+        return list.filter((c) => c.category === 'Main shop')
+      }
+      return list
+    }
+    if (filter === 'New') return list.filter((c) => c.category === 'New')
+    if (filter === 'Used') return list.filter((c) => c.category === 'Used')
     return list
   }
 
   return (
-    <div>
+    <div className={spyneSalesLayout.pageStack}>
       {/* Page header */}
-      <div className="flex items-center gap-2.5 flex-wrap mb-4">
-        <h1 className="spyne-title">Action Items</h1>
-        <span
-          className="flex items-center justify-center font-bold leading-none"
-          style={{
-            minWidth: 22, height: 22, borderRadius: 'var(--spyne-radius-pill)',
-            padding: '0 6px', background: 'var(--spyne-brand)', color: 'var(--spyne-brand-on)', fontSize: 11,
-          }}
-        >
+      <div>
+        <div className="flex flex-wrap items-center gap-2.5">
+        <h1 className={max2Classes.pageTitle}>Action Items</h1>
+        <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-spyne-primary px-1.5 text-[11px] font-bold leading-none text-white">
           {activeQueue.length}
         </span>
 
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          {/* View toggle */}
-          <div className="flex" style={{ border: '1px solid var(--spyne-border)', borderRadius: 'var(--spyne-radius-md)', overflow: 'hidden' }}>
-            <button
-              onClick={() => setView('table')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '0 12px', height: 30, fontSize: 12, border: 'none', cursor: 'pointer',
-                background: view === 'table' ? 'var(--spyne-brand-subtle)' : 'var(--spyne-surface)',
-                color: view === 'table' ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-                fontWeight: view === 'table' ? 600 : 500, fontFamily: 'inherit',
-                borderRight: '1px solid var(--spyne-border)',
-              }}
-            >
-              <LayoutList size={12} />Table
-            </button>
-            <button
-              onClick={() => setView('cards')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '0 12px', height: 30, fontSize: 12, border: 'none', cursor: 'pointer',
-                background: view === 'cards' ? 'var(--spyne-brand-subtle)' : 'var(--spyne-surface)',
-                color: view === 'cards' ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-                fontWeight: view === 'cards' ? 600 : 500, fontFamily: 'inherit',
-              }}
-            >
-              <Columns size={12} />Cards
-            </button>
-          </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <SpyneSegmentedControl aria-label="Action items layout" className="shrink-0">
+            <SpyneSegmentedButton active={view === 'table'} onClick={() => setView('table')}>
+              <LayoutList size={14} strokeWidth={2} aria-hidden />
+              Table
+            </SpyneSegmentedButton>
+            <SpyneSegmentedButton active={view === 'cards'} onClick={() => setView('cards')}>
+              <Columns size={14} strokeWidth={2} aria-hidden />
+              Cards
+            </SpyneSegmentedButton>
+          </SpyneSegmentedControl>
 
-          {/* Filters */}
-          {['Intent', 'Priority'].map(f => (
-            <button key={f} className="spyne-pill" style={{ fontSize: 12, height: 30 }}>
-              {f} <span style={{ color: 'var(--spyne-text-muted)', fontSize: 10 }}>▾</span>
+          {['Intent', 'Priority'].map((f) => (
+            <button key={f} type="button" className="spyne-pill h-[30px] text-xs">
+              {f}{' '}
+              <span className="text-[10px] text-spyne-text-secondary">▾</span>
             </button>
           ))}
-          <div className="flex" style={{ border: '1px solid var(--spyne-border)', borderRadius: 'var(--spyne-radius-pill)', overflow: 'hidden' }}>
-            {['All', 'New', 'Used'].map(f => (
-              <button
-                key={f} onClick={() => setFilter(f)}
-                style={{
-                  padding: '0 14px', height: 30, fontSize: 12, border: 'none', cursor: 'pointer',
-                  background: filter === f ? 'var(--spyne-brand-subtle)' : 'var(--spyne-surface)',
-                  color: filter === f ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-                  fontWeight: filter === f ? 600 : 500, fontFamily: 'inherit',
-                }}
-              >
+          <SpyneSegmentedControl
+            aria-label={isService ? SERVICE_CONSOLE_TAB_CONTENT.actionItems.pageDescription : 'Vehicle category'}
+            className="shrink-0"
+          >
+            {(isService
+              ? [
+                  SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterAll,
+                  SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterExpress,
+                  SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterMainShop,
+                ]
+              : ['All', 'New', 'Used']
+            ).map((f) => (
+              <SpyneSegmentedButton key={f} active={filter === f} onClick={() => setFilter(f)}>
                 {f}
-              </button>
+              </SpyneSegmentedButton>
             ))}
-          </div>
+          </SpyneSegmentedControl>
         </div>
+        </div>
+        <p className={`${max2Classes.pageDescription} mt-1`}>
+          {isService
+            ? SERVICE_CONSOLE_TAB_CONTENT.actionItems.pageDescription
+            : 'Prioritized queue, outcomes, and daily follow-ups'}
+        </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex mb-5" style={{ borderBottom: '1px solid var(--spyne-border)' }}>
+      <SpyneLineTabStrip>
         {[
           { id: 'act',      label: 'To Act On',  count: activeQueue.length },
           { id: 'done',     label: 'Done Today',  count: doneQueue.length },
           { id: 'archived', label: 'Archived',    count: archivedItems.length },
-        ].map(tab => (
-          <button
+        ].map((tab) => (
+          <SpyneLineTab
             key={tab.id}
+            active={activeTab === tab.id}
             onClick={() => { setActiveTab(tab.id); closePanel() }}
-            className="flex items-center gap-1.5 pb-2.5 mr-5"
-            style={{
-              fontSize: 13, fontWeight: activeTab === tab.id ? 600 : 500, border: 'none',
-              background: 'none', cursor: 'pointer', fontFamily: 'inherit',
-              color: activeTab === tab.id ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-              borderBottom: activeTab === tab.id ? '2px solid var(--spyne-brand)' : '2px solid transparent',
-              marginBottom: -1, transition: 'color 150ms, border-color 150ms',
-            }}
           >
             {tab.label}
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              minWidth: 18, height: 18, borderRadius: 'var(--spyne-radius-pill)',
-              padding: '0 5px', fontSize: 10, fontWeight: 700,
-              background: activeTab === tab.id ? 'var(--spyne-brand-subtle)' : 'var(--spyne-border)',
-              color: activeTab === tab.id ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-            }}>
-              {tab.count}
-            </span>
-          </button>
+            <SpyneLineTabBadge>{tab.count}</SpyneLineTabBadge>
+          </SpyneLineTab>
         ))}
-      </div>
+      </SpyneLineTabStrip>
 
       {/* To Act On */}
       {activeTab === 'act' && (
@@ -651,7 +643,7 @@ export default function ActionItemsPage({ sidebarCollapsed }) {
             <div style={{ width: 52, height: 52, borderRadius: 'var(--spyne-radius-lg)', background: 'var(--spyne-brand-subtle)', color: 'var(--spyne-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Sparkles size={22} />
             </div>
-            <p className="spyne-heading">Queue is clear</p>
+            <p className="spyne-body-sm" style={{ color: 'var(--spyne-text-secondary)' }}>Queue is clear</p>
             <p className="spyne-body-sm" style={{ maxWidth: 260 }}>Vini is working the leads. When one is ready for a human touch, it'll show up here.</p>
           </div>
         ) : view === 'table' ? (
@@ -668,7 +660,7 @@ export default function ActionItemsPage({ sidebarCollapsed }) {
             <div style={{ width: 52, height: 52, borderRadius: 'var(--spyne-radius-lg)', background: 'var(--spyne-success-subtle)', color: 'var(--spyne-success-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
               ✓
             </div>
-            <p className="spyne-heading">Nothing logged yet</p>
+            <p className="spyne-body-sm" style={{ color: 'var(--spyne-text-secondary)' }}>Nothing logged yet</p>
             <p className="spyne-body-sm" style={{ maxWidth: 260 }}>When you log an outcome on a lead, it shows up here. Vini keeps working the rest.</p>
           </div>
         ) : (
@@ -687,7 +679,7 @@ export default function ActionItemsPage({ sidebarCollapsed }) {
             <div style={{ width: 52, height: 52, borderRadius: 'var(--spyne-radius-lg)', background: 'var(--spyne-border)', color: 'var(--spyne-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Archive size={22} />
             </div>
-            <p className="spyne-heading">No archived items</p>
+            <p className="spyne-body-sm" style={{ color: 'var(--spyne-text-secondary)' }}>No archived items</p>
             <p className="spyne-body-sm" style={{ maxWidth: 260 }}>Items that go unresolved for more than 3 days are automatically archived here.</p>
           </div>
         ) : (

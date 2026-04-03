@@ -14,7 +14,9 @@ import {
   MessageSquare,
   Phone,
   Mail,
+  DollarSign,
 } from "lucide-react"
+import { CHART_SERIES, SPYNE } from "./spyne-palette"
 
 // TODO: GET /api/dealer/:dealerId/agent?department=sales
 export const salesAgentData = {
@@ -78,12 +80,12 @@ export const salesOutboundAgentData = {
 // TODO: GET /api/dealer/:dealerId/agent?department=service
 export const serviceAgentData = {
   name: 'Mark',
-  role: 'Service AI Agent',
+  role: 'Service AI Agent - Inbound',
   photo: 'https://randomuser.me/api/portraits/men/32.jpg',
   status: 'online',
   yesterdaySnapshot: {
     appointmentsBooked: 5,
-    appointmentsAvgLastWeek: 4,
+    appointmentsAvgLastWeek: 5,
     speedToLeadAvg: '2m 10s',
     activeFollowUpLeads: 17,
   },
@@ -92,7 +94,7 @@ export const serviceAgentData = {
       leadsInteracted: 184,
       connectRate: '82%',
       appointmentsBooked: 21,
-      apptBookingRate: '11%',
+      apptBookingRate: '11.4%',
     },
     speedToLead: {
       avgFirstContact: '2m 10s',
@@ -107,14 +109,55 @@ export const serviceAgentData = {
   },
 }
 
+// TODO: GET /api/dealer/:dealerId/agent?department=service&type=outbound
+export const serviceOutboundAgentData = {
+  name: 'Lisa',
+  role: 'Service AI Agent - Outbound',
+  photo: 'https://randomuser.me/api/portraits/women/65.jpg',
+  status: 'online',
+  agentType: 'outbound',
+  yesterdaySnapshot: {
+    appointmentsBooked: 7,
+    appointmentsAvgLastWeek: 5,
+    speedToLeadAvg: '2h 48m',
+    activeFollowUpLeads: 28,
+  },
+  performance: {
+    overall: {
+      leadsWorked: 198,
+      responseRate: '71%',
+      reEngagements: 36,
+      reEngagementRate: '18.2%',
+    },
+    outreachActivity: {
+      touchesSent: 524,
+      avgReplyTime: '2h 48m',
+      sequenceCompletions: 142,
+      activeCampaigns: 4,
+    },
+    afterHours: {
+      leadsEngaged: 16,
+      apptsBooked: 7,
+    },
+  },
+}
+
+// TODO: GET /api/dealer/:dealerId/service/speed-to-greet?period=last30d
+export const serviceSpeedToGreetBase = {
+  avgTime: '2m 10s',
+  improvement: '▼ 18s faster than last week',
+  priorPeriod: '2m 28s',
+  crmLeadsCaptured: 91,
+  highlightBar: '88% of appointments greeted within 5 minutes · express lane held under target 6 of 7 days',
+}
+
 // TODO: GET /api/dealer/:dealerId/appointments?view=upcoming
 export const appointmentsData = {
   today: [
-    { id: 1, customer: 'Tomee Lee',      vehicle: '2019 Toyota RAV4',                  timeStart: '2:00 PM',  timeEnd: '2:30 PM' },
-    { id: 2, customer: 'Tomee Lee',      vehicle: 'AC Service · 2019 Toyota RAV4',     timeStart: '2:00 PM',  timeEnd: '2:30 PM' },
-    { id: 3, customer: 'Michael Smith',  vehicle: '2019 Toyota RAV4',                  timeStart: '2:00 PM',  timeEnd: '2:30 PM' },
-    { id: 4, customer: 'Michael Kang',   vehicle: 'Scratch Fix · 2019 Toyota RAV4',   timeStart: '2:00 PM',  timeEnd: '2:30 PM' },
-    { id: 5, customer: 'Jessica Parker', vehicle: '2106 Mazda CX-5',                   timeStart: '2:00 PM',  timeEnd: '2:30 PM' },
+    { id: 1, customer: 'Helen Carter', vehicle: 'Oil change + recall - 2021 Camry', timeStart: '8:00 AM', timeEnd: '8:30 AM' },
+    { id: 2, customer: 'Robert Kim', vehicle: 'Brake inspection - 2020 F-150', timeStart: '10:00 AM', timeEnd: '10:30 AM' },
+    { id: 3, customer: 'Ana Luz', vehicle: 'Tire rotation - 2023 RAV4', timeStart: '2:00 PM', timeEnd: '2:30 PM' },
+    { id: 4, customer: 'James Wu', vehicle: '30K service - 2022 Accord', timeStart: '4:00 PM', timeEnd: '4:30 PM' },
   ],
   tomorrow: [
     { id: 6, customer: 'David Chen',   vehicle: '2023 Honda Civic Sport', timeStart: '10:00 AM', timeEnd: '10:30 AM' },
@@ -127,55 +170,104 @@ export const appointmentsData = {
 export const priorityFollowUpsData = {
   todaysCallbacks: [
     {
-      id: 1, initials: 'JP', color: 'bg-violet-500',
+      id: 1, initials: 'JP', color: 'bg-spyne-primary',
       name: 'Jessica Parker', timeAgo: '2hrs ago',
       message: '"I want to service my car"',
-      tag: 'Callback Requested', tagColor: 'bg-blue-100 text-blue-700',
+      tag: 'Callback Requested', tagColor: 'bg-spyne-primary-soft text-spyne-primary',
       scheduledTime: '10:00 AM',
     },
     {
-      id: 2, initials: 'TL', color: 'bg-teal-500',
+      id: 2, initials: 'TL', color: 'bg-spyne-success',
       name: 'Tommy Lee', timeAgo: '2hrs ago',
       message: '"Voice call · 2:00 mins + Emily"',
-      tag: 'Callback Requested', tagColor: 'bg-blue-100 text-blue-700',
+      tag: 'Callback Requested', tagColor: 'bg-spyne-primary-soft text-spyne-primary',
       scheduledTime: '11:30 AM',
     },
   ],
   hot: [
     {
-      id: 3, initials: 'BB', color: 'bg-orange-500',
+      id: 3, initials: 'BB', color: 'bg-[var(--spyne-chip-orange)]',
       name: 'Brian Benstock', timeAgo: '2hrs ago',
       message: '"AC is not working"',
-      tag: 'Needs human attention', tagColor: 'bg-red-100 text-red-700',
+      tag: 'Needs human attention', tagColor: 'bg-[color-mix(in_srgb,var(--spyne-error)_12%,white)] text-spyne-error',
     },
     {
-      id: 4, initials: 'BB', color: 'bg-orange-500',
+      id: 4, initials: 'BB', color: 'bg-[var(--spyne-chip-orange)]',
       name: 'Brian Benstock', timeAgo: '2hrs ago',
       message: '"I have scratches on my vehicle"',
-      tag: 'Needs human attention', tagColor: 'bg-red-100 text-red-700',
+      tag: 'Needs human attention', tagColor: 'bg-[color-mix(in_srgb,var(--spyne-error)_12%,white)] text-spyne-error',
     },
     {
-      id: 5, initials: 'MG', color: 'bg-pink-500',
+      id: 5, initials: 'MG', color: 'bg-[var(--spyne-chip-pink)]',
       name: 'Maria Garcia', timeAgo: '4hrs ago',
       message: '"Need OTD price on the CR-V"',
-      tag: 'Follow-up needed', tagColor: 'bg-amber-100 text-amber-700',
+      tag: 'Follow-up needed', tagColor: 'bg-[color-mix(in_srgb,var(--spyne-warning)_35%,white)] text-spyne-warning-ink',
     },
     {
-      id: 6, initials: 'DC', color: 'bg-indigo-500',
+      id: 6, initials: 'DC', color: 'bg-spyne-primary',
       name: 'David Chen', timeAgo: '5hrs ago',
       message: '"Can you beat my credit union rate?"',
-      tag: 'Follow-up needed', tagColor: 'bg-amber-100 text-amber-700',
+      tag: 'Follow-up needed', tagColor: 'bg-[color-mix(in_srgb,var(--spyne-warning)_35%,white)] text-spyne-warning-ink',
     },
   ],
   warm: [
     {
-      id: 7, initials: 'SR', color: 'bg-cyan-500',
+      id: 7, initials: 'SR', color: 'bg-[var(--spyne-chip-cyan)]',
       name: 'Sarah Reynolds', timeAgo: '1d ago',
       message: '"Still thinking about the Accord"',
-      tag: 'Follow-up needed', tagColor: 'bg-amber-100 text-amber-700',
+      tag: 'Follow-up needed', tagColor: 'bg-[color-mix(in_srgb,var(--spyne-warning)_35%,white)] text-spyne-warning-ink',
     },
   ],
 }
+
+// TODO: GET /api/dealer/:dealerId/service/priority-follow-ups
+export const servicePriorityFollowUpsData = [
+  {
+    id: 's1',
+    initials: 'GM',
+    color: 'bg-spyne-primary',
+    name: 'Greg Mason',
+    timeAgo: '2d ago',
+    message: 'No-show 2d ago - Open recall.',
+    priority: 'urgent',
+  },
+  {
+    id: 's2',
+    initials: 'BC',
+    color: 'bg-spyne-success',
+    name: 'Brad Chen',
+    timeAgo: '2d ago',
+    message: 'RO approval pending 2d.',
+    priority: 'urgent',
+  },
+  {
+    id: 's3',
+    initials: 'YT',
+    color: 'bg-[var(--spyne-chip-orange)]',
+    name: 'Yuki Tanaka',
+    timeAgo: '3d ago',
+    message: '30K service overdue - Not responded.',
+    priority: 'high',
+  },
+  {
+    id: 's4',
+    initials: 'AL',
+    color: 'bg-spyne-primary',
+    name: 'Ana Luz',
+    timeAgo: '1d ago',
+    message: 'Tire special quote sent, no reply.',
+    priority: 'urgent',
+  },
+  {
+    id: 's5',
+    initials: 'DW',
+    color: 'bg-spyne-success',
+    name: 'Derek Wells',
+    timeAgo: '1d ago',
+    message: 'Warranty claim photos requested.',
+    priority: 'urgent',
+  },
+]
 
 // TODO: GET /api/dealer/:dealerId/speed-to-lead?period=last7d
 export const speedToLeadBase = {
@@ -190,10 +282,10 @@ export const speedToLeadBase = {
 export const callbacksData = {
   needsAttention: [
     {
-      id: 1, initials: 'MB', color: 'bg-blue-500',
+      id: 1, initials: 'MB', color: 'bg-spyne-info',
       name: 'Michael Brown', lastInteracted: '25th July, 10:45 AM',
       actionType: 'Callback Today',
-      actionColor: 'bg-amber-100 text-amber-800 border border-amber-200',
+      actionColor: 'bg-[color-mix(in_srgb,var(--spyne-warning)_35%,white)] text-spyne-warning-ink border border-spyne-border',
       events: [
         { actor: 'Sarah', action: 'sent a follow-up email', date: '20 July, 2:15 PM', subject: 'Inquiry about the new website launch' },
         { actor: 'Vini',  action: 'attempted a call',       date: '19 July, 10:00 AM', subject: null },
@@ -201,10 +293,10 @@ export const callbacksData = {
       moreEvents: 3,
     },
     {
-      id: 2, initials: 'MG', color: 'bg-pink-500',
+      id: 2, initials: 'MG', color: 'bg-[var(--spyne-chip-pink)]',
       name: 'Maria Garcia', lastInteracted: '23rd July, 1:15 PM',
       actionType: 'Human Requested',
-      actionColor: 'bg-red-100 text-red-800 border border-red-200',
+      actionColor: 'bg-[color-mix(in_srgb,var(--spyne-error)_12%,white)] text-spyne-error border border-spyne-border',
       events: [
         { actor: 'Vini',  action: 'sent a reply',               date: '12 July, 4:30 PM',  subject: 'Feedback on 2024 Subaru Outback test drive' },
         { actor: 'Maria', action: 'asked to speak with manager', date: '11 July, 2:00 PM',  subject: null },
@@ -212,10 +304,10 @@ export const callbacksData = {
       moreEvents: 4,
     },
     {
-      id: 3, initials: 'BB', color: 'bg-orange-500',
+      id: 3, initials: 'BB', color: 'bg-[var(--spyne-chip-orange)]',
       name: 'Brian Benstock', lastInteracted: '26th July, 11:30 AM',
       actionType: 'AI Escalated',
-      actionColor: 'bg-orange-100 text-orange-800 border border-orange-200',
+      actionColor: 'bg-[color-mix(in_srgb,var(--spyne-chip-orange)_18%,white)] text-[var(--spyne-chip-orange)] border border-spyne-border',
       events: [
         { actor: 'Tom',  action: 'sent a reminder',        date: '22 July, 9:00 AM',  subject: 'AC issue unresolved after 2 attempts' },
         { actor: 'Vini', action: 'flagged for human review', date: '21 July, 3:00 PM', subject: null },
@@ -239,10 +331,10 @@ export const hotVehiclesData = [
 // TODO: GET /api/dealer/:dealerId/campaigns?type=outbound&period=<dateRange>
 export const outboundCampaignsData = {
   campaigns: [
-    { key: 'aged30',      label: 'Aged Leads (30-60d)', color: '#4F46E5', enrolled: 312, attempted: 298, responseRate: '14.2%', reEngaged: 44,   apptsBooked: 18 },
-    { key: 'aged60',      label: 'Aged Leads (60-90d)', color: '#0D9488', enrolled: 187, attempted: 181, responseRate: '9.1%',  reEngaged: 17,   apptsBooked: 6  },
-    { key: 'apptReminder', label: 'Appt Reminders',     color: '#D97706', enrolled: 43,  attempted: 43,  responseRate: '71.4%', reEngaged: null, apptsBooked: 31 },
-    { key: 'lostDeals',   label: 'Lost Deals',          color: '#7C3AED', enrolled: 94,  attempted: 89,  responseRate: '11.2%', reEngaged: 11,   apptsBooked: 4  },
+    { key: 'aged30',      label: 'Aged Leads (30-60d)', color: CHART_SERIES[0], enrolled: 312, attempted: 298, responseRate: '14.2%', reEngaged: 44,   apptsBooked: 18 },
+    { key: 'aged60',      label: 'Aged Leads (60-90d)', color: CHART_SERIES[1], enrolled: 187, attempted: 181, responseRate: '9.1%',  reEngaged: 17,   apptsBooked: 6  },
+    { key: 'apptReminder', label: 'Appt Reminders',     color: SPYNE.orange, enrolled: 43,  attempted: 43,  responseRate: '71.4%', reEngaged: null, apptsBooked: 31 },
+    { key: 'lostDeals',   label: 'Lost Deals',          color: SPYNE.pink, enrolled: 94,  attempted: 89,  responseRate: '11.2%', reEngaged: 11,   apptsBooked: 4  },
   ],
 }
 
@@ -455,6 +547,80 @@ export function getOutboundOverviewData(dateRange) {
   }
 }
 
+// TODO: GET /api/dealer/:dealerId/service/metrics?period=<dateRange>&compare=true
+export function getServiceOverviewData(dateRange) {
+  const m = PERIOD_MULTIPLIERS[dateRange] ?? 1.0
+  const s = (n) => Math.round(n * m)
+  const calls = Math.max(1, s(184))
+  const apptsBooked = s(21)
+  const abrPct = ((apptsBooked / calls) * 100).toFixed(1)
+
+  return {
+    metricsBar: [
+      { label: 'Calls Handled', value: calls.toLocaleString(), sub: '+12% vs last period', highlight: false },
+      { label: 'Connect Rate', value: '82%', sub: '+4pp', highlight: false },
+      { label: 'Appts Booked', value: String(apptsBooked), sub: '+5', highlight: false },
+      { label: 'ABR', value: `${abrPct}%`, sub: 'of handled calls', highlight: false },
+      { label: 'Speed to Answer', value: '2m 10s', sub: '88% within 5 min', highlight: false },
+    ],
+    topIntents: [
+      { intent: 'Oil Change / Maintenance', calls: 67, resolved: 65, appts: 9, ratePct: 97, tone: 'success' },
+      { intent: 'Recall Service', calls: 28, resolved: 24, appts: 6, ratePct: 86, tone: 'success' },
+      { intent: 'Brakes & Tires', calls: 31, resolved: 25, appts: 4, ratePct: 81, tone: 'primary' },
+      { intent: 'General Inquiry', calls: 34, resolved: 22, appts: 1, ratePct: 65, tone: 'warning' },
+      { intent: 'Warranty / Complaint', calls: 24, resolved: 17, appts: 1, ratePct: 71, tone: 'warning' },
+    ],
+    showRate: {
+      rateLabel: '76%',
+      rateCaption: 'Show rate',
+      deltaLabel: '+3pp vs last month',
+      segments: [
+        { key: 'showed', label: 'Confirmed & showed', count: 16, barClass: 'bg-spyne-success' },
+        { key: 'noshow', label: 'No-show / canceled', count: 3, barClass: 'bg-muted-foreground/35' },
+        { key: 'resched', label: 'Rescheduled', count: 2, barClass: 'bg-[color-mix(in_srgb,var(--spyne-warning)_55%,var(--spyne-warning-ink)_45%)]' },
+      ],
+    },
+    speedToLead: {
+      ...serviceSpeedToGreetBase,
+      leadsInstantlyReached: s(23),
+      leadsEngaged: s(18),
+      apptsFromInstantResponse: s(6),
+    },
+    followUpSequences: {
+      touchesToday: s(38),
+      leadsInSequence: s(17),
+      apptsFromFollowUpThisWeek: s(12),
+    },
+    activityChart: buildChartData(dateRange),
+  }
+}
+
+// TODO: GET /api/dealer/:dealerId/service/metrics?type=outbound&period=<dateRange>
+export function getServiceOutboundOverviewData(dateRange) {
+  const m = PERIOD_MULTIPLIERS[dateRange] ?? 1.0
+  const s = (n) => Math.round(n * m)
+
+  return {
+    metricsBar: [
+      { label: 'Calls Handled', value: '312', delta: null, note: '', highlight: false },
+      { label: 'Qualified Intent Calls', value: '187', delta: null, note: '', highlight: false },
+      { label: 'Appts Booked', value: '21', delta: null, note: '', highlight: false },
+      { label: 'ABR', value: '9.2%', delta: null, note: '', highlight: false },
+      { label: 'Resolution Rate', value: '83%', delta: null, note: '', highlight: false },
+    ],
+    reEngagement: {
+      rate: '24.1%',
+      improvement: '↑ 2.8pts vs last period',
+      leadsReEngaged: s(41),
+      qualifiedLeads: s(36),
+      avgDaysCold: 19,
+      apptsBooked: s(17),
+      highlightBar: `${s(36)} dormant customers re-engaged · ${s(17)} appointments booked from outreach`,
+    },
+    activityChart: buildOutboundChartData(dateRange),
+  }
+}
+
 function buildOutboundChartData(dateRange) {
   const D7_CRM_WORKED  = [118, 134, 98, 156, 127, 89, 112]
   const D7_RESP_RATE   = [16, 19, 14, 22, 18, 11, 17]   // response rate %
@@ -575,7 +741,7 @@ export const customersData = [
     id: 'cust-001',
     name: 'Sarah Delgado',
     initials: 'SD',
-    avatarColor: 'bg-violet-500',
+    avatarColor: 'bg-spyne-primary',
     temperature: 'HOT',
     needsAttention: false,
     attentionReason: null,
@@ -649,7 +815,7 @@ export const customersData = [
     id: 'cust-002',
     name: 'Marcus Webb',
     initials: 'MW',
-    avatarColor: 'bg-blue-500',
+    avatarColor: 'bg-spyne-info',
     temperature: 'WARM',
     needsAttention: false,
     attentionReason: null,
@@ -710,7 +876,7 @@ export const customersData = [
     id: 'cust-003',
     name: 'Jessica Parker',
     initials: 'JP',
-    avatarColor: 'bg-pink-500',
+    avatarColor: 'bg-[var(--spyne-chip-pink)]',
     temperature: 'HOT',
     needsAttention: false,
     attentionReason: null,
@@ -757,7 +923,7 @@ export const customersData = [
     id: 'cust-004',
     name: 'David Chen',
     initials: 'DC',
-    avatarColor: 'bg-indigo-500',
+    avatarColor: 'bg-spyne-primary',
     temperature: 'COLD',
     needsAttention: true,
     attentionReason: 'No contact in 5 days',
@@ -801,7 +967,7 @@ export const customersData = [
     id: 'cust-005',
     name: 'Laura Adams',
     initials: 'LA',
-    avatarColor: 'bg-teal-500',
+    avatarColor: 'bg-spyne-success',
     temperature: 'COLD',
     needsAttention: false,
     attentionReason: null,
@@ -845,7 +1011,7 @@ export const customersData = [
     id: 'cust-006',
     name: 'Brian Benstock',
     initials: 'BB',
-    avatarColor: 'bg-orange-500',
+    avatarColor: 'bg-[var(--spyne-chip-orange)]',
     temperature: 'WARM',
     needsAttention: true,
     attentionReason: 'Service complaint unresolved — 4 days open',
@@ -892,7 +1058,7 @@ export const customersData = [
     id: 'cust-007',
     name: 'Maria Garcia',
     initials: 'MG',
-    avatarColor: 'bg-rose-500',
+    avatarColor: 'bg-[var(--spyne-chip-rose)]',
     temperature: 'HOT',
     needsAttention: false,
     attentionReason: null,
@@ -941,7 +1107,7 @@ export const customersData = [
     id: 'cust-008',
     name: 'Tommy Lee',
     initials: 'TL',
-    avatarColor: 'bg-cyan-500',
+    avatarColor: 'bg-[var(--spyne-chip-cyan)]',
     temperature: 'COLD',
     needsAttention: true,
     attentionReason: 'No response in 7 days — RAV4 aging at 38 days on lot',
@@ -984,14 +1150,149 @@ export const customersData = [
   },
 ]
 
+/** Service Console action queue (MPI, declined work, open RO tasks). */
+export const SERVICE_ACTION_QUEUE = [
+  {
+    id: "sa-1",
+    type: "urgent",
+    priority: "HIGH",
+    initials: "ER",
+    name: "Elena Ruiz",
+    phone: "+1 (555) 220-1144",
+    stageLabel: "Recall open",
+    stageCls: "hot",
+    vehicle: "2019 RAV4 · Fuel pump recall",
+    category: "Express",
+    price: "—",
+    daysOnLot: null,
+    due: "Today",
+    createdAt: "2026-04-03T08:10:00Z",
+    reason:
+      "Recall campaign touched customer twice, no appointment. Compliance follow-up before end of quarter.",
+    opener:
+      "Elena has an open recall on the RAV4. Lead with safety and loaner availability, not sales. Book the RO today if possible.",
+    action: "call",
+  },
+  {
+    id: "sa-2",
+    type: "urgent",
+    priority: "HIGH",
+    initials: "JW",
+    name: "James Whitfield",
+    phone: "+1 (555) 670-5512",
+    stageLabel: "Declined MPI",
+    stageCls: "warm",
+    vehicle: "2017 Tundra · Brakes declined",
+    category: "Main shop",
+    price: "Est. $680",
+    daysOnLot: null,
+    due: "Today",
+    createdAt: "2026-04-03T07:40:00Z",
+    reason: "Declined rear pads on last closed RO. AI revival got a positive SMS reply, advisor handoff pending.",
+    opener:
+      "James replied yes to a brake reinspection. Confirm pad measurement and advisor Lisa for same-day bay.",
+    action: "call",
+  },
+  {
+    id: "sa-3",
+    type: "appointment",
+    priority: "MEDIUM",
+    initials: "LC",
+    name: "Lisa Chang",
+    phone: "+1 (555) 555-0912",
+    stageLabel: "MPI in progress",
+    stageCls: "warm",
+    vehicle: "2017 HR-V · Oil + inspection",
+    category: "Express",
+    price: "~$189",
+    daysOnLot: null,
+    apptTime: "Today, 10:30 AM",
+    due: "Today",
+    createdAt: "2026-04-02T14:00:00Z",
+    reason: "Waiter appointment. Customer asked tire prices in notes, MPI not finalized yet.",
+    opener: "Lisa is waiting in express. Close MPI, present tire options, update promised time.",
+    action: "prep",
+  },
+  {
+    id: "sa-4",
+    type: "standard",
+    priority: "NORMAL",
+    initials: "BB",
+    name: "Brian Benstock",
+    phone: "+1 (555) 778-2200",
+    stageLabel: "Open RO · Escalated",
+    stageCls: "cool",
+    vehicle: "2022 Camry · AC complaint",
+    category: "Main shop",
+    price: "RO-24-0891",
+    daysOnLot: null,
+    due: "This week",
+    createdAt: "2026-03-26T13:15:00Z",
+    reason: "Service complaint path: Tom R. owns resolution. No outbound until RO closed satisfactorily.",
+    opener: "Check Tom's notes before any contact. Do not pitch Tacoma until AC is fixed to spec.",
+    action: "context",
+  },
+  {
+    id: "sa-5",
+    type: "lot-match",
+    priority: "MEDIUM",
+    initials: "MG",
+    name: "Maria Gonzalez",
+    phone: "+1 (555) 555-0218",
+    stageLabel: "Service-to-sales",
+    stageCls: "warm",
+    vehicle: "2021 Highlander · 60k service",
+    category: "Main shop",
+    price: "$2.8K RO",
+    daysOnLot: null,
+    due: "This week",
+    createdAt: "2026-04-01T11:20:00Z",
+    reason: "High-mileage service complete, asked about new models. Cross-sell sequence paused until follow-up call.",
+    opener: "Maria is frustrated with repair cost but curious about trade. Acknowledge RO first, then equity check.",
+    action: "reach",
+  },
+  {
+    id: "sa-6",
+    type: "high-value",
+    priority: "HIGH",
+    initials: "RG",
+    name: "Rachel Green",
+    phone: "+1 (555) 555-0104",
+    stageLabel: "Loaner RO",
+    stageCls: "hot",
+    vehicle: "2019 BMW X3 · 40k service",
+    category: "Main shop",
+    price: "Promised 3 PM",
+    daysOnLot: null,
+    due: "Today",
+    createdAt: "2026-04-03T06:00:00Z",
+    reason: "Drop-off with loaner. MPI flagged cabin filter + rear brakes yellow. Customer expects update by noon.",
+    opener: "Rachel needs a midday MPI call. Present findings in priority order and confirm out time.",
+    action: "call",
+  },
+]
+
+/** Guests surfaced on Service Console leads tab (subset of CRM tied to drive / RO context). */
+export const serviceGuestsData = (() => {
+  const matched = customersData.filter(
+    (c) =>
+      (c.attentionReason && /service|MPI|RO|recall|declined/i.test(c.attentionReason)) ||
+      (c.lastInteractionSummary &&
+        /service|MPI|RO|recall|maintenance|AC complaint|declined work|drive appointment/i.test(c.lastInteractionSummary)) ||
+      (c.notes && /service|MPI|RO|recall|drive/i.test(c.notes)) ||
+      (Array.isArray(c.actionItems) && c.actionItems.some((a) => /service|MPI|RO|recall|declined/i.test(a))),
+  )
+  return matched.length > 0 ? matched : customersData.filter((c) => c.id === "cust-006")
+})()
+
 // ─── Leads by Source ─────────────────────────────────────
 // TODO: GET /api/dealer/:dealerId/leads-by-source?period=<dateRange>
 export const leadsBySourceData = {
   sources: [
-    { key: 'internet', label: 'Internet', count: 505, pct: 66.3, color: '#4F46E5' },
-    { key: 'walkin',   label: 'Walk-in',  count: 117, pct: 15.4, color: '#0D9488' },
-    { key: 'phone',    label: 'Phone',    count: 101, pct: 13.3, color: '#D97706' },
-    { key: 'other',    label: 'Other',    count: 39,  pct: 5.1,  color: '#7C3AED' },
+    { key: 'internet', label: 'Internet', count: 505, pct: 66.3, color: CHART_SERIES[0] },
+    { key: 'walkin',   label: 'Walk-in',  count: 117, pct: 15.4, color: CHART_SERIES[1] },
+    { key: 'phone',    label: 'Phone',    count: 101, pct: 13.3, color: SPYNE.orange },
+    { key: 'other',    label: 'Other',    count: 39,  pct: 5.1,  color: SPYNE.pink },
   ],
   // Each column = one MetricsBar funnel stage.
   // `rate` = conversion rate shown inline below the count.
@@ -1030,6 +1331,54 @@ export const leadsBySourceData = {
       walkin:   { count: null             },
       phone:    { count: 60,  rate: '59.4%' },
       other:    { count: 18,  rate: '46.2%' },
+      highlight: true,
+    },
+  ],
+}
+
+// TODO: GET /api/dealer/:dealerId/service/ros-by-channel?period=<dateRange>
+export const rosByChannelData = {
+  sources: [
+    { key: 'scheduler', label: 'Online Scheduler', count: 312, pct: 52.0, color: CHART_SERIES[0] },
+    { key: 'phone', label: 'Phone', count: 128, pct: 21.3, color: CHART_SERIES[1] },
+    { key: 'walkin', label: 'Walk-in', count: 98, pct: 16.3, color: SPYNE.orange },
+    { key: 'campaign', label: 'Campaign', count: 62, pct: 10.3, color: SPYNE.pink },
+  ],
+  funnel: [
+    {
+      metric: 'Scheduled',
+      scheduler: { count: 312 },
+      phone: { count: 128 },
+      walkin: { count: 98 },
+      campaign: { count: 62 },
+    },
+    {
+      metric: 'Checked In',
+      scheduler: { count: 286, rate: '91.7%' },
+      phone: { count: 118, rate: '92.2%' },
+      walkin: { count: 98, rate: '100%' },
+      campaign: { count: 54, rate: '87.1%' },
+    },
+    {
+      metric: 'MPI Done',
+      scheduler: { count: 271, rate: '94.8%' },
+      phone: { count: 109, rate: '92.4%' },
+      walkin: { count: 91, rate: '92.9%' },
+      campaign: { count: 48, rate: '88.9%' },
+    },
+    {
+      metric: 'Advisor Touch',
+      scheduler: { count: 264 },
+      phone: { count: 104 },
+      walkin: { count: 89 },
+      campaign: { count: 45 },
+    },
+    {
+      metric: 'RO Closed',
+      scheduler: { count: 198, rate: '63.5%' },
+      phone: { count: 76, rate: '59.4%' },
+      walkin: { count: 72, rate: '73.5%' },
+      campaign: { count: 38, rate: '61.3%' },
       highlight: true,
     },
   ],
@@ -1213,6 +1562,171 @@ export const outboundAgentData = {
       id: 'a12', type: 'voicemail', time: '2h ago',
       description: 'Voicemail left for Priya Sharma',
       detail: 'Day 3 sequence touch. SMS backup sent immediately after.',
+    },
+  ],
+}
+
+// TODO: GET /api/dealer/:dealerId/service/outbound-pipeline
+export const serviceOutboundPipelineData = {
+  metrics: [
+    { label: "Guests in queue", value: "11", delta: "+4 today", deltaDir: "up", note: "awaiting callback", icon: Target },
+    { label: "Active sequences", value: "18", delta: null, deltaDir: "neutral", note: "recall · declined · win-back", icon: BarChart3 },
+    { label: "Touches today", value: "62", delta: "+9%", deltaDir: "up", note: "vs yesterday", icon: Zap },
+    { label: "Drive appts booked", value: "7", delta: "+3", deltaDir: "up", note: "from outbound", icon: Calendar },
+  ],
+
+  queue: [
+    {
+      id: "sq1",
+      name: "Elena Ruiz",
+      initials: "ER",
+      vehicle: "2019 Toyota RAV4 · Open recall",
+      source: "Recall campaign",
+      priority: "critical",
+      status: "awaiting_contact",
+      channels: ["SMS", "Voice"],
+      waitTime: "2m",
+      aiInsight:
+        "NHTSA recall on fuel pump — customer has not scheduled. High compliance risk if not booked this week.",
+      recommendedAction: "SMS + AI call with loaner offer",
+      nextTouch: "Now",
+    },
+    {
+      id: "sq2",
+      name: "James Whitfield",
+      initials: "JW",
+      vehicle: "2017 Toyota Tundra · Declined brakes",
+      source: "Declined services",
+      priority: "high",
+      status: "awaiting_contact",
+      channels: ["SMS"],
+      waitTime: "18m",
+      aiInsight: "Declined rear pads and rotors on last closed RO — 22 days ago. Good candidate for advisor handoff.",
+      recommendedAction: "Declined-work revival SMS",
+      nextTouch: "5 min",
+    },
+    {
+      id: "sq3",
+      name: "Maria Gonzalez",
+      initials: "MG",
+      vehicle: "2021 Toyota Highlander · 60k service",
+      source: "Maintenance due",
+      priority: "high",
+      status: "awaiting_contact",
+      channels: ["SMS", "Email"],
+      waitTime: "34m",
+      aiInsight: "Factory maintenance window hit mileage trigger — asked about new models on last visit.",
+      recommendedAction: "Book MPI + service-to-sales teaser",
+      nextTouch: "12 min",
+    },
+    {
+      id: "sq4",
+      name: "Brian Benstock",
+      initials: "BB",
+      vehicle: "2024 Tacoma TRD · Post-visit follow-up",
+      source: "Service lane",
+      priority: "medium",
+      status: "awaiting_contact",
+      channels: ["Voice"],
+      waitTime: "1h 5m",
+      aiInsight: "AC complaint escalated to Tom R. — do not pitch truck until service case closed.",
+      recommendedAction: "Advisor-only call",
+      nextTouch: "Hold",
+    },
+    {
+      id: "sq5",
+      name: "Priya Sharma",
+      initials: "PS",
+      vehicle: "2018 Honda CR-V · Win-back",
+      source: "Lapsed 14+ mo",
+      priority: "medium",
+      status: "awaiting_contact",
+      channels: ["Email", "SMS"],
+      waitTime: "2h",
+      aiInsight: "No RO in 16 months — emailed service coupon. Clicked scheduler but abandoned.",
+      recommendedAction: "Recovery SMS with open times",
+      nextTouch: "20 min",
+    },
+  ],
+
+  sequences: [
+    {
+      id: "ss1",
+      name: "Robert Taylor",
+      initials: "RT",
+      currentStep: 4,
+      totalSteps: 6,
+      status: "responded",
+      lastAction: "Replied to maintenance SMS",
+      nextAction: "Confirm advisor for Saturday drop-off",
+    },
+    {
+      id: "ss2",
+      name: "Emily Johnson",
+      initials: "EJ",
+      currentStep: 5,
+      totalSteps: 6,
+      status: "booked",
+      lastAction: "Drive appointment booked",
+      nextAction: "Day-before reminder",
+    },
+    {
+      id: "ss3",
+      name: "Carlos Mendez",
+      initials: "CM",
+      currentStep: 2,
+      totalSteps: 6,
+      status: "in_sequence",
+      lastAction: "Recall notice email opened",
+      nextAction: "AI voice if no reply in 24h",
+    },
+    {
+      id: "ss4",
+      name: "Rachel Green",
+      initials: "RG",
+      currentStep: 3,
+      totalSteps: 6,
+      status: "no_response",
+      lastAction: "Declined-work SMS, no reply",
+      nextAction: "Advisor task for MPI photo follow-up",
+    },
+  ],
+
+  activity: [
+    {
+      id: "sa1",
+      type: "sms_sent",
+      time: "3 min ago",
+      description: "Recall SMS sent to Elena Ruiz",
+      detail: "Included open recall code, loaner availability, and one-tap schedule link.",
+    },
+    {
+      id: "sa2",
+      type: "appt_booked",
+      time: "14 min ago",
+      description: "Drive appointment booked: Emily Johnson",
+      detail: "40k service + tire rotation. Waiter slot 1:00 PM Thursday.",
+    },
+    {
+      id: "sa3",
+      type: "call_connected",
+      time: "22 min ago",
+      description: "AI call connected: James Whitfield",
+      detail: "Customer agreed to brake inspection revisit — warm transfer to advisor Lisa M.",
+    },
+    {
+      id: "sa4",
+      type: "warm_transfer",
+      time: "40 min ago",
+      description: "Warm transfer: Brian Benstock → Tom R.",
+      detail: "Service complaint path — outbound paused until RO closed to customer satisfaction.",
+    },
+    {
+      id: "sa5",
+      type: "email_sent",
+      time: "1h ago",
+      description: "Win-back email: Priya Sharma",
+      detail: "Service savings certificate + link to express lane openings.",
     },
   ],
 }
@@ -1512,6 +2026,187 @@ export const campaignsData = {
         avgResponseTime: '—',
         avgTimeToBook: '—',
         bestChannel: '—',
+        bestChannelRate: 0,
+      },
+    },
+  ],
+}
+
+// ─── Service campaigns (outreach) ──────────────────────────────
+// TODO: GET /api/dealer/:dealerId/service/campaigns
+const serviceCampaignWorkflowStub = (midLabel) => [
+  { id: "svc-w1", type: "trigger", label: "Eligible audience", config: {}, metrics: { conversionPct: 100 } },
+  { id: "svc-w2", type: "sms", label: midLabel, config: {}, metrics: { sent: 0, delivered: 0, replied: 0, conversionPct: 0 } },
+  { id: "svc-w3", type: "end", label: "End", config: {}, metrics: null },
+]
+
+export const serviceCampaignsData = {
+  summaryStrip: [
+    { label: "Total Campaigns", value: "4", sub: "3 active · 1 draft", status: "neutral", highlight: false },
+    { label: "Customers in Campaigns", value: "847", sub: "+63 this week", status: "good", highlight: true },
+    { label: "Avg Response Rate", value: "21%", sub: "+4pp vs last mo", status: "neutral", highlight: false },
+    { label: "Appts This Month", value: "44", sub: "+11", status: "neutral", highlight: false },
+    { label: "Revenue Influenced", value: "$38K", sub: "from outbound", status: "neutral", highlight: false },
+  ],
+  summaryMetrics: [
+    { label: "Total campaigns", value: "4", icon: Target },
+    { label: "Guests in campaigns", value: "847", icon: Users },
+    { label: "Avg response rate", value: "21%", icon: TrendingUp },
+    { label: "Drive appts (mo)", value: "44", icon: Calendar },
+    { label: "RO $ influenced", value: "$38K", icon: DollarSign },
+  ],
+  campaigns: [
+    {
+      id: "svc-camp-1",
+      name: "Open Recall — Urgent Outreach",
+      status: "active",
+      type: "Recall outreach",
+      direction: "Outbound",
+      channelSummary: "AI Call + SMS",
+      startedDisplay: "Mar 5",
+      subtitleLine: null,
+      touched: 54,
+      audienceTotal: 98,
+      reached: 54,
+      responseRate: 67,
+      captureRateLabel: true,
+      appointmentsBooked: 18,
+      description: "Urgent outreach to customers with open recalls to book service before compliance risk.",
+      createdAt: "Mar 5, 2026",
+      leadsEnrolled: 98,
+      leadsActive: 44,
+      conversionRate: 18,
+      channels: ["SMS", "Voice"],
+      triggerDescription: "Open recall on file",
+      channelBreakdown: [
+        { channel: "SMS", icon: MessageSquare, sent: 54, responseRate: 62 },
+        { channel: "Voice", icon: Phone, sent: 54, responseRate: 48 },
+      ],
+      workflowSteps: serviceCampaignWorkflowStub("Recall sequence"),
+      enrolledLeads: [],
+      funnel: [
+        { label: "Eligible", count: 98, pct: 100 },
+        { label: "Contacted", count: 54, pct: 55 },
+        { label: "Appt booked", count: 18, pct: 18 },
+      ],
+      analytics: {
+        avgResponseTime: "2h 10m",
+        avgTimeToBook: "3.1 days",
+        bestChannel: "SMS",
+        bestChannelRate: 62,
+      },
+    },
+    {
+      id: "svc-camp-2",
+      name: "Maintenance Due — 6-Month Reminder",
+      status: "active",
+      type: "Maintenance",
+      direction: "Outbound",
+      channelSummary: "SMS + Email",
+      startedDisplay: "Feb 20",
+      subtitleLine: null,
+      touched: 71,
+      audienceTotal: 114,
+      reached: 71,
+      responseRate: 51,
+      captureRateLabel: false,
+      appointmentsBooked: 14,
+      description: "Reminds customers when factory maintenance is due based on mileage and last visit.",
+      createdAt: "Feb 20, 2026",
+      leadsEnrolled: 114,
+      leadsActive: 43,
+      conversionRate: 12,
+      channels: ["SMS", "Email"],
+      triggerDescription: "Maintenance due window",
+      channelBreakdown: [
+        { channel: "SMS", icon: MessageSquare, sent: 114, responseRate: 48 },
+        { channel: "Email", icon: Mail, sent: 114, responseRate: 38 },
+      ],
+      workflowSteps: serviceCampaignWorkflowStub("Maintenance reminder"),
+      enrolledLeads: [],
+      funnel: [
+        { label: "Eligible", count: 114, pct: 100 },
+        { label: "Contacted", count: 71, pct: 62 },
+        { label: "Appt booked", count: 14, pct: 12 },
+      ],
+      analytics: {
+        avgResponseTime: "6h 40m",
+        avgTimeToBook: "4.2 days",
+        bestChannel: "SMS",
+        bestChannelRate: 48,
+      },
+    },
+    {
+      id: "svc-camp-3",
+      name: "Declined Services — 30-Day Follow-up",
+      status: "active",
+      type: "Declined services",
+      direction: "Outbound",
+      channelSummary: "SMS",
+      startedDisplay: "Mar 12",
+      subtitleLine: null,
+      touched: 21,
+      audienceTotal: 67,
+      reached: 21,
+      responseRate: 31,
+      captureRateLabel: false,
+      appointmentsBooked: 8,
+      description: "Follows up on recommendations the customer declined at last visit.",
+      createdAt: "Mar 12, 2026",
+      leadsEnrolled: 67,
+      leadsActive: 46,
+      conversionRate: 12,
+      channels: ["SMS"],
+      triggerDescription: "Declined line on closed RO",
+      channelBreakdown: [{ channel: "SMS", icon: MessageSquare, sent: 67, responseRate: 31 }],
+      workflowSteps: serviceCampaignWorkflowStub("Declined follow-up"),
+      enrolledLeads: [],
+      funnel: [
+        { label: "Eligible", count: 67, pct: 100 },
+        { label: "Contacted", count: 21, pct: 31 },
+        { label: "Appt booked", count: 8, pct: 12 },
+      ],
+      analytics: {
+        avgResponseTime: "1.2 days",
+        avgTimeToBook: "5.0 days",
+        bestChannel: "SMS",
+        bestChannelRate: 31,
+      },
+    },
+    {
+      id: "svc-camp-4",
+      name: "Lapsed Customers — Win-Back (12+ mo)",
+      status: "draft",
+      type: "Win-back",
+      direction: "Outbound",
+      channelSummary: "Email + AI Call",
+      startedDisplay: "Draft",
+      subtitleLine: "Not yet launched · 568 customers eligible",
+      touched: 0,
+      audienceTotal: 568,
+      reached: null,
+      responseRate: null,
+      captureRateLabel: false,
+      appointmentsBooked: null,
+      description: "Re-engages customers who have not visited in over 12 months.",
+      createdAt: "Mar 28, 2026",
+      leadsEnrolled: 568,
+      leadsActive: 0,
+      conversionRate: 0,
+      channels: ["Email", "Voice"],
+      triggerDescription: "No visit 12+ months",
+      channelBreakdown: [],
+      workflowSteps: serviceCampaignWorkflowStub("Win-back sequence"),
+      enrolledLeads: [],
+      funnel: [
+        { label: "Eligible", count: 568, pct: 100 },
+        { label: "Contacted", count: 0, pct: 0 },
+        { label: "Appt booked", count: 0, pct: 0 },
+      ],
+      analytics: {
+        avgResponseTime: "—",
+        avgTimeToBook: "—",
+        bestChannel: "—",
         bestChannelRate: 0,
       },
     },
