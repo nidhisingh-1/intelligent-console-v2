@@ -1,14 +1,19 @@
 "use client"
 
-import { useState } from 'react'
-import { Phone, MessageSquare, Eye, ArrowRight, Calendar, Zap, Package, Star, X, Sparkles, LayoutList, Columns } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Phone, MessageSquare, Eye, ArrowRight, Calendar, Zap, Package, Star, X, Sparkles, LayoutList, Columns, Archive } from 'lucide-react'
+
+function daysSince(isoDate) {
+  const diff = Date.now() - new Date(isoDate).getTime()
+  return diff / (1000 * 60 * 60 * 24)
+}
 
 const QUEUE = [
   {
     id: '1', type: 'urgent', priority: 'HIGH', initials: 'SD', name: 'Sarah Delgado',
     phone: '+1 (555) 234-7890', stageLabel: 'Ready to Buy', stageCls: 'hot',
     vehicle: '2024 Toyota Camry XSE', category: 'New', price: '$31,200', daysOnLot: null,
-    due: 'Today',
+    due: 'Today', createdAt: '2026-04-03T09:22:00Z',
     reason: 'Confirmed $450/mo budget and loved the Camry XSE. Agent hit ceiling — she\'s ready to close.',
     opener: 'Confirmed $450/mo, loved the Camry XSE — lead with the rate and Midnight Black availability. She\'s comparing with another dealer.',
     action: 'call',
@@ -17,7 +22,7 @@ const QUEUE = [
     id: '2', type: 'urgent', priority: 'HIGH', initials: 'MW', name: 'Marcus Webb',
     phone: '+1 (555) 891-3344', stageLabel: 'Ready to Visit', stageCls: 'warm',
     vehicle: '2023 Honda CR-V EX-L', category: 'New', price: '$36,500', daysOnLot: null,
-    due: 'Today',
+    due: 'Today', createdAt: '2026-04-03T08:06:00Z',
     reason: 'Went cold 3 weeks ago. Re-engaged this morning — don\'t lead with price. Ask what changed.',
     opener: 'Marcus went cold after a price pushback. He just re-engaged — don\'t lead with price. Lead with new inventory and current incentives. Ask what changed.',
     action: 'convo',
@@ -27,7 +32,7 @@ const QUEUE = [
     phone: '+1 (555) 447-2291', stageLabel: 'Ready to Visit', stageCls: 'warm',
     vehicle: '2024 Toyota RAV4 XLE', category: 'New', price: '$33,800', daysOnLot: null,
     apptTime: 'Tomorrow, 2:00 PM',
-    due: 'Tomorrow',
+    due: 'Tomorrow', createdAt: '2026-03-29T14:10:00Z',
     reason: 'Appointment tomorrow. Comparing RAV4 vs CR-V — came in once before. Prep the side-by-side.',
     opener: 'Appointment tomorrow at 2 PM. She\'s been comparing RAV4 vs CR-V. Have the side-by-side ready. This visit is decision-making, not discovery.',
     action: 'prep',
@@ -36,7 +41,7 @@ const QUEUE = [
     id: '4', type: 'lot-match', priority: 'MEDIUM', initials: 'JW', name: 'James Whitfield',
     phone: '+1 (555) 670-5512', stageLabel: 'Comparing Options', stageCls: 'cool',
     vehicle: '2022 Chevrolet Tahoe LT', category: 'Used', price: '$52,900', daysOnLot: 47,
-    due: 'This week',
+    due: 'This week', createdAt: '2026-03-28T11:30:00Z',
     reason: '3-row SUV + $650/mo budget matches a Tahoe on lot 47 days. Moves aging inventory and protects margin.',
     opener: 'James wants a 3-row SUV for under $650/mo. The Tahoe LT has been on lot 47 days — use that as a lever. Lead with availability and what you can do today.',
     action: 'reach',
@@ -45,7 +50,7 @@ const QUEUE = [
     id: '5', type: 'standard', priority: 'NORMAL', initials: 'KP', name: 'Kevin Park',
     phone: '+1 (555) 219-8830', stageLabel: 'Talking Numbers', stageCls: 'hot',
     vehicle: '2023 Honda Accord Sport', category: 'New', price: '$30,400', daysOnLot: null,
-    due: 'Today',
+    due: 'Today', createdAt: '2026-04-02T16:45:00Z',
     reason: 'Asked to speak directly. Wants to discuss trade-in — 2019 Accord, ~$8K equity. Come prepared.',
     opener: 'Kevin asked to talk directly. He wants to discuss trade-in — 2019 Accord, ~$8K equity. Have KBB pulled up before the call.',
     action: 'call',
@@ -54,7 +59,7 @@ const QUEUE = [
     id: '6', type: 'high-value', priority: 'HIGH', initials: 'FA', name: 'Fleet Auto Group',
     phone: '+1 (555) 730-1100', stageLabel: 'Talking Numbers', stageCls: 'hot',
     vehicle: '2024 Ford Transit 150', category: 'New', price: '$46,000', daysOnLot: null,
-    due: 'Today',
+    due: 'Today', createdAt: '2026-04-03T07:00:00Z',
     reason: 'Fleet inquiry — 12 commercial vehicles. Wants a dedicated contact. Don\'t delegate this one.',
     opener: 'Fleet inquiry for 12 commercial vehicles. They want a dedicated point of contact — don\'t hand this off. Have fleet pricing and financing ready.',
     action: 'context',
@@ -203,7 +208,7 @@ function QueueCard({ card, isActive, onOpen, resolved, outcome }) {
   )
 }
 
-function TableView({ queue, onOpen }) {
+function TableView({ queue, onOpen, onMarkDone }) {
   const [sortKey, setSortKey] = useState('priority')
 
   const sorted = [...queue].sort((a, b) => {
@@ -321,6 +326,14 @@ function TableView({ queue, onOpen }) {
                       </a>
                       <button className="spyne-btn-ghost" style={{ padding: '4px 8px', height: 28 }} aria-label="Message">
                         <MessageSquare size={12} />
+                      </button>
+                      <button
+                        className="spyne-btn-ghost"
+                        style={{ padding: '4px 8px', height: 28, fontSize: 11, whiteSpace: 'nowrap', color: 'var(--spyne-success-text)' }}
+                        onClick={() => onMarkDone?.(card.id)}
+                        aria-label="Mark done"
+                      >
+                        ✓ Done
                       </button>
                     </div>
                   </td>
@@ -485,23 +498,43 @@ export default function ActionItemsPage({ sidebarCollapsed }) {
   const [view, setView]             = useState('table')
   const [activeCard, setActiveCard] = useState(null)
   const [filter, setFilter]         = useState('All')
-  const [resolved, setResolved]     = useState({})
+  const [resolvedIds, setResolvedIds] = useState(new Set())
   const [actQueue, setActQueue]     = useState(QUEUE)
   const [doneQueue, setDoneQueue]   = useState([])
   const [toast, setToast]           = useState(null)
 
+  // Auto-archive: items older than 3 days not yet resolved
+  const archivedItems = useMemo(
+    () => QUEUE.filter(c => daysSince(c.createdAt) > 3 && !resolvedIds.has(c.id)),
+    [resolvedIds]
+  )
+  const archivedIds = useMemo(() => new Set(archivedItems.map(c => c.id)), [archivedItems])
+
   function openPanel(card) { setActiveCard(card) }
   function closePanel()    { setActiveCard(null) }
 
+  function markDone(id) {
+    const card = actQueue.find(c => c.id === id)
+    if (!card) return
+    setResolvedIds(s => new Set([...s, id]))
+    setActQueue(q => q.filter(c => c.id !== id))
+    setDoneQueue(d => [{ ...card, outcome: 'Marked done' }, ...d])
+    setToast('Marked as done')
+    setTimeout(() => setToast(null), 3200)
+  }
+
   function saveOutcome(outcome) {
     const card = activeCard
-    setResolved(r => ({ ...r, [card.id]: outcome }))
+    setResolvedIds(s => new Set([...s, card.id]))
     setActQueue(q => q.filter(c => c.id !== card.id))
     setDoneQueue(d => [{ ...card, outcome }, ...d])
     closePanel()
     setToast('Outcome logged — moved to Done Today')
     setTimeout(() => setToast(null), 3200)
   }
+
+  // Active queue excludes archived items
+  const activeQueue = actQueue.filter(c => !archivedIds.has(c.id))
 
   const filtered = (list) => {
     if (filter === 'New')  return list.filter(c => c.category === 'New')
@@ -521,7 +554,7 @@ export default function ActionItemsPage({ sidebarCollapsed }) {
             padding: '0 6px', background: 'var(--spyne-brand)', color: 'var(--spyne-brand-on)', fontSize: 11,
           }}
         >
-          {actQueue.length}
+          {activeQueue.length}
         </span>
 
         <div className="flex items-center gap-2 ml-auto flex-wrap">
@@ -581,8 +614,9 @@ export default function ActionItemsPage({ sidebarCollapsed }) {
       {/* Tabs */}
       <div className="flex mb-5" style={{ borderBottom: '1px solid var(--spyne-border)' }}>
         {[
-          { id: 'act',  label: 'To Act On',  count: actQueue.length },
-          { id: 'done', label: 'Done Today',  count: doneQueue.length },
+          { id: 'act',      label: 'To Act On',  count: activeQueue.length },
+          { id: 'done',     label: 'Done Today',  count: doneQueue.length },
+          { id: 'archived', label: 'Archived',    count: archivedItems.length },
         ].map(tab => (
           <button
             key={tab.id}
@@ -612,7 +646,7 @@ export default function ActionItemsPage({ sidebarCollapsed }) {
 
       {/* To Act On */}
       {activeTab === 'act' && (
-        filtered(actQueue).length === 0 ? (
+        filtered(activeQueue).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
             <div style={{ width: 52, height: 52, borderRadius: 'var(--spyne-radius-lg)', background: 'var(--spyne-brand-subtle)', color: 'var(--spyne-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Sparkles size={22} />
@@ -621,9 +655,9 @@ export default function ActionItemsPage({ sidebarCollapsed }) {
             <p className="spyne-body-sm" style={{ maxWidth: 260 }}>Vini is working the leads. When one is ready for a human touch, it'll show up here.</p>
           </div>
         ) : view === 'table' ? (
-          <TableView queue={filtered(actQueue)} onOpen={openPanel} />
+          <TableView queue={filtered(activeQueue)} onOpen={openPanel} onMarkDone={markDone} />
         ) : (
-          <SwimlaneView queue={filtered(actQueue)} onOpen={openPanel} />
+          <SwimlaneView queue={filtered(activeQueue)} onOpen={openPanel} />
         )
       )}
 
@@ -642,6 +676,59 @@ export default function ActionItemsPage({ sidebarCollapsed }) {
             {filtered(doneQueue).map(card => (
               <QueueCard key={card.id} card={card} isActive={false} onOpen={() => {}} resolved={true} outcome={card.outcome} />
             ))}
+          </div>
+        )
+      )}
+
+      {/* Archived */}
+      {activeTab === 'archived' && (
+        archivedItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+            <div style={{ width: 52, height: 52, borderRadius: 'var(--spyne-radius-lg)', background: 'var(--spyne-border)', color: 'var(--spyne-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Archive size={22} />
+            </div>
+            <p className="spyne-heading">No archived items</p>
+            <p className="spyne-body-sm" style={{ maxWidth: 260 }}>Items that go unresolved for more than 3 days are automatically archived here.</p>
+          </div>
+        ) : (
+          <div>
+            <div
+              className="flex items-center gap-2 mb-4 px-3 py-2.5 rounded-lg"
+              style={{ background: 'var(--spyne-warning-subtle)', border: '1px solid var(--spyne-warning-border)' }}
+            >
+              <Archive size={13} style={{ color: 'var(--spyne-warning-text)', flexShrink: 0 }} />
+              <p className="spyne-caption" style={{ color: 'var(--spyne-warning-text)' }}>
+                Items auto-archive after 3 days to keep your queue actionable. These are read-only.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              {archivedItems.map(card => {
+                const archivedDate = new Date(card.createdAt)
+                archivedDate.setDate(archivedDate.getDate() + 3)
+                const dateLabel = archivedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                return (
+                  <div
+                    key={card.id}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg"
+                    style={{ background: 'var(--spyne-surface)', border: '1px solid var(--spyne-border)', opacity: 0.75 }}
+                  >
+                    <div
+                      className="flex items-center justify-center font-bold text-xs shrink-0"
+                      style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--spyne-border)', color: 'var(--spyne-text-muted)' }}
+                    >
+                      {card.initials}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span className="spyne-label" style={{ color: 'var(--spyne-text-secondary)' }}>{card.name}</span>
+                      <span className="spyne-caption ml-2" style={{ color: 'var(--spyne-text-muted)' }}>{card.vehicle}</span>
+                    </div>
+                    <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)', whiteSpace: 'nowrap' }}>
+                      Archived {dateLabel}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )
       )}

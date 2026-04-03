@@ -4,21 +4,24 @@ import { useState, useEffect } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LabelList,
+  LineChart, Line, Legend,
 } from 'recharts'
 import { Phone, MessageSquare, Mail, ChevronDown } from 'lucide-react'
 
 const TOGGLES_INBOUND = [
-  { id: 'appointments',     label: 'Appointments Booked' },
-  { id: 'leadsEngaged',     label: 'Leads Engaged'       },
-  { id: 'speedToLead',      label: 'Speed-to-Lead Avg'   },
-  { id: 'followUpTouches',  label: 'Follow-up Touches'   },
+  { id: 'leadsInteracted',   label: 'Leads Interacted',          color: '#4F46E5' },
+  { id: 'leadsQualified',    label: 'Leads Qualified',           color: '#0D9488' },
+  { id: 'afterHoursEngaged', label: 'After Hours Leads Engaged', color: '#D97706' },
+  { id: 'humanHandoffs',     label: 'Human Handoffs',            color: '#7C3AED' },
+  { id: 'appointments',      label: 'Appointments Booked',       color: '#10B981' },
 ]
 
 const TOGGLES_OUTBOUND = [
-  { id: 'reEngagements',      label: 'Re-engagements'  },
-  { id: 'outreachSent',       label: 'Outreach Sent'   },
-  { id: 'responseRate',       label: 'Response Rate'   },
-  { id: 'appointmentsBooked', label: 'Appts Booked'    },
+  { id: 'crmLeadsWorked',    label: 'CRM Leads Worked',    color: '#4F46E5' },
+  { id: 'responseRate',      label: 'Response Rate',       color: '#0D9488' },
+  { id: 'reEngagements',     label: 'Re-engagements',      color: '#D97706' },
+  { id: 'humanHandoffs',     label: 'Human Handoffs',      color: '#7C3AED' },
+  { id: 'appointmentsBooked', label: 'Appointments Booked', color: '#10B981' },
 ]
 
 const CustomTooltip = ({ active, payload, label, unit }) => {
@@ -33,7 +36,11 @@ const CustomTooltip = ({ active, payload, label, unit }) => {
       }}
     >
       <div style={{ fontWeight: 700 }}>{label}</div>
-      <div>{payload[0].value}{unit}</div>
+      {payload.map((p) => (
+        <div key={p.dataKey} style={{ color: p.color }}>
+          {p.name}: {p.value}{unit || ''}
+        </div>
+      ))}
     </div>
   )
 }
@@ -41,31 +48,44 @@ const CustomTooltip = ({ active, payload, label, unit }) => {
 export default function ActivityChart({ data, agentType }) {
   const isOutbound = agentType === 'outbound'
   const TOGGLES = isOutbound ? TOGGLES_OUTBOUND : TOGGLES_INBOUND
-  const [activeMetric, setActiveMetric] = useState(isOutbound ? 'reEngagements' : 'appointments')
+  const [activeMetric, setActiveMetric] = useState(isOutbound ? 'crmLeadsWorked' : 'leadsInteracted')
   const [granularity, setGranularity]   = useState('daily')
+  const [chartMode, setChartMode]       = useState('perMetric') // 'perMetric' | 'pipeline'
 
   useEffect(() => {
-    setActiveMetric(isOutbound ? 'reEngagements' : 'appointments')
+    setActiveMetric(isOutbound ? 'crmLeadsWorked' : 'leadsInteracted')
   }, [isOutbound])
 
-  // Use weekly if selected and available, otherwise fall back to daily
   const activeGranularity = (granularity === 'weekly' && data.weekly) ? 'weekly' : 'daily'
   const chartSource = data[activeGranularity] || data.daily
-  // Guard: if activeMetric doesn't exist in current data (e.g. mid-render agent switch), fall back to first toggle
+
+  // Guard against stale metric key after agent switch
   const safeMetric = chartSource.metrics[activeMetric] ? activeMetric : TOGGLES[0].id
   const metric = chartSource.metrics[safeMetric]
-  const unit = metric.unit || ''
-  const lowerIsBetter = metric.lowerIsBetter
+  const unit = metric?.unit || ''
+  const lowerIsBetter = metric?.lowerIsBetter
 
-  const chartData = chartSource.days.map((day, i) => ({
+  // Per-metric bar chart data
+  const barData = chartSource.days.map((day, i) => ({
     day,
-    value: metric.data[i],
+    value: metric?.data[i] ?? 0,
   }))
+
+  // Pipeline view — all metrics as lines on one chart
+  const lineData = chartSource.days.map((day, i) => {
+    const entry = { day }
+    TOGGLES.forEach((t) => {
+      if (chartSource.metrics[t.id]) {
+        entry[t.id] = chartSource.metrics[t.id].data[i]
+      }
+    })
+    return entry
+  })
 
   return (
     <div className="spyne-card p-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
           <div className="spyne-heading">Recent Activity</div>
           {/* Granularity picker */}
@@ -87,7 +107,43 @@ export default function ActivityChart({ data, agentType }) {
             />
           </div>
         </div>
-        <div className="flex flex-wrap gap-1.5">
+
+        {/* Chart mode tabs */}
+        <div
+          style={{
+            display: 'flex',
+            border: '1px solid var(--spyne-border)',
+            borderRadius: 'var(--spyne-radius-md)',
+            overflow: 'hidden',
+            background: 'var(--spyne-surface)',
+            flexShrink: 0,
+          }}
+        >
+          {[
+            { id: 'perMetric', label: 'Per Metric' },
+            { id: 'pipeline',  label: 'Pipeline View' },
+          ].map((tab, i) => (
+            <button
+              key={tab.id}
+              onClick={() => setChartMode(tab.id)}
+              style={{
+                padding: '0 12px', height: 28, fontSize: 11, fontWeight: chartMode === tab.id ? 600 : 500,
+                border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                background: chartMode === tab.id ? 'var(--spyne-brand-subtle)' : 'transparent',
+                color: chartMode === tab.id ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
+                borderRight: i === 0 ? '1px solid var(--spyne-border)' : 'none',
+                transition: 'all 150ms',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Metric toggle pills — only in Per Metric mode */}
+      {chartMode === 'perMetric' && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
           {TOGGLES.map((t) => (
             <button
               key={t.id}
@@ -98,39 +154,79 @@ export default function ActivityChart({ data, agentType }) {
             </button>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* Chart */}
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={chartData} margin={{ top: 20, right: 4, left: -20, bottom: 0 }}>
-          <CartesianGrid vertical={false} stroke="var(--spyne-border)" />
-          <XAxis
-            dataKey="day"
-            tick={{ fontSize: 11, fill: 'var(--spyne-text-muted)', fontFamily: 'inherit' }}
-            axisLine={false}
-            tickLine={false}
-            interval={activeGranularity === 'daily' && chartData.length > 14 ? Math.floor(chartData.length / 10) : 0}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: 'var(--spyne-text-muted)', fontFamily: 'inherit' }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip content={<CustomTooltip unit={unit} />} cursor={{ fill: 'var(--spyne-brand-subtle)' }} />
-          <Bar dataKey="value" fill="var(--spyne-brand)" radius={[4, 4, 0, 0]} maxBarSize={48}>
-            {chartData.length <= 14 && (
-              <LabelList
-                dataKey="value"
-                position="top"
-                style={{ fontSize: 10, fill: 'var(--spyne-text-secondary)', fontWeight: 600, fontFamily: 'inherit' }}
-                formatter={(v) => `${v}${unit}`}
-              />
-            )}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      {/* Charts */}
+      {chartMode === 'perMetric' ? (
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={barData} margin={{ top: 20, right: 4, left: -20, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="var(--spyne-border)" />
+            <XAxis
+              dataKey="day"
+              tick={{ fontSize: 11, fill: 'var(--spyne-text-muted)', fontFamily: 'inherit' }}
+              axisLine={false}
+              tickLine={false}
+              interval={activeGranularity === 'daily' && barData.length > 14 ? Math.floor(barData.length / 10) : 0}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: 'var(--spyne-text-muted)', fontFamily: 'inherit' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip content={<CustomTooltip unit={unit} />} cursor={{ fill: 'var(--spyne-brand-subtle)' }} />
+            <Bar dataKey="value" name={metric?.label} fill="var(--spyne-brand)" radius={[4, 4, 0, 0]} maxBarSize={48}>
+              {barData.length <= 14 && (
+                <LabelList
+                  dataKey="value"
+                  position="top"
+                  style={{ fontSize: 10, fill: 'var(--spyne-text-secondary)', fontWeight: 600, fontFamily: 'inherit' }}
+                  formatter={(v) => `${v}${unit}`}
+                />
+              )}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={lineData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="var(--spyne-border)" />
+            <XAxis
+              dataKey="day"
+              tick={{ fontSize: 11, fill: 'var(--spyne-text-muted)', fontFamily: 'inherit' }}
+              axisLine={false}
+              tickLine={false}
+              interval={activeGranularity === 'daily' && lineData.length > 14 ? Math.floor(lineData.length / 10) : 0}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: 'var(--spyne-text-muted)', fontFamily: 'inherit' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+            />
+            {TOGGLES.map((t) => (
+              chartSource.metrics[t.id] ? (
+                <Line
+                  key={t.id}
+                  type="monotone"
+                  dataKey={t.id}
+                  name={t.label}
+                  stroke={t.color}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              ) : null
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
 
-      {lowerIsBetter && (
+      {chartMode === 'perMetric' && lowerIsBetter && (
         <div className="text-center spyne-caption mt-1" style={{ color: 'var(--spyne-text-muted)' }}>
           Lower is better — faster response time
         </div>

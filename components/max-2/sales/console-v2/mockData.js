@@ -227,13 +227,22 @@ export const callbacksData = {
   totalOpenConversations: 12,
 }
 
+/// TODO: GET /api/dealer/:dealerId/inventory/hot-vehicles
+export const hotVehiclesData = [
+  { vehicle: '2024 Toyota Camry XSE',  leads: 34, newThisWeek: 8, daysOnLot: 14 },
+  { vehicle: '2023 Honda CR-V EX-L',   leads: 28, newThisWeek: 5, daysOnLot: 47 },
+  { vehicle: '2024 Ford F-150 XLT',    leads: 21, newThisWeek: 6, daysOnLot: 9  },
+  { vehicle: '2024 Subaru Outback',    leads: 17, newThisWeek: 3, daysOnLot: 31 },
+  { vehicle: '2022 Chevy Equinox LT',  leads: 14, newThisWeek: 2, daysOnLot: 58 },
+]
+
 // TODO: GET /api/dealer/:dealerId/campaigns?type=outbound&period=<dateRange>
 export const outboundCampaignsData = {
   campaigns: [
-    { key: 'aged30',      label: 'Aged Leads (30-60d)', color: '#4F46E5', enrolled: 312, contacted: 298, responseRate: '14.2%', reEngaged: 44,   apptsBooked: 18 },
-    { key: 'aged60',      label: 'Aged Leads (60-90d)', color: '#0D9488', enrolled: 187, contacted: 181, responseRate: '9.1%',  reEngaged: 17,   apptsBooked: 6  },
-    { key: 'apptReminder', label: 'Appt Reminders',     color: '#D97706', enrolled: 43,  contacted: 43,  responseRate: '71.4%', reEngaged: null, apptsBooked: 31 },
-    { key: 'lostDeals',   label: 'Lost Deals',          color: '#7C3AED', enrolled: 94,  contacted: 89,  responseRate: '11.2%', reEngaged: 11,   apptsBooked: 4  },
+    { key: 'aged30',      label: 'Aged Leads (30-60d)', color: '#4F46E5', enrolled: 312, attempted: 298, responseRate: '14.2%', reEngaged: 44,   apptsBooked: 18 },
+    { key: 'aged60',      label: 'Aged Leads (60-90d)', color: '#0D9488', enrolled: 187, attempted: 181, responseRate: '9.1%',  reEngaged: 17,   apptsBooked: 6  },
+    { key: 'apptReminder', label: 'Appt Reminders',     color: '#D97706', enrolled: 43,  attempted: 43,  responseRate: '71.4%', reEngaged: null, apptsBooked: 31 },
+    { key: 'lostDeals',   label: 'Lost Deals',          color: '#7C3AED', enrolled: 94,  attempted: 89,  responseRate: '11.2%', reEngaged: 11,   apptsBooked: 4  },
   ],
 }
 
@@ -268,8 +277,13 @@ const PERIOD_MULTIPLIERS = {
 // Returns chart data with both daily and weekly granularity options.
 // ActivityChart selects which to display based on user's granularity picker.
 function buildChartData(dateRange) {
-  const D7_APPTS   = [8, 12, 6, 15, 11, 7, 9]
-  const D7_LEADS   = [142, 198, 167, 221, 189, 134, 156]
+  const D7_LEADS_INTERACTED = [142, 198, 167, 221, 189, 134, 156]
+  const D7_LEADS_QUALIFIED  = [38,  54,  41,  67,  52,  34,  45]
+  const D7_AFTER_HOURS      = [12,  17,  9,   22,  15,  8,   14]
+  const D7_HANDOFFS         = [5,   7,   4,   9,   6,   3,   4]
+  const D7_APPTS            = [8,   12,  6,   15,  11,  7,   9]
+  // Legacy aliases kept for toWeekly reuse below
+  const D7_LEADS   = D7_LEADS_INTERACTED
   const D7_SPEED   = [112, 98, 134, 87, 103, 145, 107]
   const D7_TOUCHES = [41, 67, 52, 78, 63, 38, 47]
   const mk = (label, data, unit, lowerIsBetter) => ({ label, data, unit, lowerIsBetter })
@@ -285,15 +299,15 @@ function buildChartData(dateRange) {
 
   if (dateRange === 'Last 7 days' || dateRange === 'Custom range') {
     const dailyLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    const weeklyLabels = ['This Week']
     return {
       daily: {
         days: dailyLabels,
         metrics: {
-          appointments:    mk('Appointments Booked', D7_APPTS,   '', false),
-          leadsEngaged:    mk('Leads Engaged',        D7_LEADS,   '', false),
-          speedToLead:     mk('Speed-to-Lead Avg',    D7_SPEED,   's', true),
-          followUpTouches: mk('Follow-up Touches',    D7_TOUCHES, '', false),
+          leadsInteracted:  mk('Leads Interacted',          D7_LEADS_INTERACTED, '', false),
+          leadsQualified:   mk('Leads Qualified',           D7_LEADS_QUALIFIED,  '', false),
+          afterHoursEngaged: mk('After Hours Leads Engaged', D7_AFTER_HOURS,     '', false),
+          humanHandoffs:    mk('Human Handoffs',            D7_HANDOFFS,         '', false),
+          appointments:     mk('Appointments Booked',       D7_APPTS,            '', false),
         },
       },
       weekly: null,
@@ -306,29 +320,30 @@ function buildChartData(dateRange) {
       const d = new Date(2026, 2, 17 + i)
       return `${d.getMonth() + 1}/${d.getDate()}`
     })
-    const d14Appts   = [...D7_APPTS.map((v) => Math.round(v * 0.88)),   ...D7_APPTS.map((v) => Math.round(v * 1.05))]
-    const d14Leads   = [...D7_LEADS.map((v) => Math.round(v * 0.88)),   ...D7_LEADS.map((v) => Math.round(v * 1.05))]
-    const d14Speed   = [...D7_SPEED.map((v) => Math.round(v * 1.06)),   ...D7_SPEED]
-    const d14Touches = [...D7_TOUCHES.map((v) => Math.round(v * 0.88)), ...D7_TOUCHES.map((v) => Math.round(v * 1.05))]
+    const scale88 = (a) => a.map((v) => Math.round(v * 0.88))
+    const scale105 = (a) => a.map((v) => Math.round(v * 1.05))
+    const d14Li = [...scale88(D7_LEADS_INTERACTED), ...scale105(D7_LEADS_INTERACTED)]
+    const d14Lq = [...scale88(D7_LEADS_QUALIFIED),  ...scale105(D7_LEADS_QUALIFIED)]
+    const d14Ah = [...scale88(D7_AFTER_HOURS),       ...scale105(D7_AFTER_HOURS)]
+    const d14Hh = [...scale88(D7_HANDOFFS),          ...scale105(D7_HANDOFFS)]
+    const d14Ap = [...scale88(D7_APPTS),              ...scale105(D7_APPTS)]
     const wkLabels14 = ['Week 1', 'Week 2']
+    const mkAll = (daily) => ({
+      leadsInteracted:   mk('Leads Interacted',           daily[0], '', false),
+      leadsQualified:    mk('Leads Qualified',            daily[1], '', false),
+      afterHoursEngaged: mk('After Hours Leads Engaged',  daily[2], '', false),
+      humanHandoffs:     mk('Human Handoffs',             daily[3], '', false),
+      appointments:      mk('Appointments Booked',        daily[4], '', false),
+    })
     return {
-      daily: {
-        days: d14Labels,
-        metrics: {
-          appointments:    mk('Appointments Booked', d14Appts,   '', false),
-          leadsEngaged:    mk('Leads Engaged',        d14Leads,   '', false),
-          speedToLead:     mk('Speed-to-Lead Avg',    d14Speed,   's', true),
-          followUpTouches: mk('Follow-up Touches',    d14Touches, '', false),
-        },
-      },
+      daily:  { days: d14Labels,  metrics: mkAll([d14Li, d14Lq, d14Ah, d14Hh, d14Ap]) },
       weekly: {
         days: wkLabels14,
-        metrics: {
-          appointments:    mk('Appointments Booked', toWeekly(d14Appts, wkLabels14),   '', false),
-          leadsEngaged:    mk('Leads Engaged',        toWeekly(d14Leads, wkLabels14),   '', false),
-          speedToLead:     mk('Speed-to-Lead Avg',    toWeekly(d14Speed, wkLabels14),   's', true),
-          followUpTouches: mk('Follow-up Touches',    toWeekly(d14Touches, wkLabels14), '', false),
-        },
+        metrics: mkAll([
+          toWeekly(d14Li, wkLabels14), toWeekly(d14Lq, wkLabels14),
+          toWeekly(d14Ah, wkLabels14), toWeekly(d14Hh, wkLabels14),
+          toWeekly(d14Ap, wkLabels14),
+        ]),
       },
       channelSummary: { calls: 265, sms: 265, emails: 265 },
     }
@@ -340,16 +355,16 @@ function buildChartData(dateRange) {
   const scale = isLastMonth ? 0.88 : 1.0
   const m = PERIOD_MULTIPLIERS[dateRange] ?? 1.0
 
-  // Generate 30 daily bars
   const d30Labels = Array.from({ length: 30 }, (_, i) => {
     const base = isLastMonth ? new Date(2026, 1, 1) : new Date(2026, 2, 1)
     const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i)
     return `${d.getMonth() + 1}/${d.getDate()}`
   })
-  const d30Appts   = Array.from({ length: 30 }, (_, i) => Math.round((D7_APPTS[i % 7]   * 1.1 + i * 0.15) * scale))
-  const d30Leads   = Array.from({ length: 30 }, (_, i) => Math.round((D7_LEADS[i % 7]   * 1.1 + i * 2)    * scale))
-  const d30Speed   = Array.from({ length: 30 }, (_, i) => Math.round((D7_SPEED[i % 7]   * 0.98)            * scale))
-  const d30Touches = Array.from({ length: 30 }, (_, i) => Math.round((D7_TOUCHES[i % 7] * 1.1 + i * 0.3)  * scale))
+  const d30Li = Array.from({ length: 30 }, (_, i) => Math.round((D7_LEADS_INTERACTED[i % 7] * 1.1 + i * 2)    * scale))
+  const d30Lq = Array.from({ length: 30 }, (_, i) => Math.round((D7_LEADS_QUALIFIED[i % 7]  * 1.1 + i * 0.4)  * scale))
+  const d30Ah = Array.from({ length: 30 }, (_, i) => Math.round((D7_AFTER_HOURS[i % 7]      * 1.05)             * scale))
+  const d30Hh = Array.from({ length: 30 }, (_, i) => Math.round((D7_HANDOFFS[i % 7]         * 1.1 + i * 0.05)  * scale))
+  const d30Ap = Array.from({ length: 30 }, (_, i) => Math.round((D7_APPTS[i % 7]            * 1.1 + i * 0.15)  * scale))
 
   const wkLabels = isLastMonth
     ? ['Feb Wk 1', 'Feb Wk 2', 'Feb Wk 3', 'Feb Wk 4']
@@ -361,19 +376,21 @@ function buildChartData(dateRange) {
     daily: {
       days: d30Labels,
       metrics: {
-        appointments:    mk('Appointments Booked', d30Appts,   '', false),
-        leadsEngaged:    mk('Leads Engaged',        d30Leads,   '', false),
-        speedToLead:     mk('Speed-to-Lead Avg',    d30Speed,   's', true),
-        followUpTouches: mk('Follow-up Touches',    d30Touches, '', false),
+        leadsInteracted:   mk('Leads Interacted',          d30Li, '', false),
+        leadsQualified:    mk('Leads Qualified',           d30Lq, '', false),
+        afterHoursEngaged: mk('After Hours Leads Engaged', d30Ah, '', false),
+        humanHandoffs:     mk('Human Handoffs',            d30Hh, '', false),
+        appointments:      mk('Appointments Booked',       d30Ap, '', false),
       },
     },
     weekly: {
       days: wkLabels,
       metrics: {
-        appointments:    mk('Appointments Booked', toWeekly(d30Appts, wkLabels),   '', false),
-        leadsEngaged:    mk('Leads Engaged',        toWeekly(d30Leads, wkLabels),   '', false),
-        speedToLead:     mk('Speed-to-Lead Avg',    toWeekly(d30Speed, wkLabels),   's', true),
-        followUpTouches: mk('Follow-up Touches',    toWeekly(d30Touches, wkLabels), '', false),
+        leadsInteracted:   mk('Leads Interacted',          toWeekly(d30Li, wkLabels), '', false),
+        leadsQualified:    mk('Leads Qualified',           toWeekly(d30Lq, wkLabels), '', false),
+        afterHoursEngaged: mk('After Hours Leads Engaged', toWeekly(d30Ah, wkLabels), '', false),
+        humanHandoffs:     mk('Human Handoffs',            toWeekly(d30Hh, wkLabels), '', false),
+        appointments:      mk('Appointments Booked',       toWeekly(d30Ap, wkLabels), '', false),
       },
     },
     channelSummary: {
@@ -439,10 +456,11 @@ export function getOutboundOverviewData(dateRange) {
 }
 
 function buildOutboundChartData(dateRange) {
-  const D7_REENG   = [4, 7, 3, 9, 6, 2, 5]
-  const D7_OUTREACH = [118, 134, 98, 156, 127, 89, 112]
-  const D7_RESP    = [16, 19, 14, 22, 18, 11, 17]   // response rate %
-  const D7_APPTS   = [3, 5, 2, 7, 4, 1, 4]
+  const D7_CRM_WORKED  = [118, 134, 98, 156, 127, 89, 112]
+  const D7_RESP_RATE   = [16, 19, 14, 22, 18, 11, 17]   // response rate %
+  const D7_REENG       = [4, 7, 3, 9, 6, 2, 5]
+  const D7_HANDOFFS    = [3, 5, 2, 7, 4, 2, 6]
+  const D7_APPTS       = [3, 5, 2, 7, 4, 1, 4]
   const mk = (label, data, unit, lowerIsBetter) => ({ label, data, unit, lowerIsBetter })
 
   function toWeekly(dailyData, weekLabels) {
@@ -458,10 +476,11 @@ function buildOutboundChartData(dateRange) {
       daily: {
         days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
         metrics: {
-          reEngagements:      mk('Re-engagements', D7_REENG,   '', false),
-          outreachSent:       mk('Outreach Sent',  D7_OUTREACH, '', false),
-          responseRate:       mk('Response Rate',  D7_RESP,    '%', false),
-          appointmentsBooked: mk('Appts Booked',   D7_APPTS,  '', false),
+          crmLeadsWorked:    mk('CRM Leads Worked',   D7_CRM_WORKED, '', false),
+          responseRate:      mk('Response Rate',      D7_RESP_RATE,  '%', false),
+          reEngagements:     mk('Re-engagements',     D7_REENG,      '', false),
+          humanHandoffs:     mk('Human Handoffs',     D7_HANDOFFS,   '', false),
+          appointmentsBooked: mk('Appointments Booked', D7_APPTS,   '', false),
         },
       },
       weekly: null,
@@ -476,24 +495,27 @@ function buildOutboundChartData(dateRange) {
     })
     const d14 = (base) => [...base.map((v) => Math.round(v * 0.88)), ...base.map((v) => Math.round(v * 1.05))]
     const wkLabels14 = ['Week 1', 'Week 2']
-    const d14Reeng = d14(D7_REENG); const d14Out = d14(D7_OUTREACH); const d14Resp = d14(D7_RESP); const d14Appts = d14(D7_APPTS)
+    const d14Crm = d14(D7_CRM_WORKED); const d14Resp = d14(D7_RESP_RATE); const d14Reeng = d14(D7_REENG)
+    const d14Hh = d14(D7_HANDOFFS); const d14Appts = d14(D7_APPTS)
     return {
       daily: {
         days: d14Labels,
         metrics: {
-          reEngagements:      mk('Re-engagements', d14Reeng, '', false),
-          outreachSent:       mk('Outreach Sent',  d14Out,  '', false),
-          responseRate:       mk('Response Rate',  d14Resp, '%', false),
-          appointmentsBooked: mk('Appts Booked',   d14Appts,'', false),
+          crmLeadsWorked:    mk('CRM Leads Worked',   d14Crm,   '', false),
+          responseRate:      mk('Response Rate',      d14Resp,  '%', false),
+          reEngagements:     mk('Re-engagements',     d14Reeng, '', false),
+          humanHandoffs:     mk('Human Handoffs',     d14Hh,    '', false),
+          appointmentsBooked: mk('Appointments Booked', d14Appts, '', false),
         },
       },
       weekly: {
         days: wkLabels14,
         metrics: {
-          reEngagements:      mk('Re-engagements', toWeekly(d14Reeng, wkLabels14), '', false),
-          outreachSent:       mk('Outreach Sent',  toWeekly(d14Out,   wkLabels14), '', false),
-          responseRate:       mk('Response Rate',  toWeekly(d14Resp,  wkLabels14), '%', false),
-          appointmentsBooked: mk('Appts Booked',   toWeekly(d14Appts, wkLabels14), '', false),
+          crmLeadsWorked:    mk('CRM Leads Worked',   toWeekly(d14Crm,   wkLabels14), '', false),
+          responseRate:      mk('Response Rate',      toWeekly(d14Resp,  wkLabels14), '%', false),
+          reEngagements:     mk('Re-engagements',     toWeekly(d14Reeng, wkLabels14), '', false),
+          humanHandoffs:     mk('Human Handoffs',     toWeekly(d14Hh,    wkLabels14), '', false),
+          appointmentsBooked: mk('Appointments Booked', toWeekly(d14Appts, wkLabels14), '', false),
         },
       },
       channelSummary: { calls: 165, sms: 578, emails: 367 },
@@ -509,10 +531,11 @@ function buildOutboundChartData(dateRange) {
     const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i)
     return `${d.getMonth() + 1}/${d.getDate()}`
   })
-  const d30Reeng = Array.from({ length: 30 }, (_, i) => Math.round((D7_REENG[i % 7]    * 1.1 + i * 0.05) * scale))
-  const d30Out   = Array.from({ length: 30 }, (_, i) => Math.round((D7_OUTREACH[i % 7] * 1.1 + i * 0.8)  * scale))
-  const d30Resp  = Array.from({ length: 30 }, (_, i) => Math.round((D7_RESP[i % 7]     * 1.0)             * scale))
-  const d30Appts = Array.from({ length: 30 }, (_, i) => Math.round((D7_APPTS[i % 7]    * 1.1 + i * 0.05) * scale))
+  const d30Crm   = Array.from({ length: 30 }, (_, i) => Math.round((D7_CRM_WORKED[i % 7]  * 1.1 + i * 0.8)  * scale))
+  const d30Resp  = Array.from({ length: 30 }, (_, i) => Math.round((D7_RESP_RATE[i % 7]   * 1.0)             * scale))
+  const d30Reeng = Array.from({ length: 30 }, (_, i) => Math.round((D7_REENG[i % 7]       * 1.1 + i * 0.05) * scale))
+  const d30Hh    = Array.from({ length: 30 }, (_, i) => Math.round((D7_HANDOFFS[i % 7]    * 1.1 + i * 0.05) * scale))
+  const d30Appts = Array.from({ length: 30 }, (_, i) => Math.round((D7_APPTS[i % 7]       * 1.1 + i * 0.05) * scale))
   const wkLabels = isLastMonth ? ['Feb Wk 1','Feb Wk 2','Feb Wk 3','Feb Wk 4']
     : isThisMonth ? ['Mar Wk 1','Mar Wk 2','Mar Wk 3','Mar Wk 4']
     : ['Mar Wk 1','Mar Wk 2','Mar Wk 3','Mar Wk 4','Mar Wk 5']
@@ -521,19 +544,21 @@ function buildOutboundChartData(dateRange) {
     daily: {
       days: d30Labels,
       metrics: {
-        reEngagements:      mk('Re-engagements', d30Reeng, '', false),
-        outreachSent:       mk('Outreach Sent',  d30Out,  '', false),
-        responseRate:       mk('Response Rate',  d30Resp, '%', false),
-        appointmentsBooked: mk('Appts Booked',   d30Appts,'', false),
+        crmLeadsWorked:    mk('CRM Leads Worked',   d30Crm,   '', false),
+        responseRate:      mk('Response Rate',      d30Resp,  '%', false),
+        reEngagements:     mk('Re-engagements',     d30Reeng, '', false),
+        humanHandoffs:     mk('Human Handoffs',     d30Hh,    '', false),
+        appointmentsBooked: mk('Appointments Booked', d30Appts, '', false),
       },
     },
     weekly: {
       days: wkLabels,
       metrics: {
-        reEngagements:      mk('Re-engagements', toWeekly(d30Reeng, wkLabels), '', false),
-        outreachSent:       mk('Outreach Sent',  toWeekly(d30Out,   wkLabels), '', false),
-        responseRate:       mk('Response Rate',  toWeekly(d30Resp,  wkLabels), '%', false),
-        appointmentsBooked: mk('Appts Booked',   toWeekly(d30Appts, wkLabels), '', false),
+        crmLeadsWorked:    mk('CRM Leads Worked',   toWeekly(d30Crm,   wkLabels), '', false),
+        responseRate:      mk('Response Rate',      toWeekly(d30Resp,  wkLabels), '%', false),
+        reEngagements:     mk('Re-engagements',     toWeekly(d30Reeng, wkLabels), '', false),
+        humanHandoffs:     mk('Human Handoffs',     toWeekly(d30Hh,    wkLabels), '', false),
+        appointmentsBooked: mk('Appointments Booked', toWeekly(d30Appts, wkLabels), '', false),
       },
     },
     channelSummary: {
@@ -551,6 +576,10 @@ export const customersData = [
     name: 'Sarah Delgado',
     initials: 'SD',
     avatarColor: 'bg-violet-500',
+    temperature: 'HOT',
+    needsAttention: false,
+    attentionReason: null,
+    notes: 'Competing with AutoNation across town — call before Thursday or she might sign elsewhere.',
     phone: '+1 (555) 234-7890',
     email: 'sdelgado@email.com',
     source: 'Internet Lead',
@@ -621,6 +650,10 @@ export const customersData = [
     name: 'Marcus Webb',
     initials: 'MW',
     avatarColor: 'bg-blue-500',
+    temperature: 'WARM',
+    needsAttention: false,
+    attentionReason: null,
+    notes: null,
     phone: '+1 (555) 891-3344',
     email: 'mwebb@email.com',
     source: 'Phone Lead',
@@ -678,6 +711,10 @@ export const customersData = [
     name: 'Jessica Parker',
     initials: 'JP',
     avatarColor: 'bg-pink-500',
+    temperature: 'HOT',
+    needsAttention: false,
+    attentionReason: null,
+    notes: "Bringing her 2020 Civic for trade-in Saturday. Estimated $8K equity — pull KBB before appointment.",
     phone: '+1 (555) 417-0022',
     email: 'jparker@email.com',
     source: 'Email Lead',
@@ -721,6 +758,10 @@ export const customersData = [
     name: 'David Chen',
     initials: 'DC',
     avatarColor: 'bg-indigo-500',
+    temperature: 'COLD',
+    needsAttention: true,
+    attentionReason: 'No contact in 5 days',
+    notes: null,
     phone: '+1 (555) 302-8891',
     email: 'dchen@email.com',
     source: 'Walk-in',
@@ -761,6 +802,10 @@ export const customersData = [
     name: 'Laura Adams',
     initials: 'LA',
     avatarColor: 'bg-teal-500',
+    temperature: 'COLD',
+    needsAttention: false,
+    attentionReason: null,
+    notes: null,
     phone: '+1 (555) 561-4409',
     email: 'ladams@email.com',
     source: 'Internet Lead',
@@ -801,6 +846,10 @@ export const customersData = [
     name: 'Brian Benstock',
     initials: 'BB',
     avatarColor: 'bg-orange-500',
+    temperature: 'WARM',
+    needsAttention: true,
+    attentionReason: 'Service complaint unresolved — 4 days open',
+    notes: 'AC complaint logged Mar 26 — Tom R. is point person. Do not re-engage via AI until resolved.',
     phone: '+1 (555) 778-2200',
     email: 'bbenstock@email.com',
     source: 'Referral',
@@ -844,6 +893,10 @@ export const customersData = [
     name: 'Maria Garcia',
     initials: 'MG',
     avatarColor: 'bg-rose-500',
+    temperature: 'HOT',
+    needsAttention: false,
+    attentionReason: null,
+    notes: 'OTD paperwork must be ready before 11 AM Friday. Finance team to have 72-mo rate locked.',
     phone: '+1 (555) 920-3311',
     email: 'mgarcia@email.com',
     source: 'Phone Lead',
@@ -889,6 +942,10 @@ export const customersData = [
     name: 'Tommy Lee',
     initials: 'TL',
     avatarColor: 'bg-cyan-500',
+    temperature: 'COLD',
+    needsAttention: true,
+    attentionReason: 'No response in 7 days — RAV4 aging at 38 days on lot',
+    notes: null,
     phone: '+1 (555) 643-7781',
     email: 'tlee@email.com',
     source: 'Internet Lead',

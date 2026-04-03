@@ -10,8 +10,8 @@ import UpcomingAppointments from "@/components/max-2/sales/console-v2/components
 import PriorityFollowUps from "@/components/max-2/sales/console-v2/components/PriorityFollowUps"
 import MetricsBar from "@/components/max-2/sales/console-v2/components/MetricsBar"
 import SpeedToLeadPanel from "@/components/max-2/sales/console-v2/components/SpeedToLeadPanel"
-import ReEngagementPanel from "@/components/max-2/sales/console-v2/components/ReEngagementPanel"
 import ActivityChart from "@/components/max-2/sales/console-v2/components/ActivityChart"
+import HotVehiclesCard from "@/components/max-2/sales/console-v2/components/HotVehiclesCard"
 import ActionItemsPage from "@/components/max-2/sales/console-v2/components/ActionItemsPage"
 import AppointmentsPage from "@/components/max-2/sales/console-v2/components/AppointmentsPage"
 import CustomerListingPage from "@/components/max-2/sales/console-v2/components/CustomerListingPage"
@@ -34,6 +34,7 @@ import {
   campaignsData,
   outboundAgentData,
   lotInventoryData,
+  hotVehiclesData,
 } from "@/components/max-2/sales/console-v2/mockData"
 import { useMax2Ui } from "@/components/max-2/max-2-ui-context"
 
@@ -51,7 +52,7 @@ export function ConsoleV2SalesExperience() {
 
       <main className="transition-all duration-200">
         <div className="px-6 py-5">
-          {activePage === "overview" && <OverviewPage />}
+          {activePage === "overview" && <OverviewPage onNavigate={setActivePage} />}
           {activePage === "campaigns" && (
             <CampaignsPage
               data={campaignsData}
@@ -309,7 +310,7 @@ function AgentToggle({
   )
 }
 
-function OverviewPage() {
+function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [activeAgent, setActiveAgent] = useState("inbound")
   const [dateRange, setDateRange] = useState("Last 30 days")
   const [customStart, setCustomStart] = useState("")
@@ -351,10 +352,10 @@ function OverviewPage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="spyne-title" style={{ color: "var(--spyne-text-primary)" }}>
-              Hello Adam, Welcome back
+              Sales Overview
             </h1>
             <p className="spyne-body-sm mt-0.5" style={{ color: "var(--spyne-text-muted)" }}>
-              Sales overview · {dateRange === "Custom range" && customLabel ? customLabel : dateRange}
+              {dateRange === "Custom range" && customLabel ? customLabel : dateRange}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -366,23 +367,20 @@ function OverviewPage() {
 
       <MetricsBar metrics={metricsBar} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-4">
-        {isOutbound ? (
-          <OutboundCampaignsCard data={outboundCampaignsData} />
-        ) : (
+      {isOutbound ? (
+        <OutboundCampaignsCard data={outboundCampaignsData} onViewCampaign={() => onNavigate?.("campaigns")} />
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-4">
           <LeadsBySourceCard data={leadsBySourceData} />
-        )}
-        {isOutbound ? (
-          <ReEngagementPanel data={outboundOverview.reEngagement} />
-        ) : (
           <SpeedToLeadPanel data={inboundOverview.speedToLead} />
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <AgentCard agent={agentData} />
         <UpcomingAppointments appointments={appointmentsData} />
         <PriorityFollowUps followUps={priorityFollowUpsData} />
+        <HotVehiclesCard data={hotVehiclesData} />
       </div>
 
       <ActivityChart data={activityChart} agentType={activeAgent} />

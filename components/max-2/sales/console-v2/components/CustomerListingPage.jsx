@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from 'react'
-import { Search, Phone, MessageSquare, LayoutList, Columns } from 'lucide-react'
+import React, { useState } from 'react'
+import { Search, Phone, MessageSquare, LayoutList, Columns, AlertTriangle, FileText } from 'lucide-react'
 import { customersData } from '../mockData'
 import CustomerOverviewPanel from './CustomerOverviewPanel'
 
@@ -29,15 +29,23 @@ const SOURCE_STYLE = {
   'Referral':      { bg: 'var(--spyne-border)',          color: 'var(--spyne-text-secondary)', border: 'var(--spyne-border-strong)' },
 }
 
+const TEMP_CONFIG = {
+  HOT:  { color: '#EF4444', label: 'Hot' },
+  WARM: { color: '#F59E0B', label: 'Warm' },
+  COLD: { color: '#94A3B8', label: 'Cold' },
+}
+const TEMP_ORDER = { HOT: 0, WARM: 1, COLD: 2 }
+
 const FILTERS = [
   { id: 'all',             label: 'All' },
   { id: 'appointment_set', label: 'Appointment Set' },
   { id: 'qualified',       label: 'Qualified' },
   { id: 'cooling',         label: 'Cooling' },
   { id: 'in_progress',     label: 'In Progress' },
+  { id: 'needs_attention', label: 'Needs Attention' },
 ]
 
-const COLS = ['Customer', 'Stage', 'Vehicle', 'Last Interaction ↓', 'Salesperson', 'Next Appt', '']
+const COLS = ['Customer', 'Stage', 'Temperature', 'Vehicle', 'Last Interaction ↓', 'Salesperson', 'Next Appt', '']
 
 // Swimlane columns — 5 pipeline stages
 const SWIMLANE_COLS = [
@@ -103,13 +111,24 @@ function FunnelBar({ data }) {
 function SwimlaneCard({ customer, onViewProfile }) {
   const bg = avatarBg(customer.name)
   const src = SOURCE_STYLE[customer.source] || SOURCE_STYLE['Referral']
+  const temp = TEMP_CONFIG[customer.temperature]
 
   return (
     <div
       className="spyne-card-interactive p-3 flex flex-col gap-2"
-      style={{ cursor: 'pointer' }}
+      style={{ cursor: 'pointer', position: 'relative' }}
       onClick={() => onViewProfile && onViewProfile(customer.id)}
     >
+      {/* Needs Attention badge */}
+      {customer.needsAttention && (
+        <div
+          title={customer.attentionReason}
+          style={{ position: 'absolute', top: 8, right: 8 }}
+        >
+          <AlertTriangle size={13} style={{ color: '#F59E0B' }} />
+        </div>
+      )}
+
       {/* Name + avatar */}
       <div className="flex items-center gap-2">
         <div
@@ -118,10 +137,18 @@ function SwimlaneCard({ customer, onViewProfile }) {
         >
           {customer.initials}
         </div>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--spyne-text-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--spyne-text-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: customer.needsAttention ? 16 : 0 }}>
           {customer.name}
         </span>
       </div>
+
+      {/* Temperature dot + label */}
+      {temp && (
+        <div className="flex items-center gap-1.5">
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: temp.color, display: 'inline-block', flexShrink: 0 }} />
+          <span style={{ fontSize: 10, fontWeight: 600, color: temp.color }}>{temp.label}</span>
+        </div>
+      )}
 
       {/* Source badge */}
       <span className="spyne-badge" style={{ fontSize: 10, padding: '1px 6px', background: src.bg, color: src.color, borderColor: src.border, width: 'fit-content' }}>
@@ -137,6 +164,13 @@ function SwimlaneCard({ customer, onViewProfile }) {
       <div style={{ fontSize: 11, color: 'var(--spyne-text-muted)' }}>
         Budget: <span style={{ color: 'var(--spyne-text-primary)', fontWeight: 600 }}>{customer.budget}</span>
       </div>
+
+      {/* Notes preview */}
+      {customer.notes && (
+        <div style={{ fontSize: 10, color: 'var(--spyne-text-muted)', lineHeight: 1.4, borderTop: '1px solid var(--spyne-border)', paddingTop: 6, marginTop: 2 }}>
+          {customer.notes.length > 60 ? customer.notes.slice(0, 60) + '…' : customer.notes}
+        </div>
+      )}
 
       {/* Footer: date + salesperson */}
       <div className="flex items-center justify-between" style={{ marginTop: 2 }}>
@@ -158,10 +192,15 @@ function SwimlaneCard({ customer, onViewProfile }) {
 function SwimlaneView({ data, onViewProfile }) {
   return (
     <div>
-      <FunnelBar data={data} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, alignItems: 'start' }}>
         {SWIMLANE_COLS.map((col) => {
-          const cards = data.filter(c => c.swimlaneStage === col.key)
+          const cards = data
+            .filter(c => c.swimlaneStage === col.key)
+            .sort((a, b) => {
+              const tDiff = (TEMP_ORDER[a.temperature] ?? 3) - (TEMP_ORDER[b.temperature] ?? 3)
+              if (tDiff !== 0) return tDiff
+              return b.lastInteractedTs - a.lastInteractedTs
+            })
           return (
             <div key={col.key}>
               {/* Column header */}
@@ -202,11 +241,13 @@ function SwimlaneView({ data, onViewProfile }) {
 }
 
 export default function CustomerListingPage({ onViewProfile }) {
-  const [search,     setSearch]     = useState('')
-  const [filter,     setFilter]     = useState('all')
-  const [selectedId, setSelectedId] = useState(null)
-  const [tooltipId,  setTooltipId]  = useState(null)
-  const [view,       setView]       = useState('swimlane')
+  const [search,       setSearch]       = useState('')
+  const [filter,       setFilter]       = useState('all')
+  const [selectedId,   setSelectedId]   = useState(null)
+  const [tooltipId,    setTooltipId]    = useState(null)
+  const [view,         setView]         = useState('swimlane')
+  const [expandedNote, setExpandedNote] = useState(null) // customer id with note open
+  const [editedNotes,  setEditedNotes]  = useState({})   // local edits: { [id]: string }
 
   const sorted = [...customersData].sort((a, b) => b.lastInteractedTs - a.lastInteractedTs)
 
@@ -219,9 +260,14 @@ export default function CustomerListingPage({ onViewProfile }) {
     const matchFilter =
       filter === 'all' ||
       (filter === 'cooling' && c.engagementTrend === 'cooling') ||
+      (filter === 'needs_attention' && c.needsAttention) ||
       c.outcome === filter
     return matchSearch && matchFilter
   })
+
+  function getNoteText(c) {
+    return editedNotes[c.id] !== undefined ? editedNotes[c.id] : (c.notes ?? '')
+  }
 
   const selectedCustomer = customersData.find((c) => c.id === selectedId) ?? null
   const visibleCols = COLS
@@ -329,14 +375,17 @@ export default function CustomerListingPage({ onViewProfile }) {
                   {filtered.map((c) => {
                     const ss     = STAGE_STYLE[c.buyingStage] || STAGE_STYLE.RESEARCH
                     const src    = SOURCE_STYLE[c.source]     || SOURCE_STYLE['Referral']
+                    const temp   = TEMP_CONFIG[c.temperature]
                     const active = selectedId === c.id
+                    const hasNote = c.notes || editedNotes[c.id]
+                    const noteOpen = expandedNote === c.id
 
                     return (
+                      <React.Fragment key={c.id}>
                       <tr
-                        key={c.id}
                         onClick={() => setSelectedId(active ? null : c.id)}
                         style={{
-                          borderBottom: '1px solid var(--spyne-border)',
+                          borderBottom: noteOpen ? 'none' : '1px solid var(--spyne-border)',
                           background: active ? 'var(--spyne-brand-subtle)' : 'var(--spyne-surface)',
                           cursor: 'pointer', transition: 'background 150ms',
                         }}
@@ -346,13 +395,20 @@ export default function CustomerListingPage({ onViewProfile }) {
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div
-                              className={`${c.avatarColor} flex items-center justify-center rounded-full text-white font-bold flex-shrink-0`}
-                              style={{ width: 32, height: 32, fontSize: 11 }}
+                              className="flex items-center justify-center rounded-full text-white font-bold flex-shrink-0"
+                              style={{ width: 32, height: 32, fontSize: 11, background: avatarBg(c.name) }}
                             >
                               {c.initials}
                             </div>
                             <div>
-                              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--spyne-text-primary)' }}>{c.name}</p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--spyne-text-primary)' }}>{c.name}</p>
+                                {c.needsAttention && (
+                                  <span title={c.attentionReason} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#FEF3C7', flexShrink: 0 }}>
+                                    <AlertTriangle size={9} style={{ color: '#D97706' }} />
+                                  </span>
+                                )}
+                              </div>
                               <span className="spyne-badge" style={{ marginTop: 2, display: 'inline-flex', fontSize: 10, padding: '1px 6px', background: src.bg, color: src.color, borderColor: src.border }}>
                                 {c.source}
                               </span>
@@ -363,6 +419,14 @@ export default function CustomerListingPage({ onViewProfile }) {
                           <span className="spyne-badge" style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}>
                             {STAGE_LABELS[c.buyingStage]}
                           </span>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          {temp && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: temp.color, display: 'inline-block', flexShrink: 0 }} />
+                              <span style={{ fontSize: 12, fontWeight: 600, color: temp.color }}>{temp.label}</span>
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding: '12px 16px', minWidth: 160 }}>
                           <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--spyne-text-primary)' }}>{c.vehicle}</p>
@@ -414,9 +478,46 @@ export default function CustomerListingPage({ onViewProfile }) {
                             <button className="spyne-btn-ghost" style={{ padding: '4px 8px', height: 28 }} aria-label={`Message ${c.name}`}>
                               <MessageSquare size={12} />
                             </button>
+                            <button
+                              className="spyne-btn-ghost"
+                              style={{ padding: '4px 8px', height: 28, color: hasNote ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)' }}
+                              aria-label={`Notes for ${c.name}`}
+                              onClick={(e) => { e.stopPropagation(); setExpandedNote(noteOpen ? null : c.id) }}
+                            >
+                              <FileText size={12} />
+                            </button>
                           </div>
                         </td>
                       </tr>
+                      {noteOpen && (
+                        <tr key={`${c.id}-note`} style={{ borderBottom: '1px solid var(--spyne-border)', background: active ? 'var(--spyne-brand-subtle)' : 'var(--spyne-bg)' }}>
+                          <td colSpan={visibleCols.length} style={{ padding: '0 16px 12px 58px' }}>
+                            <textarea
+                              value={getNoteText(c)}
+                              onChange={(e) => setEditedNotes(n => ({ ...n, [c.id]: e.target.value }))}
+                              placeholder="Add a note…"
+                              rows={2}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                width: '100%', resize: 'vertical', fontSize: 12, lineHeight: 1.5,
+                                padding: '8px 10px', borderRadius: 'var(--spyne-radius-md)',
+                                border: '1px solid var(--spyne-border)', background: 'var(--spyne-surface)',
+                                color: 'var(--spyne-text-primary)', fontFamily: 'inherit', outline: 'none',
+                              }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+                              <button
+                                className="spyne-btn-primary"
+                                style={{ height: 28, fontSize: 12, padding: '0 12px' }}
+                                onClick={(e) => { e.stopPropagation(); setExpandedNote(null) }}
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     )
                   })}
                   {filtered.length === 0 && (
