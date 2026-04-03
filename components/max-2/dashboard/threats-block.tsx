@@ -5,10 +5,11 @@ import Link from "next/link"
 import { mockThreats } from "@/lib/max-2-mocks"
 import type { Threat } from "@/services/max-2/max-2.types"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { spyneComponentClasses } from "@/lib/design-system/max-2"
-import { Shield, ArrowRight, ChevronRight, ChevronDown } from "lucide-react"
+import { SpyneChip } from "@/components/max-2/spyne-ui"
+import { MaterialSymbol } from "@/components/max-2/material-symbol"
+import { ArrowRight, ChevronRight, ChevronDown } from "lucide-react"
 
 const sorted = [...mockThreats].sort((a, b) => {
   if (a.severity === "critical" && b.severity !== "critical") return -1
@@ -21,49 +22,63 @@ function ThreatCard({ threat }: { threat: Threat }) {
   const isCritical = threat.severity === "critical"
 
   return (
-    <div
-      className={cn(
-        "rounded-lg border transition-all border-spyne-border border-l-[3px]",
-        isCritical
-          ? cn(spyneComponentClasses.rowError, "border-l-spyne-error")
-          : cn("bg-card", "border-l-spyne-error/40"),
-      )}
-    >
+    <div className={cn(spyneComponentClasses.insightRow, "p-0 overflow-hidden")}>
       <button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 p-3 text-left group"
+        className="w-full text-left px-4 py-[14px]"
       >
-        <Badge
-          variant="destructive"
-          className="text-xs font-bold px-2 py-0.5 shrink-0 bg-spyne-error hover:bg-spyne-error/90"
-        >
-          {threat.count}
-        </Badge>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold truncate">{threat.label}</span>
-            {isCritical && (
-              <Badge className="text-[10px] px-1.5 py-0 h-4 bg-spyne-error hover:bg-spyne-error/90 text-white border-0">
-                Critical
-              </Badge>
+        <div className={spyneComponentClasses.insightRowBody}>
+          <div
+            className={cn(
+              spyneComponentClasses.insightRowIconWell,
+              isCritical
+                ? spyneComponentClasses.insightRowIconWellCritical
+                : spyneComponentClasses.insightRowIconWellWarning
             )}
+          >
+            <MaterialSymbol
+              name="shield"
+              size={16}
+              className={cn(
+                isCritical ? "text-spyne-error" : "text-spyne-warning-ink"
+              )}
+            />
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">
-            {threat.description}
-          </p>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
+          <div className={spyneComponentClasses.insightRowMain}>
+            <div className={spyneComponentClasses.insightRowTitleRow}>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <p className={cn(spyneComponentClasses.insightRowTitle, "truncate")}>
+                  {threat.label}
+                </p>
+                {isCritical && (
+                  <SpyneChip variant="outline" tone="error" compact className="shrink-0">
+                    Critical
+                  </SpyneChip>
+                )}
+              </div>
+              <SpyneChip
+                variant="outline"
+                tone="error"
+                compact
+                className="shrink-0 tabular-nums"
+              >
+                {threat.count}
+              </SpyneChip>
+            </div>
+            <p className={spyneComponentClasses.insightRowMeta}>{threat.description}</p>
+          </div>
           {open ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className={spyneComponentClasses.insightRowChevron} />
           ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className={spyneComponentClasses.insightRowChevron} />
           )}
         </div>
       </button>
 
       {open && threat.vehicles && threat.vehicles.length > 0 && (
-        <div className="px-3 pb-3 space-y-1.5">
-          <div className="border-t border-spyne-border pt-2">
+        <div className="px-4 pb-3 space-y-1.5 border-t border-spyne-border">
+          <div className="pt-2">
             {threat.vehicles.map((v) => (
               <div
                 key={v.vin}
@@ -102,20 +117,20 @@ export function ThreatsBlock() {
           <div
             className={cn(
               "flex items-center justify-center h-7 w-7 rounded-lg border border-spyne-border",
-              spyneComponentClasses.rowError,
+              spyneComponentClasses.rowError
             )}
           >
-            <Shield className="h-4 w-4 text-spyne-error" />
+            <MaterialSymbol name="shield" size={16} className="text-spyne-error" />
           </div>
           <div>
             <CardTitle className="text-base">Threats</CardTitle>
             <CardDescription className="text-xs">
-              Immediate downside — loss prevention
+              Immediate downside: loss prevention
             </CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-3">
         {sorted.map((t) => (
           <ThreatCard key={t.id} threat={t} />
         ))}

@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useRouter } from "next/navigation"
 import {
   LotAgeDistributionPanel,
@@ -14,9 +15,20 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import {
+  SpyneSegmentedButton,
+  SpyneSegmentedControl,
+} from "@/components/max-2/spyne-toolbar-controls"
 import { cn } from "@/lib/utils"
 import { ChevronRight } from "lucide-react"
+
+type AnalysisTabId = "ageing-distribution" | "body-type" | "avg-sale-price"
+
+const ANALYSIS_TABS: { id: AnalysisTabId; label: string }[] = [
+  { id: "ageing-distribution", label: "Ageing Distribution" },
+  { id: "body-type", label: "Body Type Distribution" },
+  { id: "avg-sale-price", label: "Average Sale Price" },
+]
 
 // ── Body type mapping ─────────────────────────────────────────────────────
 const MODEL_TO_BODY: Record<string, string> = {
@@ -71,6 +83,8 @@ const costShareBarTrackClass =
 
 export function LotBodyAnalysis() {
   const router = useRouter()
+  const [analysisTab, setAnalysisTab] =
+    React.useState<AnalysisTabId>("ageing-distribution")
 
   const active = mockLotVehicles.filter(
     (v) => v.lotStatus !== "arriving" && v.lotStatus !== "in-recon",
@@ -114,7 +128,7 @@ export function LotBodyAnalysis() {
   const STATUS_CFG: Record<string, { label: string; cls: string }> = {
     good:  { label: "Healthy",  cls: "spyne-row-positive text-spyne-success" },
     watch: { label: "Monitor",  cls: "spyne-row-warn text-spyne-text"     },
-    risk:  { label: "At Risk",  cls: "spyne-row-error text-spyne-error"         },
+    risk:  { label: "At Risk",  cls: "border border-spyne-border bg-spyne-surface text-spyne-error" },
   }
 
   // ── Price bucket data ───────────────────────────────────────────────────
@@ -155,42 +169,38 @@ export function LotBodyAnalysis() {
   const bestPrice  = [...priceBuckets].sort((a, b) => a.avgDays - b.avgDays)[0]
   const worstPrice = [...priceBuckets].sort((a, b) => b.avgDays - a.avgDays)[0]
 
-  /** Left-aligned segmented switcher (intrinsic width, not full-bleed underline tabs) */
-  const inventoryTabListClass =
-    "mb-4 h-auto min-h-9 w-fit max-w-full flex-wrap justify-start gap-0 self-start p-[3px]"
-  const inventoryTabTriggerClass =
-    "flex-none rounded-md border border-transparent bg-transparent px-3 py-2 text-left text-xs font-medium leading-tight text-muted-foreground shadow-none transition-colors hover:text-foreground sm:px-3.5 sm:text-sm data-[state=active]:bg-background data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-sm dark:data-[state=active]:bg-input/30 dark:data-[state=active]:text-foreground"
-
   return (
     <Card className="shadow-none gap-0">
-      <CardHeader className="pb-4">
+      <CardHeader className="pt-0 pb-5">
         <CardTitle>Inventory Analysis</CardTitle>
         <CardDescription>
           Which segments are turning fast, which are aging — and where your money is tied up
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="pt-1">
-        <Tabs defaultValue="ageing-distribution">
-          <TabsList className={inventoryTabListClass}>
-            <TabsTrigger value="ageing-distribution" className={inventoryTabTriggerClass}>
-              Ageing Distribution
-            </TabsTrigger>
-            <TabsTrigger value="body-type" className={inventoryTabTriggerClass}>
-              Body Type Distribution
-            </TabsTrigger>
-            <TabsTrigger value="avg-sale-price" className={inventoryTabTriggerClass}>
-              Average Sale Price
-            </TabsTrigger>
-          </TabsList>
+      <CardContent className="pt-0">
+        <div className="min-w-0 overflow-x-auto pb-5">
+          <SpyneSegmentedControl aria-label="Inventory analysis view" className="w-max max-w-none">
+            {ANALYSIS_TABS.map((t) => (
+              <SpyneSegmentedButton
+                key={t.id}
+                active={analysisTab === t.id}
+                onClick={() => setAnalysisTab(t.id)}
+                className="shrink-0 whitespace-nowrap text-xs sm:text-sm"
+              >
+                {t.label}
+              </SpyneSegmentedButton>
+            ))}
+          </SpyneSegmentedControl>
+        </div>
 
-          <TabsContent value="ageing-distribution" className="mt-0">
-            <LotAgeDistributionPanel />
-          </TabsContent>
+        {analysisTab === "ageing-distribution" ? (
+          <LotAgeDistributionPanel className="pt-0 pb-5" />
+        ) : null}
 
-          {/* ── Body Type Tab ── */}
-          <TabsContent value="body-type">
-            <div className="overflow-x-auto">
+        {analysisTab === "body-type" ? (
+          <>
+            <div className="overflow-x-auto pt-0">
               <div className="min-w-[720px] space-y-3">
                 <div className={cn(LOT_ANALYSIS_ROW_GRID, "px-3")}>
                   {["Body Type", "Cost Share", "Cars", "Avg Days", "Holding Cost", "% of gross", "Status"].map((h) => (
@@ -271,11 +281,12 @@ export function LotBodyAnalysis() {
                 </p>
               </div>
             </div>
-          </TabsContent>
+          </>
+        ) : null}
 
-          {/* ── Average Sale Price Tab ── */}
-          <TabsContent value="avg-sale-price">
-            <div className="overflow-x-auto">
+        {analysisTab === "avg-sale-price" ? (
+          <>
+            <div className="overflow-x-auto pt-0">
               <div className="min-w-[720px] space-y-3">
                 <div className={cn(LOT_ANALYSIS_ROW_GRID, "px-3")}>
                   {["Price Range", "Cost Share", "Cars", "Avg Price", "Holding Cost", "% of gross", "Status"].map((h) => (
@@ -352,8 +363,8 @@ export function LotBodyAnalysis() {
                 </div>
               </div>
             )}
-          </TabsContent>
-        </Tabs>
+          </>
+        ) : null}
       </CardContent>
     </Card>
   )

@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react'
 
 export default function FollowUpSequencesStrip({ data }) {
   return (
-    <div className="spyne-card px-5 py-3.5">
+    <div className="spyne-card px-4 py-3.5">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="spyne-subheading shrink-0">Follow-Up Sequences</div>

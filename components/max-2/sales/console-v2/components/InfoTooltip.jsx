@@ -1,18 +1,21 @@
 "use client"
 
-import { useState } from 'react'
-import { Info } from 'lucide-react'
+import { useState } from "react"
+import { MaterialSymbol } from "@/components/max-2/material-symbol"
 
 export default function InfoTooltip({ text }) {
   const [show, setShow] = useState(false)
   return (
-    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-      <Info
-        size={13}
-        style={{ color: 'var(--spyne-text-muted)', cursor: 'pointer', flexShrink: 0 }}
+    <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+      <button
+        type="button"
+        className="inline-flex cursor-pointer border-0 bg-transparent p-0 text-spyne-text-secondary outline-none ring-spyne-primary focus-visible:ring-2"
+        aria-label="More information"
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
-      />
+      >
+        <MaterialSymbol name="info" size={16} className="text-current" />
+      </button>
       {show && (
         <div
           style={{

@@ -7,21 +7,39 @@ import {
   LineChart, Line, Legend,
 } from 'recharts'
 import { Phone, MessageSquare, Mail, ChevronDown } from 'lucide-react'
+import { spyneComponentClasses } from '@/lib/design-system/max-2'
+import { CHART_SERIES, SPYNE } from '../spyne-palette'
 
 const TOGGLES_INBOUND = [
-  { id: 'leadsInteracted',   label: 'Leads Interacted',          color: '#4F46E5' },
-  { id: 'leadsQualified',    label: 'Leads Qualified',           color: '#0D9488' },
-  { id: 'afterHoursEngaged', label: 'After Hours Leads Engaged', color: '#D97706' },
-  { id: 'humanHandoffs',     label: 'Human Handoffs',            color: '#7C3AED' },
-  { id: 'appointments',      label: 'Appointments Booked',       color: '#10B981' },
+  { id: 'leadsInteracted',   label: 'Leads Interacted',          color: CHART_SERIES[0] },
+  { id: 'leadsQualified',    label: 'Leads Qualified',           color: CHART_SERIES[1] },
+  { id: 'afterHoursEngaged', label: 'After Hours Leads Engaged', color: SPYNE.orange },
+  { id: 'humanHandoffs',     label: 'Human Handoffs',            color: SPYNE.pink },
+  { id: 'appointments',      label: 'Appointments Booked',       color: SPYNE.success },
 ]
 
 const TOGGLES_OUTBOUND = [
-  { id: 'crmLeadsWorked',    label: 'CRM Leads Worked',    color: '#4F46E5' },
-  { id: 'responseRate',      label: 'Response Rate',       color: '#0D9488' },
-  { id: 'reEngagements',     label: 'Re-engagements',      color: '#D97706' },
-  { id: 'humanHandoffs',     label: 'Human Handoffs',      color: '#7C3AED' },
-  { id: 'appointmentsBooked', label: 'Appointments Booked', color: '#10B981' },
+  { id: 'crmLeadsWorked',    label: 'CRM Leads Worked',    color: CHART_SERIES[0] },
+  { id: 'responseRate',      label: 'Response Rate',       color: CHART_SERIES[1] },
+  { id: 'reEngagements',     label: 'Re-engagements',      color: SPYNE.orange },
+  { id: 'humanHandoffs',     label: 'Human Handoffs',      color: SPYNE.pink },
+  { id: 'appointmentsBooked', label: 'Appointments Booked', color: SPYNE.success },
+]
+
+const TOGGLES_SERVICE_INBOUND = [
+  { id: 'leadsInteracted',   label: 'Calls Handled',            color: CHART_SERIES[0] },
+  { id: 'leadsQualified',    label: 'Intents Resolved',         color: CHART_SERIES[1] },
+  { id: 'afterHoursEngaged', label: 'After-Hours Calls',        color: SPYNE.orange },
+  { id: 'humanHandoffs',     label: 'Advisor Handoffs',         color: SPYNE.pink },
+  { id: 'appointments',      label: 'Appts Booked',             color: SPYNE.success },
+]
+
+const TOGGLES_SERVICE_OUTBOUND = [
+  { id: 'crmLeadsWorked',    label: 'Outreach Queue Worked', color: CHART_SERIES[0] },
+  { id: 'responseRate',      label: 'Customer Reply Rate',   color: CHART_SERIES[1] },
+  { id: 'reEngagements',     label: 'Declined Work Revived', color: SPYNE.orange },
+  { id: 'humanHandoffs',     label: 'Advisor Handoffs',      color: SPYNE.pink },
+  { id: 'appointmentsBooked', label: 'Drive Appts Booked',   color: SPYNE.success },
 ]
 
 const CustomTooltip = ({ active, payload, label, unit }) => {
@@ -45,9 +63,16 @@ const CustomTooltip = ({ active, payload, label, unit }) => {
   )
 }
 
-export default function ActivityChart({ data, agentType }) {
+export default function ActivityChart({ data, agentType, department = 'sales' }) {
   const isOutbound = agentType === 'outbound'
-  const TOGGLES = isOutbound ? TOGGLES_OUTBOUND : TOGGLES_INBOUND
+  const isService = department === 'service'
+  const TOGGLES = isOutbound
+    ? isService
+      ? TOGGLES_SERVICE_OUTBOUND
+      : TOGGLES_OUTBOUND
+    : isService
+      ? TOGGLES_SERVICE_INBOUND
+      : TOGGLES_INBOUND
   const [activeMetric, setActiveMetric] = useState(isOutbound ? 'crmLeadsWorked' : 'leadsInteracted')
   const [granularity, setGranularity]   = useState('daily')
   const [chartMode, setChartMode]       = useState('perMetric') // 'perMetric' | 'pipeline'
@@ -83,11 +108,11 @@ export default function ActivityChart({ data, agentType }) {
   })
 
   return (
-    <div className="spyne-card p-5">
+    <div className="spyne-card p-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
-          <div className="spyne-heading">Recent Activity</div>
+          <div className={spyneComponentClasses.cardTitle}>Recent Activity</div>
           {/* Granularity picker */}
           <div className="relative">
             <select

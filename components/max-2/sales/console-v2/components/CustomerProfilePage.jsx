@@ -1,7 +1,10 @@
 "use client"
 
 import { ArrowLeft, Phone, TrendingUp, TrendingDown, Minus, ChevronRight, Calendar, Clock, Sparkles } from 'lucide-react'
-import { customersData } from '../mockData'
+import { max2Classes, spyneSalesLayout } from '@/lib/design-system/max-2'
+import { cn } from '@/lib/utils'
+import { customersData, serviceGuestsData } from '../mockData'
+import { SERVICE_CONSOLE_TAB_CONTENT } from '@/lib/max-2/service-console-tab-content'
 import ConversationThread from './ConversationThread'
 
 const STAGE_LABELS = {
@@ -12,32 +15,25 @@ const STAGE_LABELS = {
   CLOSING:     'Ready to Buy',
 }
 
-const STAGE_STYLE = {
-  CLOSING:     { bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',          border: 'var(--spyne-brand-muted)' },
-  NEGOTIATION: { bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',          border: 'var(--spyne-brand-muted)' },
-  EVALUATION:  { bg: 'var(--spyne-warning-subtle)', color: 'var(--spyne-warning-text)',   border: 'var(--spyne-warning-muted)' },
-  SHOPPING:    { bg: 'var(--spyne-border)',          color: 'var(--spyne-text-secondary)', border: 'var(--spyne-border-strong)' },
-  RESEARCH:    { bg: 'var(--spyne-border)',          color: 'var(--spyne-text-secondary)', border: 'var(--spyne-border-strong)' },
+const STAGE_BADGE_CLASS = {
+  CLOSING:     'spyne-badge-brand',
+  NEGOTIATION: 'spyne-badge-brand',
+  EVALUATION:  'spyne-badge-warning',
+  SHOPPING:    'spyne-badge-neutral',
+  RESEARCH:    'spyne-badge-neutral',
 }
 
-const SOURCE_STYLE = {
-  'Internet Lead': { bg: 'var(--spyne-info-subtle)',    color: 'var(--spyne-info-text)',      border: 'var(--spyne-info-muted)' },
-  'Phone Lead':    { bg: 'var(--spyne-success-subtle)', color: 'var(--spyne-success-text)',   border: 'var(--spyne-success-muted)' },
-  'Email Lead':    { bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',           border: 'var(--spyne-brand-muted)' },
-  'Walk-in':       { bg: 'var(--spyne-warning-subtle)', color: 'var(--spyne-warning-text)',   border: 'var(--spyne-warning-muted)' },
-  'Referral':      { bg: 'var(--spyne-border)',          color: 'var(--spyne-text-secondary)', border: 'var(--spyne-border-strong)' },
+const SOURCE_BADGE_CLASS = {
+  'Internet Lead': 'spyne-badge-info',
+  'Phone Lead':    'spyne-badge-success',
+  'Email Lead':    'spyne-badge-brand',
+  'Walk-in':       'spyne-badge-warning',
+  'Referral':      'spyne-badge-neutral',
 }
 
 function StageBadge({ stage }) {
-  const ss = STAGE_STYLE[stage] || STAGE_STYLE.RESEARCH
-  return (
-    <span
-      className="spyne-badge"
-      style={{ background: ss.bg, color: ss.color, borderColor: ss.border, fontSize: 12, padding: '3px 10px' }}
-    >
-      {STAGE_LABELS[stage]}
-    </span>
-  )
+  const cls = STAGE_BADGE_CLASS[stage] || STAGE_BADGE_CLASS.RESEARCH
+  return <span className={cn('spyne-badge', cls)}>{STAGE_LABELS[stage]}</span>
 }
 
 function EngagementSignal({ trend, detail }) {
@@ -56,41 +52,35 @@ function EngagementSignal({ trend, detail }) {
   )
 }
 
-export default function CustomerProfilePage({ customerId, onBack }) {
-  const customer = customersData.find((c) => c.id === customerId)
+export default function CustomerProfilePage({ customerId, onBack, department = 'sales' }) {
+  const isService = department === 'service'
+  const roster = isService ? serviceGuestsData : customersData
+  const customer = roster.find((c) => c.id === customerId)
 
   if (!customer) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '96px 0' }}>
-        <p style={{ fontSize: 14, color: 'var(--spyne-text-muted)' }}>Customer not found.</p>
+      <div className="flex min-h-[240px] items-center justify-center py-16">
+        <p className="spyne-body text-spyne-text-secondary">
+          {isService ? SERVICE_CONSOLE_TAB_CONTENT.customerProfile.notFound : 'Customer not found.'}
+        </p>
       </div>
     )
   }
 
-  const src = SOURCE_STYLE[customer.source] || SOURCE_STYLE['Referral']
+  const srcCls = SOURCE_BADGE_CLASS[customer.source] || SOURCE_BADGE_CLASS.Referral
 
   return (
-    <div className="spyne-animate-fade-in">
+    <div className={cn('spyne-animate-fade-in', spyneSalesLayout.pageStack)}>
 
       {/* ── Top bar ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 20,
-          paddingBottom: 12,
-          borderBottom: '1px solid var(--spyne-border)',
-        }}
-      >
-        <button onClick={onBack} className="spyne-btn-ghost" style={{ height: 36 }}>
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4">
+        <button type="button" onClick={onBack} className="spyne-btn-ghost h-9">
           <ArrowLeft size={14} />
-          All Customers
+          {isService ? SERVICE_CONSOLE_TAB_CONTENT.customerProfile.backToList : 'All Customers'}
         </button>
         <a
           href={`tel:${customer.phone.replace(/\D/g, '')}`}
-          className="spyne-btn-primary"
-          style={{ height: 36, textDecoration: 'none' }}
+          className="spyne-btn-primary h-9 no-underline"
         >
           <Phone size={13} />
           Call Now
@@ -123,9 +113,7 @@ export default function CustomerProfilePage({ customerId, onBack }) {
                 {customer.initials}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--spyne-text-primary)', letterSpacing: '-0.018em' }}>
-                  {customer.name}
-                </h1>
+                <h1 className={max2Classes.pageTitle}>{customer.name}</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                   <a
                     href={`tel:${customer.phone.replace(/\D/g, '')}`}
@@ -139,10 +127,7 @@ export default function CustomerProfilePage({ customerId, onBack }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                   <StageBadge stage={customer.buyingStage} />
-                  <span
-                    className="spyne-badge"
-                    style={{ background: src.bg, color: src.color, borderColor: src.border }}
-                  >
+                  <span className={cn('spyne-badge', srcCls)}>
                     {customer.source}
                   </span>
                   <span style={{ fontSize: 12, color: 'var(--spyne-text-muted)' }}>{customer.salesperson}</span>

@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils"
 import { RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import {
+  max2Classes,
+  max2Layout,
   spyneComponentClasses,
   spyneLotStatusChipPreset,
   spyneLotStatusOrder,
@@ -48,7 +50,7 @@ const MODEL_TO_BODY: Record<string, string> = {
 
 const fmt$ = (n: number) => `$${n.toLocaleString()}`
 
-type SortField = "daysInStock" | "listPrice" | "totalHoldingCost"
+type SortField = "daysInStock" | "listPrice"
 type SortDir = "asc" | "desc"
 
 const priceRangeDefs: { id: string; label: string }[] = [
@@ -420,7 +422,14 @@ function LotInventoryContent() {
     lotFilters.lotStatuses.length === 1 && lotFilters.lotStatuses[0] === "frontline"
 
   return (
-    <div className="space-y-5">
+    <div className={cn(max2Layout.pageStack)}>
+      <div>
+        <h1 className={max2Classes.pageTitle}>Lot inventory</h1>
+        <p className={max2Classes.pageDescription}>
+          Filter by lot status, age, and pricing. Drill into units that need action.
+        </p>
+      </div>
+
       <Max2InventoryListHeader
         vehicleType={vehicleTypeTab}
         onVehicleTypeChange={setVehicleTypeTab}
@@ -433,6 +442,7 @@ function LotInventoryContent() {
         onApplyFiltersClick={() => setFiltersSheetOpen(true)}
         addVehicleHref="/max-2/studio/add"
         addVehicleLabel="Add Vehicle"
+        showOverflowMenu
         quickChips={
           <>
             <SpyneMetricChip
@@ -734,9 +744,6 @@ function LotInventoryContent() {
                     <span className="inline-flex items-center">Days<SortIcon field="daysInStock" /></span>
                   </th>
                   <th className="pb-3 pr-4 text-xs font-semibold text-muted-foreground">Status</th>
-                  <th className="pb-3 pr-4 text-xs font-semibold text-muted-foreground cursor-pointer select-none text-right whitespace-nowrap" onClick={() => toggleSort("totalHoldingCost")}>
-                    <span className="inline-flex items-center">Holding Cost<SortIcon field="totalHoldingCost" /></span>
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -746,9 +753,16 @@ function LotInventoryContent() {
                   return (
                     <tr
                       key={v.vin}
-                      className={cn("border-b last:border-0 border-spyne-border", isAged && spyneComponentClasses.rowError)}
+                      className="border-b last:border-0 border-spyne-border transition-colors hover:bg-muted/30"
                     >
-                      <td className="py-3.5 pr-4 text-xs text-muted-foreground tabular-nums">{v.stockNumber}</td>
+                      <td
+                        className={cn(
+                          "py-3.5 pr-4 text-xs text-muted-foreground tabular-nums",
+                          isAged && spyneComponentClasses.overviewIssueRowAccent,
+                        )}
+                      >
+                        {v.stockNumber}
+                      </td>
                       <td className="py-3.5 pr-4 font-medium whitespace-nowrap">
                         {v.year} {v.make} {v.model} {v.trim}
                       </td>
@@ -760,18 +774,12 @@ function LotInventoryContent() {
                       <td className="py-3.5 pr-4">
                         <SpyneLotStatusChip status={v.lotStatus} compact />
                       </td>
-                      <td className={cn(
-                        "py-3.5 pr-4 text-right tabular-nums font-semibold",
-                        v.totalHoldingCost >= 2000 ? "text-spyne-error" : v.totalHoldingCost >= 1000 ? "text-spyne-text" : "text-muted-foreground",
-                      )}>
-                        {fmt$(v.totalHoldingCost)}
-                      </td>
                     </tr>
                   )
                 })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
                       No vehicles match your filters.
                     </td>
                   </tr>

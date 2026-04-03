@@ -6,11 +6,12 @@ import {
   LotIssueBuckets,
   LotHoldingCostWidget,
 } from "@/components/max-2/lot-view"
-import { max2Classes } from "@/lib/design-system/max-2"
+import { max2Classes, max2Layout } from "@/lib/design-system/max-2"
+import { cn } from "@/lib/utils"
 
 export default function LotViewPage() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className={cn(max2Layout.pageStack)}>
 
       {/* ── Page Header ── */}
       <div className="flex items-start justify-between gap-4">

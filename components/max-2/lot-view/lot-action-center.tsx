@@ -79,7 +79,7 @@ export function LotActionCenter({
   return (
     <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3.5 border-b bg-muted/30">
+      <div className="flex items-center justify-between px-6 py-3.5 bg-muted/30">
         <div className="flex items-center gap-2.5">
           <span className="h-2 w-2 rounded-full bg-spyne-error animate-pulse" />
           <span className="text-sm font-semibold">Action Required Today</span>

@@ -1,10 +1,12 @@
 "use client"
 
+import * as React from "react"
 import { mockDemandSignals } from "@/lib/max-2-mocks"
 import type { DemandSignal } from "@/services/max-2/max-2.types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { SpyneChipTone } from "@/lib/design-system/max-2"
 import { SpyneChip } from "@/components/max-2/spyne-chip"
+import { SpyneLineTab, SpyneLineTabStrip } from "@/components/max-2/spyne-line-tabs"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -23,18 +25,47 @@ const sourceChip: Record<string, { variant: "outline" | "soft"; tone: SpyneChipT
   "Market Intel": { variant: "outline", tone: "info" },
 }
 
+type DemandTabId = "all" | "not-in-stock" | "high-urgency"
+
+const DEMAND_TABS: { id: DemandTabId; label: string }[] = [
+  { id: "all", label: "All requests" },
+  { id: "not-in-stock", label: "Not in stock" },
+  { id: "high-urgency", label: "High urgency" },
+]
+
+function filterDemandRows(rows: DemandSignal[], tab: DemandTabId): DemandSignal[] {
+  if (tab === "not-in-stock") return rows.filter((s) => !s.inStock)
+  if (tab === "high-urgency") return rows.filter((s) => s.urgency === "high")
+  return rows
+}
+
 export function DemandSignals() {
+  const [demandTab, setDemandTab] = React.useState<DemandTabId>("all")
   const sorted = [...mockDemandSignals].sort((a, b) => b.requestCount - a.requestCount)
+  const visible = filterDemandRows(sorted, demandTab)
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-4">
         <CardTitle>Customer Demand Signals</CardTitle>
         <p className="text-sm text-spyne-text-secondary">
-          What customers are asking for — from calls, inquiries, and market data
+          What customers are asking for from calls, inquiries, and market data
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-2">
+        <SpyneLineTabStrip tight className="min-w-0 overflow-x-auto">
+          {DEMAND_TABS.map((t) => (
+            <SpyneLineTab
+              key={t.id}
+              active={demandTab === t.id}
+              onClick={() => setDemandTab(t.id)}
+              className="shrink-0 whitespace-nowrap"
+            >
+              {t.label}
+            </SpyneLineTab>
+          ))}
+        </SpyneLineTabStrip>
+
         <Table>
           <TableHeader>
             <TableRow>
@@ -47,7 +78,7 @@ export function DemandSignals() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.map((s) => (
+            {visible.map((s) => (
               <TableRow
                 key={s.id}
                 className={cn(!s.inStock && spyneComponentClasses.rowWarn)}

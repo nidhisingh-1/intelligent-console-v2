@@ -1,15 +1,10 @@
 /**
- * Spyne Console design system for Max 2.0 (non-excluded routes).
+ * Spyne Console design system for Max 2.0.
  *
  * CSS variables and `.max2-spyne` rules: `app/globals.css`
  * Human spec: `design-system/max-2.md`
  *
- * Excluded from Spyne Max 2 UI scope (do not wrap with `Max2SpyneScope` / do not require these tokens in feature code):
- * - `/max-2` dashboard
- * - `/max-2/sales` (Console V2 stylesheet)
- * - `/max-2/service`
- * - `/max-2/marketing`
- * - `/max-2/customers`
+ * The Max 2 shell (`/max-2` and below) is wrapped in `Max2SpyneScope` in `app/max-2/layout.tsx`.
  */
 
 /** Raw token strings for tests, charts, or non-Tailwind contexts */
@@ -43,6 +38,98 @@ export const spyneConsoleTokens = {
   chipOrange: "#EA580C",
   chipCrimson: "#B91C1C",
   chipRose: "#E11D48",
+} as const
+
+/**
+ * Dark elevated UI — tooltips and chart popovers on near-black surfaces (`--spyne-dark-elevated-bg`).
+ * Series colors are lighter than light-theme semantics so copy stays readable (WCAG contrast on #1E1E1E).
+ * Use `spyneDarkUiTokens.chartSeries` / CSS `var(--spyne-chart-on-dark-*)` — not `spyneConsoleTokens.success` etc. for text on dark.
+ */
+export const spyneDarkUiTokens = {
+  elevatedBackground: "#1E1E1E",
+  text: "#F3F4F6",
+  textMuted: "#9CA3AF",
+  chartSeries: [
+    "#B794F6",
+    "#7EB6FF",
+    "#6EE7A0",
+    "#22D3EE",
+    "#F472B6",
+    "#FDBA74",
+    "#F87171",
+    "#FCD34D",
+  ],
+} as const
+
+/**
+ * Card shell tokens — Studio / Lot (shadcn `Card` under `.max2-spyne`) and Sales (`.spyne-card`).
+ * Values mirror `:root` in `app/globals.css` (`--spyne-card-*`).
+ * Layout: no hairline between card title block and body — see `design-system/max-2.md` § Cards; `.max2-spyne [data-slot="card-header"]` omits `border-bottom` in `app/globals.css`.
+ */
+export const spyneCardTokens = {
+  radius: "var(--spyne-card-radius)",
+  border: "var(--spyne-card-border)",
+  background: "var(--spyne-card-bg)",
+  shadow: "var(--spyne-card-shadow)",
+  gap: "var(--spyne-card-gap)",
+  paddingX: "var(--spyne-card-padding-x)",
+  headerPaddingTop: "var(--spyne-card-header-padding-top)",
+  headerPaddingBottom: "var(--spyne-card-header-padding-bottom)",
+  contentPaddingBottom: "var(--spyne-card-content-padding-bottom)",
+  titleFontSize: "var(--spyne-card-title-font-size)",
+  titleFontWeight: "var(--spyne-card-title-font-weight)",
+  titleLineHeight: "var(--spyne-card-title-line-height)",
+  titleColor: "var(--spyne-card-title-color)",
+  descriptionFontSize: "var(--spyne-card-description-font-size)",
+  descriptionLineHeight: "var(--spyne-card-description-line-height)",
+  descriptionColor: "var(--spyne-card-description-color)",
+} as const
+
+/**
+ * Toolbar controls — segmented switcher + filter dropdown trigger (Sales overview).
+ * Values mirror `:root` in `app/globals.css` (`--spyne-toolbar-*`).
+ */
+/** Line (underline) tabs — `spyne-line-tab-strip` + `spyne-line-tab*` in `app/globals.css` */
+export const spyneLineTabTokens = {
+  fontSize: "var(--spyne-line-tab-font-size)",
+  fontSizeCompact: "var(--spyne-line-tab-font-size-compact)",
+  indicatorWidth: "var(--spyne-line-tab-indicator-width)",
+  paddingX: "var(--spyne-line-tab-padding-x)",
+  paddingBottom: "var(--spyne-line-tab-padding-bottom)",
+  gap: "var(--spyne-line-tab-gap)",
+  stripColumnGap: "var(--spyne-line-tab-strip-column-gap)",
+  salesStackGap: "var(--spyne-sales-stack-gap)",
+} as const
+
+/** Sales Console V2 vertical rhythm — use with `space-y-6` / strip margin */
+export const spyneSalesLayout = {
+  pageStack: "space-y-6",
+  /** Match `--spyne-sales-stack-gap` (24px) */
+  sectionGap: "gap-6",
+} as const
+
+export const spyneToolbarTokens = {
+  controlHeight: "var(--spyne-toolbar-control-height)",
+  controlRadius: "var(--spyne-toolbar-control-radius)",
+  controlGap: "var(--spyne-toolbar-control-gap)",
+  segmentPaddingX: "var(--spyne-toolbar-segment-padding-x)",
+  segmentedActiveBg: "var(--spyne-primary-soft)",
+  segmentedActiveText: "var(--spyne-primary)",
+  segmentedInactiveText: "var(--spyne-text-secondary)",
+} as const
+
+/**
+ * Checkbox — shadcn `Checkbox` under `.max2-spyne` (see `app/globals.css` `[data-slot="checkbox"]`).
+ * Checked fill uses canonical `--spyne-primary`; check mark is white with rounded stroke caps.
+ */
+export const spyneCheckboxTokens = {
+  size: "var(--spyne-checkbox-size)",
+  radius: "var(--spyne-checkbox-radius)",
+  checkIconSize: "var(--spyne-checkbox-check-size)",
+  checkStroke: "var(--spyne-checkbox-check-stroke)",
+  checkedBackground: "var(--spyne-primary)",
+  checkedBackgroundHover: "var(--spyne-primary-hover)",
+  checkColor: "#FFFFFF",
 } as const
 
 /** Chip visual emphasis (matches Figma-style reference: outline → soft → solid) */
@@ -85,6 +172,8 @@ export const max2Tokens = {
 export const max2Classes = {
   pageTitle: "max2-page-title",
   pageDescription: "max2-page-description",
+  /** Section heading below the page title (14px / 600, Spyne text) */
+  sectionTitle: "text-sm font-semibold text-spyne-text leading-snug tracking-tight",
   /** Applied by `Max2SpyneScope` — do not repeat on children */
   spyneScope: "max2-spyne",
   navActive: "max2-nav-active",
@@ -98,17 +187,96 @@ export const spyneComponentClasses = {
   btnSecondaryMd: "spyne-btn-secondary-md",
   chip: "spyne-chip",
   chipFilter: "spyne-chip-filter",
+  badgeBrand: "spyne-badge-brand",
   badgeSuccess: "spyne-badge-success",
   badgeWarning: "spyne-badge-warning",
   badgeError: "spyne-badge-error",
+  /** Alias of `badgeError` — legacy sales markup */
+  badgeDanger: "spyne-badge-danger",
   badgeInfo: "spyne-badge-info",
   badgeNeutral: "spyne-badge-neutral",
   rowSelected: "spyne-row-selected",
   rowWarn: "spyne-row-warn",
   rowError: "spyne-row-error",
+  /**
+   * Studio / Lot **overview** tables and lists: draw attention without a full-row red wash.
+   * Use instead of `rowError` on `/max-2/studio` and `/max-2/lot-view` overview surfaces.
+   */
+  overviewIssueRowAccent: "border-l-[3px] border-l-spyne-error",
   /** Subtle positive highlight (e.g. fresh trade-in) */
   rowPositive: "spyne-row-positive",
+  /**
+   * Insight rows — light tinted list rows (Studio Insights card, modal “Actions required” links).
+   * CSS: `.spyne-insight-row*` under `.max2-spyne` in `app/globals.css`. No shadows; semantic icon wells only.
+   */
+  insightRow: "spyne-insight-row",
+  /** Dense horizontal row (`<a>`): add with `insightRow` */
+  insightRowCompact: "spyne-insight-row--compact",
+  insightRowBody: "spyne-insight-row__body",
+  insightRowIconWell: "spyne-insight-row__icon-well",
+  insightRowIconWellWarning: "spyne-insight-row__icon-well--warning",
+  insightRowIconWellCritical: "spyne-insight-row__icon-well--critical",
+  /** Positive / upside signals (e.g. dashboard Opportunities rows) */
+  insightRowIconWellSuccess: "spyne-insight-row__icon-well--success",
+  insightRowIconWellCompact: "spyne-insight-row__icon-well--compact",
+  insightRowMain: "spyne-insight-row__main",
+  insightRowTitleRow: "spyne-insight-row__title-row",
+  insightRowTitle: "spyne-insight-row__title",
+  insightRowMeta: "spyne-insight-row__meta",
+  insightRowChevron: "spyne-insight-row__chevron",
   kpiIcon: "spyne-kpi-icon",
+  /** Card section title — same typography as shadcn `CardTitle`; use inside `.spyne-card` or under `.max2-spyne` */
+  cardTitle: "spyne-card-title",
+  /** Segmented switcher (mutually exclusive options) — container */
+  segmented: "spyne-segmented",
+  /** Segment button — use with `aria-pressed` for active state */
+  segmentedBtn: "spyne-segmented__btn",
+  /** Status dot before segment label (offline / muted) */
+  segmentedDot: "spyne-segmented__dot",
+  /** Live / online indicator */
+  segmentedDotLive: "spyne-segmented__dot--live",
+  /** Wrapper for native `<select>` + chevron */
+  filterSelectWrap: "spyne-filter-select-wrap",
+  /** Native select or text field styled as toolbar filter */
+  filterSelect: "spyne-filter-select",
+  /** Absolutely positioned chevron — sibling after `<select>` */
+  filterSelectChevron: "spyne-filter-select__chevron",
+  /** Popover / dropdown anchor — same chrome as filter select (e.g. Lot holding cost widget) */
+  toolbarTrigger: "spyne-toolbar-trigger",
+  /** Line tab row — hairline bottom, `margin-bottom` = sales stack gap (24px) */
+  lineTabStrip: "spyne-line-tab-strip",
+  lineTabStripBleed: "spyne-line-tab-strip--bleed",
+  lineTabStripCompact: "spyne-line-tab-strip--compact",
+  lineTabStripTight: "spyne-line-tab-strip--tight",
+  lineTabStripEmbedded: "spyne-line-tab-strip--embedded",
+  lineTab: "spyne-line-tab",
+  lineTabActive: "spyne-line-tab--active",
+  lineTabBadge: "spyne-line-tab__badge",
+  /** Wrap label + `SpyneLineTabInlineCount` so the count is flush: `All(89)` (no flex gap). */
+  lineTabLabelWithCount: "spyne-line-tab__label-with-count",
+  /** Parenthetical count on line tabs (same ink as label; use instead of `SpyneLineTabBadge`). */
+  lineTabCountInline: "spyne-line-tab__count-inline",
+  /**
+   * ROI / KPI metric strip (Lot View lot KPI row, Sales overview metrics).
+   * White shell, 8px radius, theme border; grid with responsive row/column dividers.
+   */
+  roiKpiStrip: "rounded-lg border bg-card overflow-hidden",
+  roiKpiStripGrid:
+    "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x",
+  /** One metric column — padding matches Lot reference (20px horizontal, 16px vertical). */
+  roiKpiMetricCell: "px-5 py-4",
+  roiKpiMetricLabelRow: "flex items-center gap-1.5 mb-3",
+  roiKpiMetricDot: "h-1.5 w-1.5 rounded-full shrink-0",
+  roiKpiMetricLabel:
+    "text-[10px] font-semibold uppercase tracking-widest text-muted-foreground",
+  roiKpiMetricValue: "text-3xl font-bold tracking-tight mb-1.5 text-foreground",
+  roiKpiMetricSub: "text-[11px] text-muted-foreground leading-snug",
+  roiKpiDispositionBarTrack: "flex h-2 rounded-full overflow-hidden gap-px mb-3",
+  roiKpiDispositionLegend: "space-y-1.5",
+  roiKpiDispositionLegendRow: "flex items-center justify-between",
+  roiKpiDispositionLegendLabel: "text-xs text-muted-foreground",
+  roiKpiDispositionLegendPct:
+    "text-[10px] text-muted-foreground tabular-nums w-[28px] text-right",
   /** Row of action tab cards (grid columns set by consumer, e.g. lg:grid-cols-6) */
   actionTabStrip: "spyne-action-tab-strip",
   actionTab: "spyne-action-tab",
@@ -143,6 +311,10 @@ export const spyneComponentClasses = {
   sidebarRailLinkCollapsed: "spyne-sidebar-rail__link--collapsed",
   sidebarRailLinkExpanded: "spyne-sidebar-rail__link--expanded",
   sidebarRailLabelCollapsed: "spyne-sidebar-rail__label-collapsed",
+  /** Nested nav under Studio / Lot (expanded rail only) */
+  sidebarRailChildGroup: "spyne-sidebar-rail__child-group",
+  sidebarRailChildLink: "spyne-sidebar-rail__child-link",
+  sidebarRailChildLinkActive: "spyne-sidebar-rail__child-link--active",
 } as const
 
 /**
@@ -151,17 +323,19 @@ export const spyneComponentClasses = {
 export const max2Layout = {
   pagePadding: "p-max2-page",
   pageGutterX: "px-max2-page",
-  /** Applied to main column when not on Sales (type ramp) */
+  /** Vertical rhythm between major page blocks (24px, matches `spyneSalesLayout.pageStack`) */
+  pageStack: "space-y-6",
+  /** Legacy: unused when the whole Max 2 tree is Spyne-scoped */
   contentTone: "max2-content",
 } as const
 
-/** Routes that use `Max2SpyneScope` + `.max2-spyne` token overrides */
-export const max2SpyneRoutePrefixes = [
-  "/max-2/studio",
-  "/max-2/lot-view",
-  "/max-2/recon",
-  "/max-2/sourcing",
-] as const
+/**
+ * Prefixes for `isMax2SpyneScopedPath`. The Max 2 layout uses a single root prefix so **every**
+ * tab (Home, Studio, Marketing, Sales, Service, Customers, Lot, …) gets `.max2-spyne` and tokenized UI.
+ *
+ * Tab and sub-tab UI must use Spyne primitives (`SpyneLineTabStrip`, `SpyneSegmentedControl`, `Max2ActionTabStrip`, …), not `@/components/ui/tabs`. See `design-system/max-2.md`.
+ */
+export const max2SpyneRoutePrefixes = ["/max-2"] as const
 
 export function isMax2SpyneScopedPath(pathname: string): boolean {
   return max2SpyneRoutePrefixes.some(

@@ -58,7 +58,7 @@ export function LotVehicleTable() {
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[170px] h-9">
+            <SelectTrigger className="w-[170px]">
               <SelectValue placeholder="Lot Status" />
             </SelectTrigger>
             <SelectContent>
@@ -71,7 +71,7 @@ export function LotVehicleTable() {
             </SelectContent>
           </Select>
           <Select value={pricingFilter} onValueChange={setPricingFilter}>
-            <SelectTrigger className="w-[170px] h-9">
+            <SelectTrigger className="w-[170px]">
               <SelectValue placeholder="Pricing" />
             </SelectTrigger>
             <SelectContent>
@@ -104,9 +104,16 @@ export function LotVehicleTable() {
                 return (
                   <tr
                     key={v.vin}
-                    className={cn("border-b last:border-0 border-spyne-border", isAged && spyneComponentClasses.rowError)}
+                    className="border-b last:border-0 border-spyne-border transition-colors hover:bg-muted/30"
                   >
-                    <td className="py-3.5 pr-4 text-xs text-muted-foreground tabular-nums">{v.stockNumber}</td>
+                    <td
+                      className={cn(
+                        "py-3.5 pr-4 text-xs text-muted-foreground tabular-nums",
+                        isAged && spyneComponentClasses.overviewIssueRowAccent,
+                      )}
+                    >
+                      {v.stockNumber}
+                    </td>
                     <td className="py-3.5 pr-4 font-medium whitespace-nowrap">
                       {v.year} {v.make} {v.model} {v.trim}
                     </td>

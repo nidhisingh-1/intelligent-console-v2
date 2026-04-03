@@ -49,14 +49,22 @@ import {
   UserX,
   XOctagon,
 } from 'lucide-react'
+import { SpyneLineTab, SpyneLineTabStrip } from '@/components/max-2/spyne-line-tabs'
+import { SpyneSegmentedButton, SpyneSegmentedControl } from '@/components/max-2/spyne-toolbar-controls'
+import { SpyneRoiKpiMetricCell, SpyneRoiKpiStrip } from '@/components/max-2/spyne-roi-kpi-strip'
+import { MaterialSymbol } from '@/components/max-2/material-symbol'
+import { max2Classes, spyneComponentClasses, spyneSalesLayout } from '@/lib/design-system/max-2'
+import { cn } from '@/lib/utils'
+import { SPYNE, SPYNE_ELEVATION_PRIMARY } from '../spyne-palette'
+import { SERVICE_CONSOLE_TAB_CONTENT } from '@/lib/max-2/service-console-tab-content'
 
 /* ─── Status / type configs ──────────────────────────────────────── */
 
 const CAMPAIGN_STATUS = {
-  active:    { label: 'Active',    bg: 'var(--spyne-success-subtle)', color: 'var(--spyne-success-text)', border: 'var(--spyne-success-muted)', dot: 'var(--spyne-success)' },
-  paused:    { label: 'Paused',    bg: 'var(--spyne-warning-subtle)', color: 'var(--spyne-warning-text)', border: 'var(--spyne-warning-muted)', dot: 'var(--spyne-warning)' },
-  draft:     { label: 'Draft',     bg: 'var(--spyne-surface-hover)',  color: 'var(--spyne-text-muted)',   border: 'var(--spyne-border)',         dot: 'var(--spyne-border-strong)' },
-  completed: { label: 'Completed', bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand-dark)',   border: 'var(--spyne-brand-muted)',    dot: 'var(--spyne-brand)' },
+  active:    { label: 'Active',    dot: 'var(--spyne-success)',  badge: 'spyne-badge-success' },
+  paused:    { label: 'Paused',    dot: 'var(--spyne-warning)',  badge: 'spyne-badge-warning' },
+  draft:     { label: 'Draft',     dot: 'var(--spyne-border-strong)', badge: 'spyne-badge-neutral' },
+  completed: { label: 'Completed', dot: 'var(--spyne-primary)',  badge: 'spyne-badge-brand' },
 }
 
 const STEP_TYPE_CONFIG = {
@@ -83,28 +91,35 @@ const CHANNEL_ICON = {
 }
 
 const PRIORITY_CONFIG = {
-  critical: { label: 'Critical', bg: 'var(--spyne-danger-subtle)', color: 'var(--spyne-danger-text)', border: 'var(--spyne-danger-muted)' },
-  high:     { label: 'High',     bg: 'var(--spyne-warning-subtle)', color: 'var(--spyne-warning-text)', border: 'var(--spyne-warning-muted)' },
-  medium:   { label: 'Medium',   bg: 'var(--spyne-info-subtle)',    color: 'var(--spyne-info-text)',    border: 'var(--spyne-info-muted)' },
-  low:      { label: 'Low',      bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand-dark)',   border: 'var(--spyne-brand-muted)' },
+  critical: { label: 'Critical', bg: 'var(--spyne-danger-subtle)', color: 'var(--spyne-danger-text)', border: 'var(--spyne-danger-muted)', badge: 'spyne-badge-error' },
+  high:     { label: 'High',     bg: 'var(--spyne-warning-subtle)', color: 'var(--spyne-warning-text)', border: 'var(--spyne-warning-muted)', badge: 'spyne-badge-warning' },
+  medium:   { label: 'Medium',   bg: 'var(--spyne-info-subtle)',    color: 'var(--spyne-info-text)',    border: 'var(--spyne-info-muted)', badge: 'spyne-badge-info' },
+  low:      { label: 'Low',      bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand-dark)',   border: 'var(--spyne-brand-muted)', badge: 'spyne-badge-brand' },
 }
 
 const LEAD_STATUS_CONFIG = {
-  awaiting_contact: { label: 'Awaiting Contact', color: 'var(--spyne-warning-text)', bg: 'var(--spyne-warning-subtle)' },
-  in_sequence:      { label: 'In Sequence',      color: 'var(--spyne-brand-dark)',   bg: 'var(--spyne-brand-subtle)' },
-  responded:        { label: 'Responded',         color: 'var(--spyne-success-text)', bg: 'var(--spyne-success-subtle)' },
-  no_response:      { label: 'No Response',       color: 'var(--spyne-text-muted)',   bg: 'var(--spyne-surface-hover)' },
-  booked:           { label: 'Appt Booked',       color: 'var(--spyne-success-text)', bg: 'var(--spyne-success-subtle)' },
+  awaiting_contact: { label: 'Awaiting Contact', badge: 'spyne-badge-warning' },
+  in_sequence:      { label: 'In Sequence',      badge: 'spyne-badge-brand' },
+  responded:        { label: 'Responded',         badge: 'spyne-badge-success' },
+  no_response:      { label: 'No Response',       badge: 'spyne-badge-neutral' },
+  booked:           { label: 'Appt Booked',       badge: 'spyne-badge-success' },
 }
 
-const SUB_TABS = [
+const SUB_TABS_SALES = [
   { id: 'campaigns', label: 'Campaigns', icon: Target },
   { id: 'pipeline',  label: 'Pipeline',  icon: Sparkles },
 ]
 
+const SUB_TABS_SERVICE = [
+  { id: 'campaigns', label: SERVICE_CONSOLE_TAB_CONTENT.campaigns.subTabCampaigns, icon: Target },
+  { id: 'pipeline',  label: SERVICE_CONSOLE_TAB_CONTENT.campaigns.subTabPipeline, icon: Sparkles },
+]
+
 /* ─── Main Component ─────────────────────────────────────────────── */
 
-export default function CampaignsPage({ data, outboundData, agent, prefillVehicles, onClearPrefill, lotData }) {
+export default function CampaignsPage({ data, outboundData, agent, prefillVehicles, onClearPrefill, lotData, department = 'sales' }) {
+  const isService = department === 'service'
+  const campaignSubTabs = isService ? SUB_TABS_SERVICE : SUB_TABS_SALES
   const [subTab, setSubTab] = useState('campaigns')
   const [view, setView] = useState('list')             // 'list' | 'detail' | 'builder'
   const [selectedId, setSelectedId] = useState(null)
@@ -161,107 +176,110 @@ export default function CampaignsPage({ data, outboundData, agent, prefillVehicl
     return true
   })
 
+  const serviceActiveCount = data.campaigns.filter((c) => c.status === 'active').length
+  const serviceStatusKeys = ['all', 'active', 'paused', 'draft']
+
+  const summaryStripMetrics = Array.isArray(data.summaryStrip) ? data.summaryStrip : null
+
+  const stripMetricStatus = (s) => (s === 'good' || s === 'watch' || s === 'bad' ? s : 'neutral')
+
   return (
-    <div className="space-y-5 spyne-animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="spyne-title" style={{ color: 'var(--spyne-text-primary)' }}>Campaigns</h1>
-          <p className="spyne-body-sm mt-0.5" style={{ color: 'var(--spyne-text-muted)' }}>
-            {data.campaigns.length} campaigns · {data.campaigns.filter((c) => c.status === 'active').length} active
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {agent && <AgentStatusPill agent={agent} />}
-          <button className="spyne-btn-primary" style={{ gap: 6 }} onClick={() => setShowCreateWizard(true)}>
-            <Plus size={14} strokeWidth={2.5} />
-            New Campaign
-          </button>
-        </div>
-      </div>
-
-      {/* Sub-tabs */}
-      <div className="flex items-center gap-1 p-1" style={{ background: 'var(--spyne-surface-hover)', borderRadius: 'var(--spyne-radius-md)', width: 'fit-content' }}>
-        {SUB_TABS.map((tab) => {
-          const active = subTab === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setSubTab(tab.id)}
-              className="flex items-center gap-1.5 px-4 py-1.5 transition-all cursor-pointer"
-              style={{
-                borderRadius: 'var(--spyne-radius-sm)',
-                background: active ? 'var(--spyne-surface)' : 'transparent',
-                color: active ? 'var(--spyne-text-primary)' : 'var(--spyne-text-muted)',
-                fontWeight: active ? 600 : 500,
-                fontSize: 12,
-                boxShadow: active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              }}
-            >
-              <tab.icon size={13} strokeWidth={active ? 2.2 : 1.8} />
-              {tab.label}
-            </button>
-          )
-        })}
-      </div>
-
-      {subTab === 'campaigns' && (
+    <div className={cn('spyne-animate-fade-in', spyneSalesLayout.pageStack)}>
+      {isService ? (
         <>
-          {/* Summary metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {data.summaryMetrics.map((m) => (
-              <div key={m.label} className="spyne-card p-4">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <m.icon size={13} strokeWidth={2} style={{ color: 'var(--spyne-text-muted)' }} />
-                  <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)' }}>{m.label}</span>
-                </div>
-                <span className="spyne-number" style={{ fontSize: 22, color: 'var(--spyne-text-primary)' }}>{m.value}</span>
-              </div>
-            ))}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className={max2Classes.pageTitle}>Campaigns</h1>
+              <p className={`${max2Classes.pageDescription} mt-0.5`}>
+                Service outreach sequences · {serviceActiveCount} active
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="spyne-btn-ghost h-9 gap-2 rounded-lg px-3 text-sm font-medium"
+              >
+                <MaterialSymbol name="filter_list" size={16} />
+                Filter
+              </button>
+              <button type="button" className="spyne-btn-primary h-9" style={{ gap: 6 }} onClick={() => setShowCreateWizard(true)}>
+                <Plus size={14} strokeWidth={2.5} />
+                {SERVICE_CONSOLE_TAB_CONTENT.campaigns.newCampaignButton}
+              </button>
+            </div>
           </div>
 
-          {/* Recommended: Holding Cost Campaign */}
-          {lotData && <HoldingCostRecommendation lotData={lotData} onCreateCampaign={(vehicles) => {
-            setLotVehicles(vehicles)
-            setShowLotCampaign(true)
-          }} />}
+          <SpyneSegmentedControl
+            aria-label={SERVICE_CONSOLE_TAB_CONTENT.campaigns.sectionAriaLabel}
+            className="w-fit"
+          >
+            {campaignSubTabs.map((tab) => {
+              const active = subTab === tab.id
+              return (
+                <SpyneSegmentedButton key={tab.id} active={active} onClick={() => setSubTab(tab.id)}>
+                  <tab.icon size={14} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
+                  {tab.label}
+                </SpyneSegmentedButton>
+              )
+            })}
+          </SpyneSegmentedControl>
 
-          {/* Filters */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 max-w-xs">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--spyne-text-muted)' }} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search campaigns..."
-                className="spyne-input w-full pl-9"
-                style={{ fontSize: 12, height: 34 }}
-              />
-            </div>
-            <div className="flex items-center gap-1.5">
-              {['all', 'active', 'paused', 'draft', 'completed'].map((s) => (
+          {summaryStripMetrics && summaryStripMetrics.length > 0 && (
+            <SpyneRoiKpiStrip gridClassName="lg:grid-cols-5">
+              {summaryStripMetrics.map((m) => (
+                <SpyneRoiKpiMetricCell
+                  key={m.label}
+                  label={m.label}
+                  value={m.value}
+                  sub={m.sub}
+                  status={stripMetricStatus(m.status)}
+                  cellClassName={m.highlight ? 'bg-spyne-primary-soft' : undefined}
+                />
+              ))}
+            </SpyneRoiKpiStrip>
+          )}
+
+          {subTab === 'pipeline' && outboundData ? (
+            <PipelineView data={outboundData} agent={agent} department="service" />
+          ) : null}
+
+          {subTab === 'campaigns' && (
+            <>
+          <div className="flex flex-wrap gap-2">
+            {serviceStatusKeys.map((s) => {
+              const count =
+                s === 'all'
+                  ? data.campaigns.length
+                  : data.campaigns.filter((c) => c.status === s).length
+              const label = s === 'all' ? 'All' : CAMPAIGN_STATUS[s]?.label
+              const active = statusFilter === s
+              return (
                 <button
                   key={s}
+                  type="button"
                   onClick={() => setStatusFilter(s)}
-                  className={`spyne-pill ${statusFilter === s ? 'spyne-pill-active' : ''}`}
-                  style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+                  className={cn(
+                    'inline-flex h-9 items-center rounded-full border px-3.5 text-xs font-semibold transition-colors',
+                    active
+                      ? 'border-spyne-primary bg-spyne-primary text-white'
+                      : 'border-spyne-border bg-spyne-surface text-spyne-text-secondary hover:bg-muted/50',
+                  )}
                 >
-                  {s === 'all' ? 'All' : CAMPAIGN_STATUS[s]?.label}
+                  {label}{' '}
+                  <span className={cn('tabular-nums', active ? 'opacity-90' : 'text-spyne-text-secondary')}>({count})</span>
                 </button>
-              ))}
-            </div>
+              )
+            })}
           </div>
 
-          {/* Campaign cards */}
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {filtered.length === 0 && (
-              <div className="spyne-card px-5 py-12 text-center">
-                <p className="spyne-body-sm" style={{ color: 'var(--spyne-text-muted)' }}>No campaigns match your filters</p>
+              <div className="spyne-card px-4 py-12 text-center lg:col-span-2">
+                <p className="spyne-body-sm text-muted-foreground">No campaigns match your filters</p>
               </div>
             )}
             {filtered.map((campaign) => (
-              <CampaignCard
+              <ServiceCampaignGridCard
                 key={campaign.id}
                 campaign={campaign}
                 onOpen={() => openDetail(campaign.id)}
@@ -269,11 +287,113 @@ export default function CampaignsPage({ data, outboundData, agent, prefillVehicl
               />
             ))}
           </div>
+            </>
+          )}
         </>
-      )}
+      ) : (
+        <>
+          {/* Header */}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className={max2Classes.pageTitle}>Campaigns</h1>
+              <p className={`${max2Classes.pageDescription} mt-0.5`}>
+                {data.campaigns.length} campaigns · {serviceActiveCount} active
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {agent && <AgentStatusPill agent={agent} />}
+              <button type="button" className="spyne-btn-primary" style={{ gap: 6 }} onClick={() => setShowCreateWizard(true)}>
+                <Plus size={14} strokeWidth={2.5} />
+                New Campaign
+              </button>
+            </div>
+          </div>
+
+          {/* Sub-tabs — toolbar segmented control (design system) */}
+          <SpyneSegmentedControl aria-label="Campaigns section" className="w-fit">
+            {campaignSubTabs.map((tab) => {
+              const active = subTab === tab.id
+              return (
+                <SpyneSegmentedButton key={tab.id} active={active} onClick={() => setSubTab(tab.id)}>
+                  <tab.icon size={14} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
+                  {tab.label}
+                </SpyneSegmentedButton>
+              )
+            })}
+          </SpyneSegmentedControl>
+
+          {subTab === 'campaigns' && (
+            <>
+              {/* Summary metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {data.summaryMetrics.map((m) => (
+                  <div key={m.label} className="spyne-card p-4">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <m.icon size={13} strokeWidth={2} style={{ color: 'var(--spyne-text-muted)' }} />
+                      <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)' }}>{m.label}</span>
+                    </div>
+                    <span className="spyne-number" style={{ fontSize: 22, color: 'var(--spyne-text-primary)' }}>{m.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Recommended: Holding Cost Campaign */}
+              {lotData && <HoldingCostRecommendation lotData={lotData} onCreateCampaign={(vehicles) => {
+                setLotVehicles(vehicles)
+                setShowLotCampaign(true)
+              }} />}
+
+              {/* Filters */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="relative flex-1 max-w-xs">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--spyne-text-muted)' }} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={isService ? SERVICE_CONSOLE_TAB_CONTENT.campaigns.searchPlaceholder : 'Search campaigns...'}
+                    className="spyne-input w-full pl-9"
+                    style={{ fontSize: 12, height: 34 }}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {['all', 'active', 'paused', 'draft', 'completed'].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setStatusFilter(s)}
+                      className={`spyne-pill ${statusFilter === s ? 'spyne-pill-active' : ''}`}
+                      style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+                    >
+                      {s === 'all' ? 'All' : CAMPAIGN_STATUS[s]?.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Campaign cards */}
+              <div className="space-y-3">
+                {filtered.length === 0 && (
+                  <div className="spyne-card px-4 py-12 text-center">
+                    <p className="spyne-body-sm" style={{ color: 'var(--spyne-text-muted)' }}>No campaigns match your filters</p>
+                  </div>
+                )}
+                {filtered.map((campaign) => (
+                  <CampaignCard
+                    key={campaign.id}
+                    campaign={campaign}
+                    onOpen={() => openDetail(campaign.id)}
+                    onEditWorkflow={() => openBuilder(campaign.id)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
 
       {subTab === 'pipeline' && outboundData && (
-        <PipelineView data={outboundData} agent={agent} />
+        <PipelineView data={outboundData} agent={agent} department={department} />
+      )}
+        </>
       )}
 
       {/* Create Campaign Wizard Modal */}
@@ -306,6 +426,155 @@ export default function CampaignsPage({ data, outboundData, agent, prefillVehicl
   )
 }
 
+/** Service campaigns list: two-column cards aligned with overview reference, Spyne tokens. */
+function ServiceCampaignGridCard({ campaign, onOpen, onEditWorkflow }) {
+  const st = CAMPAIGN_STATUS[campaign.status] || CAMPAIGN_STATUS.draft
+  const isDraft = campaign.status === 'draft'
+  const audienceTotal = campaign.audienceTotal ?? campaign.leadsEnrolled ?? 0
+  const touched = campaign.touched ?? 0
+  const pct =
+    audienceTotal > 0 ? Math.min(100, Math.round((touched / audienceTotal) * 100)) : 0
+  const metaLine =
+    campaign.subtitleLine ??
+    `${campaign.direction} · ${campaign.channelSummary} · Started ${campaign.startedDisplay}`
+
+  const reachedDisplay =
+    campaign.reached != null ? String(campaign.reached) : touched > 0 ? String(touched) : '—'
+
+  const responseLabel = campaign.captureRateLabel ? 'Capture rate' : 'Response'
+  const responseDisplay =
+    campaign.responseRate != null ? `${campaign.responseRate}%` : '—'
+  const responseClass =
+    campaign.responseRate == null
+      ? 'text-muted-foreground'
+      : campaign.responseRate >= 45
+        ? 'text-spyne-primary'
+        : 'text-spyne-warning'
+
+  const apptsDisplay =
+    campaign.appointmentsBooked != null ? String(campaign.appointmentsBooked) : '—'
+
+  const kpiLabelCls = spyneComponentClasses.roiKpiMetricLabel
+
+  return (
+    <div
+      className={cn(
+        'spyne-card flex h-full min-h-0 flex-col overflow-hidden transition-shadow',
+        'cursor-pointer hover:shadow-md',
+      )}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen()
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="flex min-h-0 flex-1 flex-col p-5">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <h3 className={cn(spyneComponentClasses.cardTitle, 'min-w-0 pr-2 leading-snug')}>
+            {campaign.name}
+          </h3>
+          <span className={cn('spyne-badge shrink-0', st.badge)}>{st.label}</span>
+        </div>
+        <p className="spyne-body-sm mb-4 text-spyne-text-secondary">{metaLine}</p>
+
+        {!isDraft && (
+          <>
+            <p className="spyne-caption mb-2 text-muted-foreground">
+              {touched.toLocaleString()} of {audienceTotal.toLocaleString()} customers touched
+            </p>
+            <div className="mb-6 h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-spyne-primary"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </>
+        )}
+
+        <div className={cn('mb-6 grid grid-cols-3 gap-4', isDraft && 'mt-1')}>
+          <div>
+            <p className={cn(kpiLabelCls, 'mb-1')}>{isDraft ? 'Eligible' : 'Reached'}</p>
+            <p className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
+              {isDraft ? audienceTotal.toLocaleString() : reachedDisplay}
+            </p>
+          </div>
+          <div>
+            <p className={cn(kpiLabelCls, 'mb-1')}>{responseLabel}</p>
+            <p className={cn('text-2xl font-bold tabular-nums tracking-tight', responseClass)}>
+              {responseDisplay}
+            </p>
+          </div>
+          <div>
+            <p className={cn(kpiLabelCls, 'mb-1')}>Appts</p>
+            <p
+              className={cn(
+                'text-2xl font-bold tabular-nums tracking-tight',
+                apptsDisplay === '—' ? 'text-muted-foreground' : 'text-spyne-success',
+              )}
+            >
+              {apptsDisplay}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-auto flex flex-wrap justify-end gap-2 border-t border-spyne-border pt-4">
+          {campaign.status === 'active' && (
+            <button
+              type="button"
+              className="spyne-btn-ghost h-9 gap-2 text-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Pause size={14} strokeWidth={2} />
+              Pause
+            </button>
+          )}
+          {campaign.status === 'paused' && (
+            <button
+              type="button"
+              className="spyne-btn-primary h-9 gap-2 text-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Play size={13} strokeWidth={2} />
+              Resume
+            </button>
+          )}
+          {campaign.status === 'draft' && (
+            <>
+              <button type="button" className="spyne-btn-primary h-9 text-sm" onClick={(e) => e.stopPropagation()}>
+                Launch
+              </button>
+              <button
+                type="button"
+                className="spyne-btn-ghost h-9 text-sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEditWorkflow()
+                }}
+              >
+                Edit
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="spyne-btn-secondary h-9 text-sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpen()
+            }}
+          >
+            View Details
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Campaign Card (list item) ──────────────────────────────────── */
 
 function CampaignCard({ campaign, onOpen, onEditWorkflow }) {
@@ -316,7 +585,7 @@ function CampaignCard({ campaign, onOpen, onEditWorkflow }) {
       className="spyne-card-interactive overflow-hidden"
       onClick={onOpen}
     >
-      <div className="px-5 py-4">
+      <div className="px-4 py-4">
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5 mb-1">
@@ -324,13 +593,10 @@ function CampaignCard({ campaign, onOpen, onEditWorkflow }) {
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{ background: st.dot }}
               />
-              <h3 className="spyne-heading truncate" style={{ color: 'var(--spyne-text-primary)' }}>
+              <h3 className={cn(spyneComponentClasses.cardTitle, 'truncate')}>
                 {campaign.name}
               </h3>
-              <span
-                className="spyne-badge shrink-0"
-                style={{ background: st.bg, color: st.color, borderColor: st.border }}
-              >
+              <span className={cn('spyne-badge shrink-0', st.badge)}>
                 {st.label}
               </span>
             </div>
@@ -447,7 +713,7 @@ function HoldingCostRecommendation({ lotData, onCreateCampaign }) {
       {/* Accent top bar */}
       <div className="h-1" style={{ background: 'linear-gradient(90deg, var(--spyne-warning), var(--spyne-danger))' }} />
 
-      <div className="px-5 py-4">
+      <div className="px-4 py-4">
         <div className="flex items-start gap-4">
           {/* Icon */}
           <div
@@ -473,7 +739,7 @@ function HoldingCostRecommendation({ lotData, onCreateCampaign }) {
               <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)' }}>·</span>
               <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)' }}>Based on lot inventory</span>
             </div>
-            <h3 className="spyne-heading mb-1" style={{ color: 'var(--spyne-text-primary)' }}>
+            <h3 className={cn(spyneComponentClasses.cardTitle, 'mb-1')}>
               Aging Inventory Push — {highCostVehicles.length} Vehicles Need Outbound
             </h3>
             <p className="spyne-body-sm mb-3" style={{ color: 'var(--spyne-text-muted)' }}>
@@ -593,7 +859,7 @@ function CampaignDetail({ campaign, onBack, onEditWorkflow }) {
   return (
     <div className="flex gap-0 spyne-animate-fade-in" style={{ minHeight: 0 }}>
       {/* Main content */}
-      <div className="space-y-5" style={{ flex: 1, minWidth: 0, transition: 'all 250ms ease' }}>
+      <div className="space-y-6" style={{ flex: 1, minWidth: 0, transition: 'all 250ms ease' }}>
         {/* Back + header */}
         <div>
           <div className="flex items-center gap-2 mb-3">
@@ -606,12 +872,9 @@ function CampaignDetail({ campaign, onBack, onEditWorkflow }) {
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="spyne-title" style={{ color: 'var(--spyne-text-primary)', fontSize: 24 }}>{campaign.name}</h1>
+                <h1 className={max2Classes.pageTitle}>{campaign.name}</h1>
                 <button className="spyne-btn-ghost" style={{ padding: 4 }}><Copy size={14} style={{ color: 'var(--spyne-text-muted)' }} /></button>
-                <span
-                  className="spyne-badge flex items-center gap-1.5"
-                  style={{ background: st.bg, color: st.color, borderColor: st.border, padding: '4px 12px', borderRadius: 'var(--spyne-radius-pill)' }}
-                >
+                <span className={cn('spyne-badge flex items-center gap-1.5', st.badge)}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: st.dot, display: 'inline-block' }} />
                   {st.label}
                 </span>
@@ -657,26 +920,13 @@ function CampaignDetail({ campaign, onBack, onEditWorkflow }) {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 border-b" style={{ borderColor: 'var(--spyne-border)' }}>
+        <SpyneLineTabStrip>
           {detailTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className="px-4 py-2.5 border-b-2 transition-colors cursor-pointer"
-              style={{
-                borderColor: activeTab === tab.id ? 'var(--spyne-brand)' : 'transparent',
-                color: activeTab === tab.id ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-                fontWeight: activeTab === tab.id ? 600 : 500,
-                fontSize: 13,
-                background: 'none',
-                border: 'none',
-                borderBottom: `2px solid ${activeTab === tab.id ? 'var(--spyne-brand)' : 'transparent'}`,
-              }}
-            >
+            <SpyneLineTab key={tab.id} active={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}>
               {tab.label}
-            </button>
+            </SpyneLineTab>
           ))}
-        </div>
+        </SpyneLineTabStrip>
 
         {/* Tab content */}
         {activeTab === 'overview' && <DetailOverviewTab campaign={campaign} />}
@@ -702,11 +952,11 @@ function DetailOverviewTab({ campaign }) {
   const [showAllLeads, setShowAllLeads] = useState(false)
 
   const LEAD_STATUS = {
-    active:    { label: 'Active',    color: 'var(--spyne-brand-dark)',   bg: 'var(--spyne-brand-subtle)' },
-    responded: { label: 'Responded', color: 'var(--spyne-success-text)', bg: 'var(--spyne-success-subtle)' },
-    booked:    { label: 'Booked',    color: 'var(--spyne-success-text)', bg: 'var(--spyne-success-subtle)' },
-    completed: { label: 'Completed', color: 'var(--spyne-text-muted)',   bg: 'var(--spyne-surface-hover)' },
-    dropped:   { label: 'Dropped',   color: 'var(--spyne-danger-text)',  bg: 'var(--spyne-danger-subtle)' },
+    active:    { label: 'Active',    badge: 'spyne-badge-brand' },
+    responded: { label: 'Responded', badge: 'spyne-badge-success' },
+    booked:    { label: 'Booked',    badge: 'spyne-badge-success' },
+    completed: { label: 'Completed', badge: 'spyne-badge-neutral' },
+    dropped:   { label: 'Dropped',   badge: 'spyne-badge-error' },
   }
 
   // Compute campaign metrics from data
@@ -756,20 +1006,20 @@ function DetailOverviewTab({ campaign }) {
     return prev.count > 0 ? Math.round((stage.count / prev.count) * 100) : 0
   })
 
-  const FUNNEL_COLORS = ['#4F46E5', '#94A3B8', '#E2E8F0']
+  const FUNNEL_COLORS = [SPYNE.primary, SPYNE.textSecondary, SPYNE.border]
   const FUNNEL_LABELS = ['Customer contact initiated', 'Contacted successfully', 'Appointments scheduled']
 
   return (
     <div className="space-y-6">
       {/* ── Calls & Analytics heading ── */}
       <div>
-        <h2 className="spyne-heading" style={{ color: 'var(--spyne-text-primary)', fontSize: 16, fontWeight: 600 }}>
+        <h2 className={spyneComponentClasses.cardTitle}>
           Calls & Analytics
         </h2>
       </div>
 
       {/* ── Campaign Funnel ── */}
-      <div className="spyne-card p-5">
+      <div className="spyne-card p-4">
         <span className="spyne-subheading mb-5 block" style={{ fontWeight: 600 }}>Campaign Funnel</span>
         <div className="flex items-stretch gap-0" style={{ minHeight: 120 }}>
           {funnelStages.map((stage, i) => {
@@ -812,7 +1062,7 @@ function DetailOverviewTab({ campaign }) {
       </div>
 
       {/* ── Campaign Metrics ── */}
-      <div className="spyne-card p-5">
+      <div className="spyne-card p-4">
         <span className="spyne-subheading mb-4 block" style={{ fontWeight: 600 }}>Campaign Metrics</span>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <MetricCard
@@ -914,7 +1164,7 @@ function DetailOverviewTab({ campaign }) {
         <table className="w-full">
           <thead>
             <tr style={{ background: 'var(--spyne-surface-hover)' }}>
-              <th className="text-left px-5 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>
+              <th className="text-left px-4 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>
                 <div className="flex items-center gap-1">Customer Details <ChevronDown size={12} /></div>
               </th>
               <th className="text-left px-3 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Status</th>
@@ -924,19 +1174,18 @@ function DetailOverviewTab({ campaign }) {
               <th className="text-left px-3 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Duration</th>
               <th className="text-left px-3 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Outcome</th>
               <th className="text-left px-3 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Agent</th>
-              <th className="text-right px-5 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>
+              <th className="text-right px-4 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>
                 <div className="flex items-center gap-1 justify-end">Quality Score <ChevronDown size={12} /></div>
               </th>
             </tr>
           </thead>
           <tbody className="divide-y" style={{ borderColor: 'var(--spyne-border)' }}>
             {visibleLeads.map((lead) => {
-              const ls = LEAD_STATUS[lead.status] || LEAD_STATUS.active
               const outcomeConfig = {
-                connected: { label: 'Connected', color: 'var(--spyne-success-text)', bg: 'var(--spyne-success-subtle)' },
-                voicemail: { label: 'Voicemail', color: 'var(--spyne-warning-text)', bg: 'var(--spyne-warning-subtle)' },
-                no_answer: { label: 'No Answer', color: 'var(--spyne-danger-text)', bg: 'var(--spyne-danger-subtle)' },
-                no_speak:  { label: 'Call Failed', color: 'var(--spyne-danger-text)', bg: 'var(--spyne-danger-subtle)' },
+                connected: { label: 'Connected', badge: 'spyne-badge-success' },
+                voicemail: { label: 'Voicemail', badge: 'spyne-badge-warning' },
+                no_answer: { label: 'No Answer', badge: 'spyne-badge-error' },
+                no_speak:  { label: 'Call Failed', badge: 'spyne-badge-error' },
               }
               const oc = outcomeConfig[lead.callOutcome] || outcomeConfig.no_answer
               return (
@@ -946,7 +1195,7 @@ function DetailOverviewTab({ campaign }) {
                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--spyne-surface-hover)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = ''}
                 >
-                  <td className="px-5 py-3">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
@@ -961,10 +1210,7 @@ function DetailOverviewTab({ campaign }) {
                     </div>
                   </td>
                   <td className="px-3 py-3">
-                    <span
-                      className="spyne-caption px-2 py-0.5 inline-flex items-center gap-1"
-                      style={{ borderRadius: 'var(--spyne-radius-pill)', background: oc.bg, color: oc.color }}
-                    >
+                    <span className={cn('spyne-badge inline-flex items-center gap-1', oc.badge)}>
                       {lead.callOutcome === 'no_speak' || lead.callOutcome === 'no_answer' ? <XCircle size={11} /> : null}
                       {oc.label}
                     </span>
@@ -995,7 +1241,7 @@ function DetailOverviewTab({ campaign }) {
                       <span className="spyne-caption" style={{ color: 'var(--spyne-text-secondary)' }}>Vini AI</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-right">
+                  <td className="px-4 py-3 text-right">
                     <span className="spyne-caption tabular-nums" style={{ color: 'var(--spyne-text-muted)' }}>
                       {lead.callOutcome === 'connected' && lead.callDuration !== '0:00' ? '85%' : '--'}
                     </span>
@@ -1005,7 +1251,7 @@ function DetailOverviewTab({ campaign }) {
             })}
             {visibleLeads.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-8 text-center">
+                <td colSpan={7} className="px-4 py-8 text-center">
                   <span className="spyne-body-sm" style={{ color: 'var(--spyne-text-muted)' }}>No leads found</span>
                 </td>
               </tr>
@@ -1014,7 +1260,7 @@ function DetailOverviewTab({ campaign }) {
         </table>
 
         {/* Pagination / View More */}
-        <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: 'var(--spyne-border)', background: 'var(--spyne-surface)' }}>
+        <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'var(--spyne-border)', background: 'var(--spyne-surface)' }}>
           <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)' }}>
             1-{visibleLeads.length} of {filteredLeads.length}
           </span>
@@ -1047,10 +1293,10 @@ function DetailOverviewTab({ campaign }) {
       {/* ── Campaign Details & Channel Breakdown ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="spyne-card overflow-hidden">
-          <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--spyne-border)' }}>
+          <div className="px-4 py-4">
             <span className="spyne-subheading" style={{ fontWeight: 600 }}>Campaign Details</span>
           </div>
-          <div className="p-5 space-y-4">
+          <div className="p-4 space-y-4">
             <DetailInfoRow icon={Target} label="Type" value={campaign.type} valueColor="var(--spyne-brand)" />
             <DetailInfoRow icon={Zap} label="Trigger" value={campaign.triggerDescription} />
             <DetailInfoRow icon={Calendar} label="Created" value={campaign.createdAt} />
@@ -1077,10 +1323,10 @@ function DetailOverviewTab({ campaign }) {
         </div>
 
         <div className="spyne-card overflow-hidden">
-          <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--spyne-border)' }}>
+          <div className="px-4 py-4">
             <span className="spyne-subheading" style={{ fontWeight: 600 }}>Channel Breakdown</span>
           </div>
-          <div className="p-5 space-y-4">
+          <div className="p-4 space-y-4">
             {campaign.channelBreakdown.map((ch) => {
               const maxSent = Math.max(...campaign.channelBreakdown.map(c => c.sent))
               const barPct = maxSent > 0 ? (ch.sent / maxSent) * 100 : 0
@@ -1191,7 +1437,7 @@ function DetailWorkflowTab({ campaign, onEdit }) {
 
 function WorkflowPreview({ steps }) {
   return (
-    <div className="spyne-card p-6 overflow-x-auto">
+    <div className="spyne-card p-4 overflow-x-auto">
       <div className="flex items-start gap-0 min-w-min">
         {steps.map((step, i) => {
           const cfg = STEP_TYPE_CONFIG[step.type] || STEP_TYPE_CONFIG.action
@@ -1249,11 +1495,11 @@ function WorkflowPreview({ steps }) {
 
 function DetailLeadsTab({ campaign, selectedLead, onSelectLead }) {
   const LEAD_STATUS = {
-    active:    { label: 'Active',    color: 'var(--spyne-brand-dark)',   bg: 'var(--spyne-brand-subtle)' },
-    responded: { label: 'Responded', color: 'var(--spyne-success-text)', bg: 'var(--spyne-success-subtle)' },
-    booked:    { label: 'Booked',    color: 'var(--spyne-success-text)', bg: 'var(--spyne-success-subtle)' },
-    completed: { label: 'Completed', color: 'var(--spyne-text-muted)',   bg: 'var(--spyne-surface-hover)' },
-    dropped:   { label: 'Dropped',   color: 'var(--spyne-danger-text)',  bg: 'var(--spyne-danger-subtle)' },
+    active:    { label: 'Active',    badge: 'spyne-badge-brand' },
+    responded: { label: 'Responded', badge: 'spyne-badge-success' },
+    booked:    { label: 'Booked',    badge: 'spyne-badge-success' },
+    completed: { label: 'Completed', badge: 'spyne-badge-neutral' },
+    dropped:   { label: 'Dropped',   badge: 'spyne-badge-error' },
   }
 
   return (
@@ -1261,12 +1507,12 @@ function DetailLeadsTab({ campaign, selectedLead, onSelectLead }) {
       <table className="w-full">
         <thead>
           <tr style={{ background: 'var(--spyne-surface-hover)' }}>
-            <th className="text-left px-5 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Lead</th>
+            <th className="text-left px-4 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Lead</th>
             <th className="text-left px-3 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Vehicle</th>
             <th className="text-left px-3 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Current Step</th>
             <th className="text-left px-3 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Status</th>
             <th className="text-left px-3 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Last Activity</th>
-            <th className="text-right px-5 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Next Touch</th>
+            <th className="text-right px-4 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Next Touch</th>
           </tr>
         </thead>
         <tbody className="divide-y" style={{ borderColor: 'var(--spyne-border)' }}>
@@ -1284,7 +1530,7 @@ function DetailLeadsTab({ campaign, selectedLead, onSelectLead }) {
                 onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'var(--spyne-surface-hover)' }}
                 onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = '' }}
               >
-                <td className="px-5 py-3">
+                <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
@@ -1310,17 +1556,14 @@ function DetailLeadsTab({ campaign, selectedLead, onSelectLead }) {
                   </span>
                 </td>
                 <td className="px-3 py-3">
-                  <span
-                    className="spyne-caption px-2 py-0.5"
-                    style={{ borderRadius: 'var(--spyne-radius-pill)', background: ls.bg, color: ls.color }}
-                  >
+                  <span className={cn('spyne-badge', ls.badge)}>
                     {ls.label}
                   </span>
                 </td>
                 <td className="px-3 py-3">
                   <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)' }}>{lead.lastActivity}</span>
                 </td>
-                <td className="px-5 py-3 text-right">
+                <td className="px-4 py-3 text-right">
                   <span className="spyne-caption tabular-nums" style={{ color: 'var(--spyne-text-muted)' }}>{lead.nextTouch}</span>
                 </td>
               </tr>
@@ -1389,7 +1632,7 @@ function LeadCallDetailPanel({ lead, campaign, onClose }) {
               <OutcomeIcon size={16} style={{ color: outcome.color }} />
             </div>
             <div>
-              <p className="spyne-heading" style={{ color: 'var(--spyne-text-primary)', fontSize: 14, lineHeight: 1.4 }}>
+              <p className={spyneComponentClasses.cardTitle}>
                 {outcome.label}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
@@ -1465,38 +1708,22 @@ function LeadCallDetailPanel({ lead, campaign, onClose }) {
       </div>
 
       {/* Tabs */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 0,
-          borderBottom: '1px solid var(--spyne-border)',
-          flexShrink: 0,
-          overflowX: 'auto',
-        }}
+      <SpyneLineTabStrip
+        embedded
+        compact
+        className="min-w-0 shrink-0 overflow-x-auto"
       >
         {panelTabs.map((tab) => (
-          <button
+          <SpyneLineTab
             key={tab.id}
+            active={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '10px 12px',
-              fontSize: 12,
-              fontWeight: activeTab === tab.id ? 600 : 500,
-              color: activeTab === tab.id ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-              borderBottom: `2px solid ${activeTab === tab.id ? 'var(--spyne-brand)' : 'transparent'}`,
-              background: 'none',
-              border: 'none',
-              borderBottomWidth: 2,
-              borderBottomStyle: 'solid',
-              borderBottomColor: activeTab === tab.id ? 'var(--spyne-brand)' : 'transparent',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
+            className="shrink-0 whitespace-nowrap"
           >
             {tab.label}
-          </button>
+          </SpyneLineTab>
         ))}
-      </div>
+      </SpyneLineTabStrip>
 
       {/* Tab content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
@@ -1654,9 +1881,9 @@ function PanelTranscriptTab({ lead }) {
 
 function DetailAnalyticsTab({ campaign }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Funnel */}
-      <div className="spyne-card p-5">
+      <div className="spyne-card p-4">
         <span className="spyne-subheading mb-4 block">Campaign Funnel</span>
         <div className="space-y-2">
           {campaign.funnel.map((stage, i) => (
@@ -1690,21 +1917,21 @@ function DetailAnalyticsTab({ campaign }) {
 
       {/* Time-based metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="spyne-card p-5">
+        <div className="spyne-card p-4">
           <span className="spyne-subheading mb-2 block">Avg Response Time</span>
           <span className="spyne-number" style={{ fontSize: 28, color: 'var(--spyne-text-primary)' }}>
             {campaign.analytics.avgResponseTime}
           </span>
           <span className="spyne-caption block mt-1" style={{ color: 'var(--spyne-text-muted)' }}>from first touch</span>
         </div>
-        <div className="spyne-card p-5">
+        <div className="spyne-card p-4">
           <span className="spyne-subheading mb-2 block">Avg Time to Book</span>
           <span className="spyne-number" style={{ fontSize: 28, color: 'var(--spyne-text-primary)' }}>
             {campaign.analytics.avgTimeToBook}
           </span>
           <span className="spyne-caption block mt-1" style={{ color: 'var(--spyne-text-muted)' }}>from enrollment</span>
         </div>
-        <div className="spyne-card p-5">
+        <div className="spyne-card p-4">
           <span className="spyne-subheading mb-2 block">Best Performing Channel</span>
           <span className="spyne-number" style={{ fontSize: 28, color: 'var(--spyne-brand)' }}>
             {campaign.analytics.bestChannel}
@@ -1761,7 +1988,7 @@ function WorkflowBuilder({ campaign, onBack }) {
   const selectedStepData = steps.find((s) => s.id === selectedStep)
 
   return (
-    <div className="space-y-5 spyne-animate-fade-in">
+    <div className={cn('spyne-animate-fade-in', spyneSalesLayout.pageStack)}>
       {/* Header */}
       <div>
         <button onClick={onBack} className="spyne-btn-ghost mb-3" style={{ marginLeft: -10 }}>
@@ -1770,8 +1997,8 @@ function WorkflowBuilder({ campaign, onBack }) {
         </button>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="spyne-title" style={{ color: 'var(--spyne-text-primary)' }}>Workflow Builder</h1>
-            <p className="spyne-body-sm mt-0.5" style={{ color: 'var(--spyne-text-muted)' }}>
+            <h1 className={max2Classes.pageTitle}>Workflow Builder</h1>
+            <p className={`${max2Classes.pageDescription} mt-0.5`}>
               {campaign.name} · {steps.length} steps
             </p>
           </div>
@@ -1783,9 +2010,9 @@ function WorkflowBuilder({ campaign, onBack }) {
       </div>
 
       {/* Builder layout: canvas + config panel */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Canvas — 2/3 */}
-        <div className="xl:col-span-2 spyne-card p-6 overflow-x-auto">
+        <div className="xl:col-span-2 spyne-card p-4 overflow-x-auto">
           <div className="flex flex-col items-center gap-0 min-w-min">
             {steps.map((step, i) => {
               const cfg = STEP_TYPE_CONFIG[step.type] || STEP_TYPE_CONFIG.action
@@ -1797,14 +2024,14 @@ function WorkflowBuilder({ campaign, onBack }) {
                   {/* Step node */}
                   <button
                     onClick={() => setSelectedStep(step.id)}
-                    className="flex items-center gap-3 px-5 py-3 transition-all cursor-pointer"
+                    className="flex items-center gap-3 px-4 py-3 transition-all cursor-pointer"
                     style={{
                       borderRadius: 'var(--spyne-radius-lg)',
                       border: isSelected
                         ? '2px solid var(--spyne-brand)'
                         : '2px solid var(--spyne-border)',
                       background: isSelected ? 'var(--spyne-brand-subtle)' : 'var(--spyne-surface)',
-                      boxShadow: isSelected ? '0 0 0 3px rgba(79, 70, 229, 0.12)' : 'var(--spyne-shadow-sm)',
+                      boxShadow: isSelected ? SPYNE_ELEVATION_PRIMARY : 'var(--spyne-shadow-sm)',
                       minWidth: 280,
                     }}
                   >
@@ -1900,7 +2127,7 @@ function WorkflowBuilder({ campaign, onBack }) {
               totalSteps={steps.length}
             />
           ) : (
-            <div className="spyne-card p-5 text-center">
+            <div className="spyne-card p-4 text-center">
               <div className="py-12">
                 <Settings size={28} style={{ color: 'var(--spyne-border-strong)', margin: '0 auto 12px' }} />
                 <p className="spyne-body-sm" style={{ color: 'var(--spyne-text-muted)' }}>
@@ -1959,9 +2186,9 @@ function StepConfigPanel({ step, onRemove, onMoveUp, onMoveDown, stepIndex, tota
   const Icon = cfg.icon
 
   return (
-    <div className="spyne-card overflow-hidden sticky top-28">
+    <div className="spyne-card overflow-hidden sticky top-[6rem] z-10 lg:top-10">
       {/* Header */}
-      <div className="px-5 py-4 border-b flex items-center gap-3" style={{ borderColor: 'var(--spyne-border)' }}>
+      <div className="px-4 py-4 flex items-center gap-3">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: cfg.bg }}>
           <Icon size={16} strokeWidth={2} style={{ color: cfg.color }} />
         </div>
@@ -1976,7 +2203,7 @@ function StepConfigPanel({ step, onRemove, onMoveUp, onMoveDown, stepIndex, tota
       </div>
 
       {/* Config fields */}
-      <div className="p-5 space-y-4">
+      <div className="p-4 space-y-4">
         <div>
           <label className="spyne-caption font-semibold block mb-1.5" style={{ color: 'var(--spyne-text-secondary)' }}>
             Step Name
@@ -2145,7 +2372,7 @@ function StepConfigPanel({ step, onRemove, onMoveUp, onMoveDown, stepIndex, tota
       </div>
 
       {/* Actions */}
-      <div className="px-5 py-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--spyne-border)' }}>
+      <div className="px-4 py-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--spyne-border)' }}>
         <div className="flex items-center gap-1">
           <button
             className="spyne-btn-ghost"
@@ -2182,7 +2409,8 @@ function StepConfigPanel({ step, onRemove, onMoveUp, onMoveDown, stepIndex, tota
 
 /* ─── Pipeline View (Outbound Agent content) ────────────────────── */
 
-function PipelineView({ data, agent }) {
+function PipelineView({ data, agent, department = 'sales' }) {
+  const isService = department === 'service'
   const [queueFilter, setQueueFilter] = useState('all')
   const [expandedLead, setExpandedLead] = useState(null)
   const { queue, sequences, activity, metrics } = data
@@ -2192,7 +2420,7 @@ function PipelineView({ data, agent }) {
     : queue.filter((l) => l.priority === queueFilter)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Top metrics row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {metrics.map((m) => (
@@ -2201,13 +2429,15 @@ function PipelineView({ data, agent }) {
       </div>
 
       {/* Two-column layout: Queue + Sequences */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Lead Queue — wider */}
         <div className="xl:col-span-3 spyne-card overflow-hidden">
-          <div className="px-5 py-4 border-b flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: 'var(--spyne-border)' }}>
+          <div className="px-4 py-4 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Target size={14} style={{ color: 'var(--spyne-brand)' }} />
-              <span className="spyne-subheading">Lead Queue</span>
+              <span className="spyne-subheading">
+                {isService ? SERVICE_CONSOLE_TAB_CONTENT.campaigns.pipelineQueueHeading : 'Lead Queue'}
+              </span>
               <span
                 className="spyne-caption px-2 py-0.5 font-bold"
                 style={{
@@ -2234,8 +2464,10 @@ function PipelineView({ data, agent }) {
           </div>
           <div className="divide-y" style={{ borderColor: 'var(--spyne-border)' }}>
             {filteredQueue.length === 0 && (
-              <div className="px-5 py-10 text-center">
-                <p className="spyne-body-sm" style={{ color: 'var(--spyne-text-muted)' }}>No leads in this filter</p>
+              <div className="px-4 py-10 text-center">
+                <p className="spyne-body-sm" style={{ color: 'var(--spyne-text-muted)' }}>
+                  {isService ? SERVICE_CONSOLE_TAB_CONTENT.campaigns.pipelineQueueEmpty : 'No leads in this filter'}
+                </p>
               </div>
             )}
             {filteredQueue.map((lead) => (
@@ -2251,9 +2483,11 @@ function PipelineView({ data, agent }) {
 
         {/* Active Sequences — narrower */}
         <div className="xl:col-span-2 spyne-card overflow-hidden">
-          <div className="px-5 py-4 border-b flex items-center gap-2" style={{ borderColor: 'var(--spyne-border)' }}>
+          <div className="px-4 py-4 flex items-center gap-2">
             <RefreshCw size={14} style={{ color: 'var(--spyne-brand)' }} />
-            <span className="spyne-subheading">Active Sequences</span>
+            <span className="spyne-subheading">
+              {isService ? SERVICE_CONSOLE_TAB_CONTENT.campaigns.pipelineSequencesHeading : 'Active Sequences'}
+            </span>
             <span
               className="spyne-caption px-2 py-0.5 font-bold"
               style={{
@@ -2275,7 +2509,7 @@ function PipelineView({ data, agent }) {
 
       {/* Live Activity Feed */}
       <div className="spyne-card overflow-hidden">
-        <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--spyne-border)' }}>
+        <div className="px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap size={14} style={{ color: 'var(--spyne-brand)' }} />
             <span className="spyne-subheading">Live Activity</span>
@@ -2288,7 +2522,7 @@ function PipelineView({ data, agent }) {
             Last 24 hours · {activity.length} actions
           </span>
         </div>
-        <div className="px-5 py-3">
+        <div className="px-4 py-3">
           <div className="space-y-0">
             {activity.map((item, i) => (
               <ActivityRow key={item.id} item={item} isLast={i === activity.length - 1} />
@@ -2374,7 +2608,7 @@ function LeadQueueRow({ lead, expanded, onToggle }) {
     <div>
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors cursor-pointer"
+        className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors cursor-pointer"
         style={{ background: expanded ? 'var(--spyne-surface-hover)' : 'transparent' }}
       >
         <div
@@ -2388,10 +2622,7 @@ function LeadQueueRow({ lead, expanded, onToggle }) {
             <span className="spyne-label font-semibold truncate" style={{ color: 'var(--spyne-text-primary)' }}>
               {lead.name}
             </span>
-            <span
-              className="spyne-caption px-1.5 py-0.5 shrink-0"
-              style={{ borderRadius: 'var(--spyne-radius-sm)', background: pri.bg, color: pri.color, border: `1px solid ${pri.border}` }}
-            >
+            <span className={cn('spyne-badge shrink-0', pri.badge)}>
               {pri.label}
             </span>
           </div>
@@ -2400,10 +2631,7 @@ function LeadQueueRow({ lead, expanded, onToggle }) {
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <span
-            className="spyne-caption px-2 py-0.5"
-            style={{ borderRadius: 'var(--spyne-radius-pill)', background: status.bg, color: status.color }}
-          >
+          <span className={cn('spyne-badge', status.badge)}>
             {status.label}
           </span>
           <div className="flex items-center gap-1">
@@ -2427,7 +2655,7 @@ function LeadQueueRow({ lead, expanded, onToggle }) {
       </button>
       {expanded && (
         <div
-          className="px-5 pb-4 pt-1 ml-14 space-y-2"
+          className="px-4 pb-4 pt-1 ml-14 space-y-2"
           style={{ animation: 'spyne-fade-in 150ms ease both' }}
         >
           <div className="spyne-body-sm" style={{ color: 'var(--spyne-text-secondary)' }}>
@@ -2437,7 +2665,7 @@ function LeadQueueRow({ lead, expanded, onToggle }) {
             <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)' }}>
               Recommended:
             </span>
-            <span className="spyne-badge spyne-badge-brand" style={{ fontSize: 11 }}>
+            <span className="spyne-badge spyne-badge-brand">
               {lead.recommendedAction}
             </span>
             <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)' }}>
@@ -2455,7 +2683,7 @@ function SequenceRow({ sequence }) {
   const status = LEAD_STATUS_CONFIG[sequence.status] || LEAD_STATUS_CONFIG.in_sequence
 
   return (
-    <div className="px-5 py-3.5">
+    <div className="px-4 py-3.5">
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-2 min-w-0">
           <div
@@ -2468,10 +2696,7 @@ function SequenceRow({ sequence }) {
             {sequence.name}
           </span>
         </div>
-        <span
-          className="spyne-caption px-2 py-0.5 shrink-0"
-          style={{ borderRadius: 'var(--spyne-radius-pill)', background: status.bg, color: status.color }}
-        >
+        <span className={cn('spyne-badge shrink-0', status.badge)}>
           {status.label}
         </span>
       </div>
@@ -2629,7 +2854,7 @@ function CreateCampaignWizard({ onClose, onComplete }) {
         {/* Header */}
         <div className="px-6 py-5 flex items-start justify-between" style={{ borderBottom: '1px solid var(--spyne-border)' }}>
           <div>
-            <h2 className="spyne-title" style={{ color: 'var(--spyne-text-primary)' }}>Create Campaign</h2>
+            <h2 className={max2Classes.pageTitle}>Create Campaign</h2>
             <p className="spyne-caption mt-1" style={{ color: 'var(--spyne-text-muted)' }}>
               Step {step + 1} of {WIZARD_STEPS.length} · {WIZARD_STEPS[step]}
             </p>
@@ -2674,7 +2899,7 @@ function CreateCampaignWizard({ onClose, onComplete }) {
                         borderRadius: 'var(--spyne-radius-md)',
                         border: selected ? '2px solid var(--spyne-brand)' : '2px solid var(--spyne-border)',
                         background: selected ? 'var(--spyne-brand-subtle)' : 'var(--spyne-surface)',
-                        boxShadow: selected ? '0 0 0 3px rgba(79,70,229,0.12)' : 'none',
+                        boxShadow: selected ? SPYNE_ELEVATION_PRIMARY : 'none',
                       }}
                     >
                       <div className="flex items-center gap-2.5 mb-1.5">
@@ -2690,7 +2915,7 @@ function CreateCampaignWizard({ onClose, onComplete }) {
           )}
 
           {step === 1 && (
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div>
                 <label className="spyne-caption font-semibold block mb-1.5" style={{ color: 'var(--spyne-text-secondary)' }}>
                   Campaign Name
@@ -2753,7 +2978,7 @@ function CreateCampaignWizard({ onClose, onComplete }) {
           )}
 
           {step === 3 && (
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div>
                 <label className="spyne-caption font-semibold block mb-3" style={{ color: 'var(--spyne-text-secondary)' }}>
                   Outreach Channels
@@ -2881,7 +3106,7 @@ function PreLaunchIntelligenceModal({ campaign, onClose, onLaunch, onOptimize })
         {/* Header */}
         <div className="px-6 py-5 flex items-start justify-between">
           <div>
-            <h2 className="spyne-title" style={{ color: 'var(--spyne-text-primary)' }}>Pre-Launch Intelligence</h2>
+            <h2 className={max2Classes.pageTitle}>Pre-Launch Intelligence</h2>
             <p className="spyne-body-sm mt-1" style={{ color: 'var(--spyne-text-muted)' }}>
               Segment: <strong style={{ color: 'var(--spyne-text-primary)' }}>{segment.label}</strong> · {segment.count} leads
             </p>
@@ -2910,7 +3135,7 @@ function PreLaunchIntelligenceModal({ campaign, onClose, onLaunch, onOptimize })
               >
                 <Users size={18} style={{ color: 'var(--spyne-brand)' }} />
               </div>
-              <span className="spyne-heading" style={{ color: 'var(--spyne-text-primary)' }}>Lead Pool Quality</span>
+              <span className={spyneComponentClasses.cardTitle}>Lead Pool Quality</span>
             </div>
 
             {/* Numbers row */}
@@ -2958,7 +3183,7 @@ function PreLaunchIntelligenceModal({ campaign, onClose, onLaunch, onOptimize })
               >
                 <PhoneCall size={18} style={{ color: 'var(--spyne-success)' }} />
               </div>
-              <span className="spyne-heading" style={{ color: 'var(--spyne-text-primary)' }}>Pickup Confidence Distribution</span>
+              <span className={spyneComponentClasses.cardTitle}>Pickup Confidence Distribution</span>
             </div>
 
             <div className="grid grid-cols-4 gap-3">
@@ -3089,7 +3314,7 @@ function LotCampaignModal({ vehicles, onClose, onLaunch }) {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Megaphone size={18} style={{ color: 'var(--spyne-warning)' }} />
-              <h2 className="spyne-title" style={{ color: 'var(--spyne-text-primary)' }}>Outbound Campaign — Aging Inventory</h2>
+              <h2 className={max2Classes.pageTitle}>Outbound Campaign — Aging Inventory</h2>
             </div>
             <p className="spyne-caption mt-1" style={{ color: 'var(--spyne-text-muted)' }}>
               Step {step + 1} of {steps.length} · {steps[step]}
@@ -3176,7 +3401,7 @@ function LotCampaignModal({ vehicles, onClose, onLaunch }) {
           )}
 
           {step === 1 && (
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div>
                 <label className="spyne-caption font-semibold block mb-1.5" style={{ color: 'var(--spyne-text-secondary)' }}>
                   Campaign Name
@@ -3280,7 +3505,7 @@ function LotCampaignModal({ vehicles, onClose, onLaunch }) {
           )}
 
           {step === 2 && (
-            <div className="space-y-5">
+            <div className="space-y-6">
               {/* Success state */}
               <div className="text-center py-6">
                 <div
@@ -3289,7 +3514,7 @@ function LotCampaignModal({ vehicles, onClose, onLaunch }) {
                 >
                   <Rocket size={28} style={{ color: 'var(--spyne-success)' }} />
                 </div>
-                <h3 className="spyne-title mb-2" style={{ color: 'var(--spyne-text-primary)' }}>Ready to Launch</h3>
+                <h3 className={cn(max2Classes.pageTitle, 'mb-2')}>Ready to Launch</h3>
                 <p className="spyne-body-sm" style={{ color: 'var(--spyne-text-muted)', maxWidth: 400, margin: '0 auto' }}>
                   Campaign will target {totalMatchedLeads} matched leads across {vehicles.length} aging vehicles
                   with ${totalHoldingCost.toLocaleString()} in accumulated holding costs.

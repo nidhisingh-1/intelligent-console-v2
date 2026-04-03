@@ -21,8 +21,10 @@ function VehicleRow({ v, issueBadge }: { v: LotVehicle; issueBadge?: React.React
   const isAged = v.daysInStock >= 45
 
   return (
-    <tr className={cn("border-b last:border-0 border-spyne-border", isAged && spyneComponentClasses.rowError)}>
-      <td className="py-3.5 pr-4 pl-5 text-xs text-muted-foreground tabular-nums">{v.stockNumber}</td>
+    <tr className="border-b last:border-0 border-spyne-border">
+      <td className={cn("py-3.5 pr-4 pl-5 text-xs text-muted-foreground tabular-nums", isAged && spyneComponentClasses.overviewIssueRowAccent)}>
+        {v.stockNumber}
+      </td>
       <td className="py-3.5 pr-4 font-medium whitespace-nowrap">{v.year} {v.make} {v.model} {v.trim}</td>
       <td className="py-3.5 pr-4 text-muted-foreground whitespace-nowrap">{v.color}</td>
       <td className="py-3.5 pr-4 text-right tabular-nums">{fmt$(v.listPrice)}</td>

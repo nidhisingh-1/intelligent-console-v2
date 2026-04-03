@@ -1,357 +1,375 @@
 "use client"
 
 import * as React from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import Image from "next/image"
+import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
-import { spyneComponentClasses } from "@/lib/design-system/max-2"
 import {
-  Search, FileSpreadsheet, Globe, ArrowRight,
-  CheckCircle2, Loader2, FolderOpen, X, Check,
-} from "lucide-react"
+  max2Classes,
+  spyneComponentClasses,
+} from "@/lib/design-system/max-2"
+import { MaterialSymbol } from "@/components/max-2/material-symbol"
+import {
+  SpyneFilterSelectChevron,
+  SpyneFilterSelectWrap,
+  SpyneSegmentedButton,
+  SpyneSegmentedControl,
+} from "@/components/max-2/spyne-toolbar-controls"
+import { SpyneChip } from "@/components/max-2/spyne-ui"
 
-type IntakeMethod = "vin" | "folder" | "csv" | "website"
+const VIN_PLACEHOLDER = "00000000000000000"
 
-const intakeMethods: {
-  id: IntakeMethod
-  name: string
-  description: string
-  icon: React.ComponentType<{ className?: string }>
-  color: string
-  bgColor: string
-  borderColor: string
-}[] = [
+const DEMO_THUMBS: { src: string; alt: string; kind: "3d" | "2d" }[] = [
   {
-    id: "vin",
-    name: "VIN / Stock Number",
-    description: "Add a single vehicle by identifier.",
-    icon: Search,
-    color: "text-spyne-primary",
-    bgColor: "bg-spyne-primary-soft",
-    borderColor: "border-spyne-border",
+    src: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=160&h=112&fit=crop",
+    alt: "Silver sports car",
+    kind: "3d",
   },
   {
-    id: "folder",
-    name: "Folder Upload",
-    description: "Upload a folder of vehicle images.",
-    icon: FolderOpen,
-    color: "text-spyne-success",
-    bgColor: spyneComponentClasses.rowPositive,
-    borderColor: "border-spyne-border",
+    src: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=160&h=112&fit=crop",
+    alt: "Classic red car",
+    kind: "3d",
   },
   {
-    id: "csv",
-    name: "CSV Import",
-    description: "Bulk import via spreadsheet.",
-    icon: FileSpreadsheet,
-    color: "text-spyne-text",
-    bgColor: "bg-muted",
-    borderColor: "border-spyne-border",
+    src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=160&h=112&fit=crop",
+    alt: "Yellow sports car",
+    kind: "3d",
   },
   {
-    id: "website",
-    name: "Import from Website",
-    description: "Scan and import from your site.",
-    icon: Globe,
-    color: "text-spyne-text",
-    bgColor: spyneComponentClasses.rowWarn,
-    borderColor: "border-spyne-border",
+    src: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=160&h=112&fit=crop",
+    alt: "White sedan",
+    kind: "2d",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=160&h=112&fit=crop",
+    alt: "Orange sports car",
+    kind: "2d",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=160&h=112&fit=crop",
+    alt: "Red sports car front",
+    kind: "2d",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=160&h=112&fit=crop",
+    alt: "Blue BMW",
+    kind: "2d",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=160&h=112&fit=crop",
+    alt: "Black BMW",
+    kind: "2d",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=160&h=112&fit=crop",
+    alt: "White SUV",
+    kind: "2d",
   },
 ]
 
-function formatVIN(value: string): string {
+function formatVIN(value: string) {
   return value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, "").slice(0, 17)
 }
 
-function VINEntryFlow() {
-  const [identifier, setIdentifier] = React.useState("")
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [isDone, setIsDone] = React.useState(false)
-  const inputRef = React.useRef<HTMLInputElement>(null)
-
-  React.useEffect(() => { inputRef.current?.focus() }, [])
-
-  const isValid = identifier.length >= 5
-
-  const handleSubmit = () => {
-    if (!isValid) return
-    setIsSubmitting(true)
-    setTimeout(() => { setIsSubmitting(false); setIsDone(true) }, 1500)
-  }
-
-  if (isDone) {
-    return (
-      <div className="text-center py-8 space-y-4">
-        <div className={cn("mx-auto w-12 h-12 rounded-full flex items-center justify-center", spyneComponentClasses.rowPositive)}>
-          <CheckCircle2 className="h-6 w-6 text-spyne-success" />
-        </div>
-        <div>
-          <h3 className="text-base font-semibold">Vehicle Added</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            <span className="font-mono text-foreground text-xs">{identifier}</span> is now in your inventory.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => { setIdentifier(""); setIsDone(false) }}>
-          Add Another
-        </Button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-sm font-medium mb-1.5 block">VIN, Stock Number, or Registration Number</label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            placeholder="e.g. 1HGCG5655WA042761 or STK-1234"
-            value={identifier}
-            onChange={(e) => setIdentifier(formatVIN(e.target.value))}
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            className="pl-9 h-10 font-mono tracking-wider text-sm"
-          />
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          {identifier.length}/17 characters
-        </p>
-      </div>
-      <Button size="sm" disabled={!isValid || isSubmitting} onClick={handleSubmit}>
-        {isSubmitting ? (
-          <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Looking up…</>
-        ) : (
-          <>Add Vehicle<ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>
-        )}
-      </Button>
-    </div>
-  )
-}
-
-function FolderUploadFlow() {
-  const [files, setFiles] = React.useState<string[]>([])
-  const [isDragOver, setIsDragOver] = React.useState(false)
-
-  const handleMockDrop = () => {
-    setFiles(["2021_Ford_F150_XLT/", "2022_Honda_CRV_EXL/", "2020_Toyota_Camry_SE/", "2023_BMW_X3_sDrive30i/"])
-  }
-
-  return (
-    <div className="space-y-3">
-      <div
-        className={cn(
-          "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
-          isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-muted-foreground/35"
-        )}
-        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
-        onDragLeave={() => setIsDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setIsDragOver(false); handleMockDrop() }}
-        onClick={handleMockDrop}
-      >
-        <FolderOpen className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-        <p className="text-sm font-medium">Drop a folder here or click to browse</p>
-        <p className="text-xs text-muted-foreground mt-0.5">Each subfolder = one vehicle</p>
-      </div>
-
-      {files.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">{files.length} vehicle folders detected</p>
-          <div className="divide-y rounded-lg border text-sm">
-            {files.map((f) => (
-              <div key={f} className="flex items-center justify-between px-3 py-2">
-                <span className="font-mono text-xs">{f}</span>
-                <CheckCircle2 className="h-3.5 w-3.5 text-spyne-success" />
-              </div>
-            ))}
-          </div>
-          <Button size="sm">Import {files.length} Vehicles<ArrowRight className="h-3.5 w-3.5 ml-1.5" /></Button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function CSVUploadFlow() {
-  const [fileName, setFileName] = React.useState<string | null>(null)
-  const [rowCount, setRowCount] = React.useState(0)
-  const [isDragOver, setIsDragOver] = React.useState(false)
-
-  const handleMockUpload = () => { setFileName("inventory_march_2026.csv"); setRowCount(47) }
-
-  return (
-    <div className="space-y-3">
-      <div
-        className={cn(
-          "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
-          isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-muted-foreground/35"
-        )}
-        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
-        onDragLeave={() => setIsDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setIsDragOver(false); handleMockUpload() }}
-        onClick={handleMockUpload}
-      >
-        <FileSpreadsheet className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-        <p className="text-sm font-medium">Drop a CSV file here or click to browse</p>
-        <p className="text-xs text-muted-foreground mt-0.5">Supports .csv and .xlsx</p>
-      </div>
-
-      {fileName && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between rounded-lg border px-3 py-2">
-            <div className="flex items-center gap-2 text-sm">
-              <FileSpreadsheet className="h-4 w-4 text-spyne-primary" />
-              <span className="font-medium">{fileName}</span>
-              <span className="text-xs text-muted-foreground">{rowCount} rows</span>
-            </div>
-            <button onClick={() => { setFileName(null); setRowCount(0) }} className="text-muted-foreground hover:text-foreground">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-
-          <div className="rounded-lg border p-3">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Column Mapping</p>
-            <div className="grid grid-cols-2 gap-1.5 text-xs">
-              {[["A", "VIN"], ["B", "Stock #"], ["C", "Year"], ["D", "Make"], ["E", "Model"], ["F", "Trim"], ["G", "Price"], ["H", "Mileage"]].map(
-                ([col, mapped]) => (
-                  <div key={col} className="flex items-center justify-between rounded bg-muted/50 px-2.5 py-1">
-                    <span className="text-muted-foreground">Col {col}</span>
-                    <span className="font-medium">{mapped}</span>
-                  </div>
-                )
-              )}
-            </div>
-          </div>
-
-          <Button size="sm">Import {rowCount} Vehicles<ArrowRight className="h-3.5 w-3.5 ml-1.5" /></Button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function WebsiteImportFlow() {
-  const [url, setUrl] = React.useState("")
-  const [isScanning, setIsScanning] = React.useState(false)
-  const [foundVins, setFoundVins] = React.useState<{ vin: string; vehicle: string; selected: boolean }[]>([])
-
-  const handleScan = () => {
-    if (!url) return
-    setIsScanning(true)
-    setTimeout(() => {
-      setIsScanning(false)
-      setFoundVins([
-        { vin: "1FTEW1EP5MFA00001", vehicle: "2021 Ford F-150 XLT", selected: true },
-        { vin: "4T1B11HK5KU100012", vehicle: "2020 Toyota RAV4 XLE", selected: true },
-        { vin: "WA1LFAFP1EA100011", vehicle: "2022 Audi Q5 Premium", selected: true },
-        { vin: "JM1NDAL75N0100008", vehicle: "2021 Mazda CX-5 Touring", selected: false },
-        { vin: "2T1BURHE5JC100003", vehicle: "2020 Toyota Corolla LE", selected: false },
-      ])
-    }, 2000)
-  }
-
-  const toggleVin = (vin: string) => {
-    setFoundVins((prev) => prev.map((v) => (v.vin === vin ? { ...v, selected: !v.selected } : v)))
-  }
-
-  const selectedCount = foundVins.filter((v) => v.selected).length
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-sm font-medium mb-1.5 block">Dealer Website URL</label>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="https://www.yourdealership.com/inventory"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleScan()}
-              className="pl-9 h-10 text-sm"
-            />
-          </div>
-          <Button size="sm" className="h-10" disabled={!url || isScanning} onClick={handleScan}>
-            {isScanning ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Scanning…</> : "Scan"}
-          </Button>
-        </div>
-      </div>
-
-      {foundVins.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">{foundVins.length} vehicles found</p>
-          <div className="divide-y rounded-lg border text-sm">
-            {foundVins.map((v) => (
-              <label key={v.vin} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={v.selected}
-                  onChange={() => toggleVin(v.vin)}
-                  className="rounded border-spyne-border"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{v.vehicle}</p>
-                  <p className="text-[11px] text-muted-foreground font-mono">{v.vin}</p>
-                </div>
-              </label>
-            ))}
-          </div>
-          <Button size="sm" disabled={selectedCount === 0}>
-            Import {selectedCount} Vehicle{selectedCount !== 1 ? "s" : ""}
-            <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-}
-
 export function AddVehiclePage() {
-  const [selected, setSelected] = React.useState<IntakeMethod | null>(null)
+  const [vin, setVin] = React.useState("")
+  const [vehicleType, setVehicleType] = React.useState<"pre-owned" | "new">("pre-owned")
+  const [skipVin, setSkipVin] = React.useState(false)
+  const [websiteUrl, setWebsiteUrl] = React.useState("")
+  const folderInputRef = React.useRef<HTMLInputElement>(null)
+
+  const canProceed = skipVin || vin.length >= 5
 
   return (
-    <div className="space-y-5">
-      {/* Method selection */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {intakeMethods.map((method) => {
-          const Icon = method.icon
-          const isActive = selected === method.id
-          return (
-            <button
-              key={method.id}
-              onClick={() => setSelected(isActive ? null : method.id)}
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+      <section
+        className={cn(
+          "rounded-lg border border-spyne-border bg-card p-6 shadow-sm sm:p-8",
+          "flex flex-col gap-6"
+        )}
+      >
+        <h2
+          className={cn(
+            "text-center text-xl font-semibold leading-snug tracking-tight text-spyne-primary sm:text-[22px]"
+          )}
+        >
+          Transform your media!
+        </h2>
+
+        <div className="space-y-1.5">
+          <label htmlFor="add-vehicle-enter-by" className="text-sm text-spyne-text-secondary">
+            Enter
+          </label>
+          <SpyneFilterSelectWrap className="w-full max-w-md">
+            <select
+              id="add-vehicle-enter-by"
+              className={cn(spyneComponentClasses.filterSelect, "w-full")}
+              defaultValue="vin"
+            >
+              <option value="vin">Vehicle Identification Number (VIN)</option>
+            </select>
+            <SpyneFilterSelectChevron />
+          </SpyneFilterSelectWrap>
+        </div>
+
+        <div className="space-y-1.5">
+          <div
+            className={cn(
+              "flex overflow-hidden rounded-md border border-spyne-border bg-spyne-surface",
+              "focus-within:border-spyne-primary focus-within:ring-[3px] focus-within:ring-spyne-primary/15"
+            )}
+          >
+            <div
               className={cn(
-                "relative text-left p-4 rounded-lg border-2 transition-all",
-                isActive
-                  ? `${method.bgColor} ${method.borderColor} shadow-sm`
-                  : "bg-spyne-surface border-spyne-border hover:border-spyne-text-secondary"
+                "flex shrink-0 items-center gap-1.5 border-r border-spyne-border bg-muted px-3 py-2.5",
+                "text-sm font-medium text-spyne-text-secondary"
               )}
             >
-              {isActive && (
-                <div className="absolute top-2.5 right-2.5 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                  <Check className="h-3 w-3 text-primary-foreground" />
-                </div>
+              <span>VIN</span>
+              <button
+                type="button"
+                className="inline-flex rounded-sm text-spyne-text-secondary outline-none ring-spyne-primary hover:text-spyne-text focus-visible:ring-2"
+                aria-label="About the VIN"
+                title="A VIN is 17 characters. Letters I, O, and Q are not used."
+              >
+                <MaterialSymbol name="info" size={16} className="text-current" />
+              </button>
+            </div>
+            <input
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={VIN_PLACEHOLDER}
+              disabled={skipVin}
+              value={vin}
+              onChange={(e) => setVin(formatVIN(e.target.value))}
+              className={cn(
+                "min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 text-sm font-mono tracking-wider",
+                "text-spyne-text placeholder:text-muted-foreground",
+                "outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60"
               )}
-              <div className={cn("p-1.5 rounded-md inline-flex mb-2", isActive ? method.bgColor : "bg-muted")}>
-                <Icon className={cn("h-4 w-4", isActive ? method.color : "text-muted-foreground")} />
-              </div>
-              <p className={cn("text-sm font-semibold", isActive ? method.color : "text-foreground")}>
-                {method.name}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{method.description}</p>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Expanded method */}
-      {selected && (
-        <div className="rounded-lg border bg-white p-5">
-          {selected === "vin" && <VINEntryFlow />}
-          {selected === "folder" && <FolderUploadFlow />}
-          {selected === "csv" && <CSVUploadFlow />}
-          {selected === "website" && <WebsiteImportFlow />}
+            />
+          </div>
         </div>
-      )}
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <span className="text-sm text-spyne-text-secondary">Vehicle Type:</span>
+            <SpyneSegmentedControl aria-label="Vehicle type" className="w-fit">
+              <SpyneSegmentedButton
+                type="button"
+                active={vehicleType === "pre-owned"}
+                onClick={() => setVehicleType("pre-owned")}
+              >
+                Pre-owned
+              </SpyneSegmentedButton>
+              <SpyneSegmentedButton
+                type="button"
+                active={vehicleType === "new"}
+                onClick={() => setVehicleType("new")}
+              >
+                New
+              </SpyneSegmentedButton>
+            </SpyneSegmentedControl>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-spyne-text">
+            <Checkbox
+              checked={skipVin}
+              onCheckedChange={(v) => setSkipVin(v === true)}
+              className="size-5 rounded-full border-spyne-border data-[state=checked]:border-spyne-primary data-[state=checked]:bg-spyne-primary"
+            />
+            Continue without VIN
+          </label>
+        </div>
+
+        <button
+          type="button"
+          disabled={!canProceed}
+          className={cn(
+            spyneComponentClasses.btnPrimaryLg,
+            "flex w-full items-center justify-center gap-2 disabled:pointer-events-none"
+          )}
+        >
+          Proceed
+          <MaterialSymbol name="arrow_forward" size={24} />
+        </button>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className={max2Classes.sectionTitle}>Import form</h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+          <div
+            className={cn(
+              "rounded-lg border border-spyne-border bg-card p-4 shadow-sm sm:p-5",
+              "flex flex-col gap-4"
+            )}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <MaterialSymbol name="folder" size={24} className="text-spyne-text" />
+                <span className="text-sm font-semibold text-spyne-text">Folder</span>
+              </div>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-sm font-medium text-spyne-primary hover:underline"
+              >
+                <MaterialSymbol name="article" size={16} className="text-spyne-primary" />
+                Folder structure
+              </button>
+            </div>
+            <input
+              ref={folderInputRef}
+              type="file"
+              className="hidden"
+              multiple
+              // Directory upload (Chromium): non-standard attribute, supported in browsers.
+              {...({ webkitdirectory: "" } as object)}
+            />
+            <button
+              type="button"
+              onClick={() => folderInputRef.current?.click()}
+              className={cn(
+                spyneComponentClasses.btnSecondaryMd,
+                "flex w-full items-center justify-center gap-2 border-spyne-border"
+              )}
+            >
+              <MaterialSymbol name="upload" size={20} />
+              Upload
+            </button>
+            <div className="flex items-end justify-center gap-4 pt-1">
+              <button
+                type="button"
+                disabled
+                aria-label="Google Drive"
+                title="Google Drive (coming soon)"
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-full border border-spyne-border bg-muted/40",
+                  "text-spyne-text-secondary opacity-60"
+                )}
+              >
+                <MaterialSymbol name="add_to_drive" size={20} />
+              </button>
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-[10px] font-medium leading-none text-spyne-text-secondary">
+                  Coming soon
+                </span>
+                <button
+                  type="button"
+                  disabled
+                  aria-label="Dropbox"
+                  title="Dropbox (coming soon)"
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full border border-spyne-border bg-muted/40",
+                    "text-spyne-text-secondary opacity-60"
+                  )}
+                >
+                  <MaterialSymbol name="cloud" size={20} />
+                </button>
+              </div>
+              <button
+                type="button"
+                disabled
+                aria-label="iCloud"
+                title="iCloud (coming soon)"
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-full border border-spyne-border bg-muted/40",
+                  "text-spyne-text-secondary opacity-60"
+                )}
+              >
+                <MaterialSymbol name="cloud_queue" size={20} />
+              </button>
+            </div>
+          </div>
+
+          <div
+            className={cn(
+              "rounded-lg border border-spyne-border bg-card p-4 shadow-sm sm:p-5",
+              "flex flex-col gap-4"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <MaterialSymbol name="public" size={24} className="text-spyne-text" />
+              <span className="text-sm font-semibold text-spyne-text">Website URL</span>
+            </div>
+            <div
+              className={cn(
+                "flex overflow-hidden rounded-md border border-spyne-border bg-spyne-surface",
+                "focus-within:border-spyne-primary focus-within:ring-[3px] focus-within:ring-spyne-primary/15"
+              )}
+            >
+              <span className="flex shrink-0 items-center pl-3 text-spyne-text-secondary">
+                <MaterialSymbol name="search" size={20} />
+              </span>
+              <input
+                type="url"
+                placeholder="Enter your Vehicle Detail Page URL"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                className={cn(
+                  "min-w-0 flex-1 border-0 bg-transparent py-2.5 pr-2 pl-2 text-sm",
+                  "text-spyne-text placeholder:text-muted-foreground outline-none focus:ring-0"
+                )}
+              />
+              <div className="flex shrink-0 items-center p-1.5">
+                <button
+                  type="button"
+                  disabled={!websiteUrl.trim()}
+                  className={cn(
+                    spyneComponentClasses.btnPrimaryMd,
+                    "flex h-9 w-9 items-center justify-center p-0 disabled:pointer-events-none"
+                  )}
+                  aria-label="Import from URL"
+                >
+                  <MaterialSymbol name="arrow_forward" size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-4 pb-2">
+        <p className="text-center text-sm text-spyne-text-secondary">
+          Don&apos;t have a vehicle to upload?{" "}
+          <button type="button" className="font-semibold text-spyne-primary hover:underline">
+            Take a Demo
+          </button>
+        </p>
+        <div className="-mx-1 flex gap-2 overflow-x-auto pb-1 pt-1 [scrollbar-width:thin]">
+          {DEMO_THUMBS.map((thumb) => (
+            <button
+              key={thumb.src}
+              type="button"
+              className={cn(
+                "relative shrink-0 overflow-hidden rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary",
+                thumb.kind === "3d"
+                  ? "ring-2 ring-spyne-primary ring-offset-2 ring-offset-background"
+                  : "border border-spyne-border"
+              )}
+            >
+              <span className="pointer-events-none absolute left-1 top-1 z-[1]">
+                {thumb.kind === "3d" ? (
+                  <SpyneChip variant="soft" tone="primary" compact>
+                    3D Background
+                  </SpyneChip>
+                ) : (
+                  <SpyneChip variant="outline" tone="neutral" compact>
+                    2D Background
+                  </SpyneChip>
+                )}
+              </span>
+              <Image
+                src={thumb.src}
+                alt={thumb.alt}
+                width={112}
+                height={78}
+                className="h-[78px] w-[112px] object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

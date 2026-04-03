@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { spyneComponentClasses } from "@/lib/design-system/max-2"
 import { ChevronDown, DollarSign } from "lucide-react"
 
 const ACTIVE = mockLotVehicles.filter(
@@ -57,18 +58,18 @@ export function LotHoldingCostWidget() {
     <Popover>
       <PopoverTrigger asChild>
         <button
+          type="button"
           className={cn(
-            "group flex flex-col items-end rounded-lg border bg-card px-4 py-2",
-            "hover:bg-muted/40 transition-colors",
-            "data-[state=open]:bg-muted/40 data-[state=open]:border-primary/30",
+            spyneComponentClasses.toolbarTrigger,
+            "group min-w-[min(100%,280px)] sm:min-w-0",
           )}
         >
           <div className="flex items-center gap-1.5">
-            <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <DollarSign className="h-3.5 w-3.5 text-spyne-text-secondary" />
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-spyne-text-secondary">
               Holding Cost
             </span>
-            <ChevronDown className="h-3 w-3 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform duration-150" />
+            <ChevronDown className="h-3 w-3 text-spyne-text-secondary transition-transform duration-150 group-data-[state=open]:rotate-180" />
           </div>
           <p className="text-base font-bold tracking-tight text-spyne-error tabular-nums mt-0.5">
             {fmt2(dailyRate)}
@@ -84,7 +85,7 @@ export function LotHoldingCostWidget() {
         className="w-[520px] p-0 rounded-lg overflow-hidden border"
       >
         {/* Header */}
-        <div className="px-5 py-3.5 border-b bg-muted/20">
+        <div className="px-5 py-3.5 bg-muted/20">
           <p className="text-sm font-semibold">Holding Cost Calculator</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             5-step formula used by every US used car manager
@@ -142,7 +143,7 @@ export function LotHoldingCostWidget() {
         </div>
 
         {/* Result */}
-        <div className="px-5 py-3.5 spyne-row-error border-t border-spyne-border flex items-center justify-between">
+        <div className="px-5 py-3.5 bg-muted/30 border-t border-spyne-border flex items-center justify-between">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-spyne-error">
             Daily holding cost / car
           </p>

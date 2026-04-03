@@ -28,7 +28,7 @@ export function PainPoints() {
       <CardHeader>
         <CardTitle>Service Pain Points</CardTitle>
         <CardDescription>
-          What your customers are saying — from Vini service conversations
+          What your customers are saying from Vini service conversations
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

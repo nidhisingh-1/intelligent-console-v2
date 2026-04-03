@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { spyneComponentClasses } from "@/lib/design-system/max-2"
+import { SpyneLineTab, SpyneLineTabInlineCount, SpyneLineTabStrip } from "@/components/max-2/spyne-line-tabs"
 import { MaterialSymbol } from "@/components/max-2/material-symbol"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -20,7 +21,9 @@ export interface Max2InventoryListHeaderProps {
   vehicleType: InventoryVehicleType
   onVehicleTypeChange: (t: InventoryVehicleType) => void
   counts: { all: number; new: number; used: number }
-  /** Defaults to a VAuto-style line with current date/time */
+  /** When true, shows last-sync line on the right of the tab row. */
+  showSyncStatus?: boolean
+  /** Overrides default VAuto-style sync line when `showSyncStatus` is true. */
   syncLabel?: string
   searchPlaceholder?: string
   /**
@@ -34,7 +37,12 @@ export interface Max2InventoryListHeaderProps {
   onApplyFiltersClick?: () => void
   addVehicleHref?: string
   addVehicleLabel?: string
+  /** Outlined link styled like external navigation (e.g. sold inventory). */
+  soldInventoryHref?: string
+  soldInventoryLabel?: string
   quickChips?: React.ReactNode
+  /** When true, shows the ⋮ menu with Refresh / Export and `moreMenuExtras`. */
+  showOverflowMenu?: boolean
   /** Extra items in the overflow menu (Export, etc.) */
   moreMenuExtras?: React.ReactNode
 }
@@ -53,13 +61,14 @@ function defaultSyncLabel() {
 const TAB_DEFS: { id: InventoryVehicleType; label: string }[] = [
   { id: "all", label: "All" },
   { id: "new", label: "New" },
-  { id: "used", label: "Pre-owned" },
+  { id: "used", label: "Pre-Owned" },
 ]
 
 export function Max2InventoryListHeader({
   vehicleType,
   onVehicleTypeChange,
   counts,
+  showSyncStatus = false,
   syncLabel,
   searchPlaceholder = "Search",
   searchHintRotation,
@@ -68,8 +77,11 @@ export function Max2InventoryListHeader({
   viewInput,
   onApplyFiltersClick,
   addVehicleHref,
-  addVehicleLabel = "Add Vehicle",
+  addVehicleLabel = "Add vehicle(s)",
+  soldInventoryHref,
+  soldInventoryLabel = "Sold Inventory",
   quickChips,
+  showOverflowMenu = false,
   moreMenuExtras,
 }: Max2InventoryListHeaderProps) {
   const sync = syncLabel ?? defaultSyncLabel()
@@ -122,67 +134,70 @@ export function Max2InventoryListHeader({
           : searchPlaceholder
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between border-b border-spyne-border">
-        <div className="flex flex-wrap gap-6 sm:gap-8">
+    <div className="flex flex-col gap-2">
+      <div
+        className={cn(
+          "flex flex-col gap-3 sm:flex-row sm:items-end",
+          showSyncStatus ? "sm:justify-between" : ""
+        )}
+      >
+        <SpyneLineTabStrip embedded className="min-w-0 flex-1">
           {TAB_DEFS.map((tab) => {
             const active = vehicleType === tab.id
             const n = tab.id === "all" ? counts.all : tab.id === "new" ? counts.new : counts.used
             return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onVehicleTypeChange(tab.id)}
-                className={cn(
-                  spyneComponentClasses.inventoryTab,
-                  active && spyneComponentClasses.inventoryTabActive
-                )}
-              >
-                {tab.label} ({n})
-              </button>
+              <SpyneLineTab key={tab.id} active={active} onClick={() => onVehicleTypeChange(tab.id)}>
+                <span className={spyneComponentClasses.lineTabLabelWithCount}>
+                  {tab.label}
+                  <SpyneLineTabInlineCount value={n} />
+                </span>
+              </SpyneLineTab>
             )
           })}
-        </div>
-        <div className="flex items-center gap-2 text-xs font-medium text-spyne-success pb-3 sm:pb-3">
-          <MaterialSymbol name="cloud_done" size={20} className="shrink-0 text-spyne-success" />
-          <span>{sync}</span>
-        </div>
+        </SpyneLineTabStrip>
+        {showSyncStatus ? (
+          <div className="flex items-center gap-2 text-xs font-medium text-spyne-success shrink-0 pb-2.5">
+            <MaterialSymbol name="cloud_done" size={20} className="shrink-0 text-spyne-success" />
+            <span>{sync}</span>
+          </div>
+        ) : null}
       </div>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative w-full max-w-[240px] sm:max-w-[280px] shrink-0 min-w-0">
-          <MaterialSymbol
-            name="search"
-            size={16}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-spyne-text-secondary"
-          />
-          <Input
-            placeholder={inputPlaceholder}
-            value={searchValue}
-            onChange={(e) => onSearchChange(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            aria-label={searchAriaLabel}
-            className="h-9 rounded-md border-spyne-border bg-spyne-surface pl-8 pr-3 text-[13px] leading-tight text-spyne-text shadow-none placeholder:text-spyne-text-secondary"
-          />
-          {showHintOverlay && hints[hintIndex] ? (
-            <span
-              key={hintIndex}
-              className={cn(
-                "pointer-events-none absolute left-8 right-3 top-1/2 -translate-y-1/2",
-                spyneComponentClasses.inventorySearchHint
-              )}
-              aria-hidden
-            >
-              {hints[hintIndex]}
-            </span>
-          ) : null}
-        </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+          <div className="relative w-full max-w-[220px] sm:max-w-[260px] shrink-0 min-w-0">
+            <MaterialSymbol
+              name="search"
+              size={16}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-spyne-text-secondary"
+            />
+            <Input
+              placeholder={inputPlaceholder}
+              value={searchValue}
+              onChange={(e) => onSearchChange(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              aria-label={searchAriaLabel}
+              className="h-9 rounded-md border-spyne-border bg-spyne-surface pl-8 pr-3 text-[13px] leading-tight text-spyne-text shadow-none placeholder:text-spyne-text-secondary"
+            />
+            {showHintOverlay && hints[hintIndex] ? (
+              <span
+                key={hintIndex}
+                className={cn(
+                  "pointer-events-none absolute left-8 right-3 top-1/2 -translate-y-1/2",
+                  spyneComponentClasses.inventorySearchHint
+                )}
+                aria-hidden
+              >
+                {hints[hintIndex]}
+              </span>
+            ) : null}
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 lg:gap-3 shrink-0 lg:justify-end">
           {viewInput && (
-            <label className="inline-flex h-10 items-center gap-3 rounded-lg border border-spyne-border bg-spyne-surface px-3 text-sm font-medium text-spyne-text cursor-pointer">
-              <span className="text-spyne-text-secondary whitespace-nowrap">View Input</span>
+            <label className="inline-flex h-9 items-center gap-2 text-sm font-medium text-spyne-text cursor-pointer whitespace-nowrap">
+              <span className="text-spyne-text-secondary">View input</span>
               <Switch
                 checked={viewInput.checked}
                 onCheckedChange={viewInput.onCheckedChange}
@@ -212,32 +227,51 @@ export function Max2InventoryListHeader({
             </Link>
           )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-spyne-border bg-spyne-surface text-spyne-text transition-colors hover:bg-[#f9fafb]"
-                aria-label="More options"
-              >
-                <MaterialSymbol name="more_vert" size={20} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[180px]">
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                Refresh from DMS
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                Export view
-              </DropdownMenuItem>
-              {moreMenuExtras}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+          {soldInventoryHref ? (
+            <Link
+              href={soldInventoryHref}
+              scroll={false}
+              className={cn(
+                spyneComponentClasses.btnSecondaryMd,
+                "no-underline whitespace-nowrap inline-flex items-center gap-1.5"
+              )}
+            >
+              {soldInventoryLabel}
+              <MaterialSymbol name="north_east" size={20} className="text-spyne-text-secondary" />
+            </Link>
+          ) : null}
 
-      {quickChips ? (
-        <div className="flex flex-wrap items-center gap-2">{quickChips}</div>
-      ) : null}
+          {showOverflowMenu ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-spyne-border bg-spyne-surface text-spyne-text transition-colors hover:bg-muted/60"
+                  aria-label="More options"
+                >
+                  <MaterialSymbol name="more_vert" size={20} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[180px]">
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  Refresh from DMS
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  Export view
+                </DropdownMenuItem>
+                {moreMenuExtras}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+          </div>
+        </div>
+
+        {quickChips ? (
+          <div className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:thin]">
+            {quickChips}
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

@@ -15,9 +15,12 @@ import {
 import { Max2ActionTab, Max2ActionTabStrip } from "@/components/max-2/max2-action-tab"
 import { MaterialSymbol } from "@/components/max-2/material-symbol"
 import {
+  SpyneRoiKpiMetricCell,
+  SpyneRoiKpiStrip,
+} from "@/components/max-2/spyne-roi-kpi-strip"
+import {
   Clock, Globe, Camera, FileText, Eye,
   ArrowRight, ImageOff, Tag, ExternalLink,
-  TrendingUp,
   Sun, Video, Images, AlertTriangle, Zap, Sparkles,
   ChevronRight, Crown, Megaphone, BookOpen, Copy, Check,
 } from "lucide-react"
@@ -63,9 +66,8 @@ function VehicleTable({ vehicles, issueBadge }: { vehicles: MerchandisingVehicle
           {vehicles.map((v) => {
             const hasIssue = v.mediaStatus === "no-photos" || v.mediaStatus === "stock-photos" || v.listingScore < 50
             return (
-              <tr key={v.vin} className={cn("transition-colors hover:bg-muted", hasIssue && spyneComponentClasses.rowError)}>
-                {/* Thumb */}
-                <td className="py-3 px-4 w-16">
+              <tr key={v.vin} className="transition-colors hover:bg-muted">
+                <td className={cn("py-3 px-4 w-16", hasIssue && spyneComponentClasses.overviewIssueRowAccent)}>
                   {v.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={v.thumbnailUrl} alt="" className="h-9 w-13 rounded object-cover" />
@@ -155,72 +157,6 @@ function VehicleListModal({
             className="flex items-center justify-center gap-2 w-full rounded-lg border border-primary bg-primary/5 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
           >
             See these vehicles in Active Inventory
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-type InsightVinStat = { label: string; value: number }
-
-function InsightVinModal({
-  open,
-  onClose,
-  title,
-  description,
-  stats,
-  vehicles,
-  inventoryHref,
-}: {
-  open: boolean
-  onClose: () => void
-  title: string
-  description: string
-  stats: InsightVinStat[]
-  vehicles: MerchandisingVehicle[]
-  inventoryHref: string
-}) {
-  const cols =
-    stats.length >= 3 ? "sm:grid-cols-3" : stats.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-1"
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {stats.length > 0 && (
-            <div className={cn("grid grid-cols-1 gap-2", cols)}>
-              {stats.map((s) => (
-                <div
-                  key={s.label}
-                  className="rounded-lg border bg-muted/20 px-3 py-3 text-center"
-                >
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {s.label}
-                  </p>
-                  <p className="text-2xl font-bold tabular-nums tracking-tight mt-1">
-                    {s.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-          <p className="text-sm text-muted-foreground leading-snug">{description}</p>
-          <div>
-            <p className="text-xs font-semibold text-foreground mb-2">Affected VINs</p>
-            <div className="rounded-lg border overflow-hidden max-h-[min(50vh,380px)] overflow-y-auto">
-              <VehicleTable vehicles={vehicles} />
-            </div>
-          </div>
-          <Link
-            href={inventoryHref}
-            onClick={onClose}
-            className="flex items-center justify-center gap-2 w-full rounded-lg border border-primary bg-primary/5 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
-          >
-            View in inventory
             <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
@@ -384,13 +320,22 @@ function DaysToFrontlineModal({
                       href={action.href}
                       onClick={onClose}
                       className={cn(
-                        "group flex items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors",
-                        isCritical
-                          ? cn("border-spyne-border", spyneComponentClasses.rowError, "hover:opacity-95")
-                          : cn("border-spyne-border", spyneComponentClasses.rowWarn, "hover:opacity-95")
+                        spyneComponentClasses.insightRow,
+                        spyneComponentClasses.insightRowCompact,
+                        "group"
                       )}
                     >
-                      <Icon className={cn("h-3.5 w-3.5 shrink-0", isCritical ? "text-spyne-error" : "text-spyne-warning")} />
+                      <span
+                        className={cn(
+                          spyneComponentClasses.insightRowIconWell,
+                          spyneComponentClasses.insightRowIconWellCompact,
+                          isCritical
+                            ? spyneComponentClasses.insightRowIconWellCritical
+                            : spyneComponentClasses.insightRowIconWellWarning
+                        )}
+                      >
+                        <Icon className="shrink-0" />
+                      </span>
                       <span className={cn("text-sm font-bold tabular-nums w-5 shrink-0", isCritical ? "text-spyne-error" : "text-spyne-text")}>
                         {action.count}
                       </span>
@@ -481,7 +426,7 @@ function WebsiteScoreModal({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold">Improve your media score</DialogTitle>
+          <DialogTitle className="text-sm font-semibold">Improve your website score</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5">
@@ -609,13 +554,6 @@ export function MerchandisingSummary() {
     improvement: string
     sections: TrainingGuideSection[]
   }>(null)
-  const [insightVinModal, setInsightVinModal] = useState<null | {
-    title: string
-    description: string
-    stats: InsightVinStat[]
-    vehicles: MerchandisingVehicle[]
-    inventoryHref: string
-  }>(null)
   const [proPlanModalOpen, setProPlanModalOpen] = useState(false)
 
   const needRealPhotos = vehicles.filter(
@@ -675,87 +613,60 @@ export function MerchandisingSummary() {
     })
     .slice(0, 4)
 
+  const frontlineGoalDays = 4
+  const goalDaysHighlight = (
+    <span className="font-semibold text-primary">Goal {frontlineGoalDays}d</span>
+  )
+  const frontlineSub =
+    needRealPhotos > 0 ? (
+      <>
+        {goalDaysHighlight}
+        {" · "}
+        {needRealPhotos} on stock photos may slow publish
+        {s.avgDaysToFrontline > frontlineGoalDays ? (
+          <> · {`${(s.avgDaysToFrontline - frontlineGoalDays).toFixed(1)}d over`}</>
+        ) : null}
+      </>
+    ) : s.avgDaysToFrontline <= frontlineGoalDays ? (
+      goalDaysHighlight
+    ) : (
+      <>
+        {goalDaysHighlight}
+        {" · "}
+        {`${(s.avgDaysToFrontline - frontlineGoalDays).toFixed(1)}d over`}
+      </>
+    )
+
+  const websiteScoreComparison =
+    s.websiteScore >= 6.5
+      ? `+${(s.websiteScore - 6.5).toFixed(1)} vs 6.5 avg`
+      : `${(6.5 - s.websiteScore).toFixed(1)} below 6.5 avg`
+
   return (
     <div className="flex flex-col gap-7">
-      {/* ── Section 1: ROI Metrics ── */}
-      {(() => {
-        const metrics = [
-          {
-            label: "Days to Frontline",
-            value: `${s.avgDaysToFrontline}`,
-            unit: "days",
-            sub: s.avgDaysToFrontline <= 4 ? "On target · goal 4d" : `${(s.avgDaysToFrontline - 4).toFixed(1)}d over · goal 4d`,
-            subColor: s.avgDaysToFrontline <= 4 ? "text-spyne-success" : "text-spyne-text",
-            dot: s.avgDaysToFrontline <= 4 ? "bg-spyne-success" : s.avgDaysToFrontline <= 5 ? "bg-spyne-warning" : "bg-spyne-error",
-            barPct: Math.min((4 / Math.max(s.avgDaysToFrontline, 1)) * 100, 100),
-            barColor: s.avgDaysToFrontline <= 3 ? "bg-spyne-success" : s.avgDaysToFrontline <= 5 ? "bg-spyne-warning" : "bg-spyne-error",
-            hint: needRealPhotos > 0 ? `${needRealPhotos} vehicles on stock photos slow publish` : undefined,
-            hintIcon: AlertTriangle,
-            onClick: () => setFrontlineModalOpen(true),
-          },
-          {
-            label: "Media Score",
-            value: `${s.websiteScore}`,
-            unit: "/10",
-            sub: s.websiteScore >= 6.5 ? `+${(s.websiteScore - 6.5).toFixed(1)} above avg` : `${(6.5 - s.websiteScore).toFixed(1)} below avg`,
-            subColor: s.websiteScore >= 6.5 ? "text-spyne-success" : "text-spyne-error",
-            dot: s.websiteScore >= 7.5 ? "bg-spyne-success" : s.websiteScore >= 5 ? "bg-spyne-warning" : "bg-spyne-error",
-            barPct: (s.websiteScore / 10) * 100,
-            barColor: s.websiteScore >= 7.5 ? "bg-spyne-success" : s.websiteScore >= 5 ? "bg-spyne-warning" : "bg-spyne-error",
-            hint: missingDesc > 0 ? `Write ${missingDesc} descriptions for +0.5 pts` : undefined,
-            hintIcon: TrendingUp,
-            onClick: () => setWebsiteScoreModalOpen(true),
-          },
-        ]
-
-        return (
-          <div className="rounded-lg border bg-card shadow-none overflow-hidden">
-            <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x">
-              {metrics.map((m2) => {
-                const HintIcon = m2.hintIcon
-                return (
-                  <button
-                    type="button"
-                    key={m2.label}
-                    onClick={m2.onClick}
-                    className="flex flex-col text-left cursor-pointer hover:bg-muted/30 transition-colors group"
-                  >
-                    <div className="px-5 py-4 flex flex-col gap-2.5 flex-1">
-                      {/* Label row */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", m2.dot)} />
-                          <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{m2.label}</span>
-                        </div>
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
-                      </div>
-                      {/* Value */}
-                      <div>
-                        <p className="text-3xl font-bold tabular-nums tracking-tight leading-none">
-                          {m2.value}
-                          {m2.unit && <span className="text-sm font-normal text-muted-foreground ml-1">{m2.unit}</span>}
-                        </p>
-                        <p className={cn("text-[11px] mt-1", m2.subColor)}>{m2.sub}</p>
-                      </div>
-                      {/* Bar */}
-                      <div className="h-1 rounded-full bg-muted overflow-hidden">
-                        <div className={cn("h-full rounded-full transition-all", m2.barColor)} style={{ width: `${m2.barPct}%` }} />
-                      </div>
-                    </div>
-                    {/* Hint footer */}
-                    {m2.hint && (
-                      <div className="px-5 py-2.5 bg-muted/30 border-t flex items-center gap-1.5">
-                        <HintIcon className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                        <p className="text-[11px] text-muted-foreground truncate">{m2.hint}</p>
-                      </div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })()}
+      {/* ── Section 1: ROI metrics (same strip as Lot / Sales overview) ── */}
+      <SpyneRoiKpiStrip gridClassName="lg:grid-cols-2">
+        <SpyneRoiKpiMetricCell
+          label="Days to Frontline"
+          value={`${s.avgDaysToFrontline}d`}
+          sub={frontlineSub}
+          status={
+            s.avgDaysToFrontline <= 4 ? "good" : s.avgDaysToFrontline <= 5 ? "watch" : "bad"
+          }
+          onClick={() => setFrontlineModalOpen(true)}
+        />
+        <SpyneRoiKpiMetricCell
+          label="Website Score"
+          value={`${s.websiteScore}/10`}
+          sub={
+            missingDesc > 0
+              ? `Increment from last week · ~+0.5 pts · ${websiteScoreComparison}`
+              : websiteScoreComparison
+          }
+          status={s.websiteScore >= 7.5 ? "good" : s.websiteScore >= 5 ? "watch" : "bad"}
+          onClick={() => setWebsiteScoreModalOpen(true)}
+        />
+      </SpyneRoiKpiStrip>
 
       {/* ── Section 2: Action Items (tabbed) ── */}
       {(() => {
@@ -890,22 +801,11 @@ export function MerchandisingSummary() {
         const sunGlareN = sunGlareVehicles.length
         const sunGlareFixed =
           sunGlareN > 0 ? Math.min(sunGlareN, Math.round((sunGlareN * 8) / 12)) : 0
-        const sunGlarePending = Math.max(0, sunGlareN - sunGlareFixed)
-
         const insights = [
           {
             id: "sun-glare",
             icon: Sun,
             label: `${sunGlareN} vehicles have sun glare in photos. We were able to fix ${sunGlareFixed} of them automatically.`,
-            modalTitle: "Sun glare",
-            modalDescription:
-              "Counts are by VIN. Auto-fixed units had recoverable frames in processing; pending units may need a re-shoot.",
-            modalStats: [
-              { label: "VINs affected", value: sunGlareN },
-              { label: "Auto-fixed", value: sunGlareFixed },
-              { label: "Pending", value: sunGlarePending },
-            ] satisfies InsightVinStat[],
-            modalVehicles: sunGlareVehicles,
             inventoryHref: "/max-2/studio/inventory?issue=glare",
             badInput: "Shooting into direct sun left blown highlights on glass and paint; detail was lost in post.",
             improvement:
@@ -934,11 +834,6 @@ export function MerchandisingSummary() {
             id: "walkaround-360",
             icon: Video,
             label: `${walkaroundVehicles.length} vehicles are missing a correct walk-around video for 360.`,
-            modalTitle: "Walk-around for 360",
-            modalDescription:
-              "These VINs need a full, steady perimeter capture to complete 360 processing.",
-            modalStats: [{ label: "VINs affected", value: walkaroundVehicles.length }] satisfies InsightVinStat[],
-            modalVehicles: walkaroundVehicles,
             inventoryHref: "/max-2/studio/inventory?issue=no360",
             badInput: "Clips were too short, shaky, or skipped the full vehicle perimeter, so the 360 pipeline could not align frames.",
             improvement: "We re-ran capture guidance in-app and queued re-shoots only where the path was incomplete.",
@@ -966,11 +861,6 @@ export function MerchandisingSummary() {
             id: "photo-count-industry",
             icon: Images,
             label: `${lowPhotoVehicles.length} vehicles carry 10–15 photos, below the industry average of 25 photos per vehicle.`,
-            modalTitle: "Photo count vs industry",
-            modalDescription:
-              "Industry benchmark is about 25 photos per vehicle. The VINs listed are in the 10–15 photo range.",
-            modalStats: [{ label: "VINs in range", value: lowPhotoVehicles.length }] satisfies InsightVinStat[],
-            modalVehicles: lowPhotoVehicles,
             inventoryHref: "/max-2/studio/inventory?issue=incomplete",
             badInput: "Sets stopped after basics (front, rear, dash) without full exterior walk, interior detail, and feature shots.",
             improvement: "We templated a 25-shot checklist per vehicle and auto-flagged anything under 20 before publish.",
@@ -998,12 +888,7 @@ export function MerchandisingSummary() {
             id: "under-8-exterior",
             icon: AlertTriangle,
             label: `${under8Vehicles.length} vehicles carry fewer than 8 exterior images.`,
-            modalTitle: "Under 8 exterior images",
-            modalDescription:
-              "Exterior coverage under eight images limits listing quality. Each row is a VIN in that state.",
-            modalStats: [{ label: "VINs affected", value: under8Vehicles.length }] satisfies InsightVinStat[],
-            modalVehicles: under8Vehicles,
-            inventoryHref: "/max-2/studio/inventory?photos=low",
+            inventoryHref: "/max-2/studio/inventory?issue=under8",
             badInput: "Exteriors were rushed or partial, leaving gaps in the buyer’s visual walk-around.",
             improvement: "We blocked go-live on under-8 sets for new units and surfaced a same-day re-shoot task.",
             count: under8Vehicles.length,
@@ -1086,9 +971,9 @@ export function MerchandisingSummary() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Insights */}
             <div className="rounded-lg border bg-card shadow-none overflow-hidden">
-              <div className="px-5 pt-4 pb-3 border-b bg-muted/20">
-                <p className="text-sm font-semibold tracking-tight">Insights</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
+              <div className="px-5 pt-4 pb-2">
+                <p className="text-sm font-semibold tracking-tight text-spyne-text">Insights</p>
+                <p className="text-xs text-spyne-text-secondary mt-0.5">
                   Capture and media signals from your inventory.
                 </p>
               </div>
@@ -1100,42 +985,23 @@ export function MerchandisingSummary() {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() =>
-                        setInsightVinModal({
-                          title: item.modalTitle,
-                          description: item.modalDescription,
-                          stats: item.modalStats,
-                          vehicles: item.modalVehicles,
-                          inventoryHref: item.inventoryHref,
-                        })
-                      }
-                      className={cn(
-                        "w-full text-left rounded-lg border px-4 py-3.5 transition-colors",
-                        "hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-2",
-                        isCritical
-                          ? cn("border-spyne-border border-l-[3px] border-l-spyne-error", spyneComponentClasses.rowError)
-                          : cn("border-spyne-border border-l-[3px] border-l-spyne-warning", spyneComponentClasses.rowWarn)
-                      )}
+                      onClick={() => router.push(item.inventoryHref)}
+                      className={spyneComponentClasses.insightRow}
                     >
-                      <div className="flex gap-3">
+                      <div className={spyneComponentClasses.insightRowBody}>
                         <div
                           className={cn(
-                            "h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border border-spyne-border",
-                            isCritical ? spyneComponentClasses.rowError : spyneComponentClasses.rowWarn
+                            spyneComponentClasses.insightRowIconWell,
+                            isCritical
+                              ? spyneComponentClasses.insightRowIconWellCritical
+                              : spyneComponentClasses.insightRowIconWellWarning
                           )}
                         >
-                          <Icon
-                            className={cn(
-                              "h-4 w-4",
-                              isCritical ? "text-spyne-error" : "text-spyne-warning"
-                            )}
-                          />
+                          <Icon className="shrink-0" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-medium text-foreground leading-snug">
-                              {item.label}
-                            </p>
+                        <div className={spyneComponentClasses.insightRowMain}>
+                          <div className={spyneComponentClasses.insightRowTitleRow}>
+                            <p className={spyneComponentClasses.insightRowTitle}>{item.label}</p>
                             <SpyneChip
                               variant="outline"
                               tone={isCritical ? "error" : "warning"}
@@ -1145,11 +1011,11 @@ export function MerchandisingSummary() {
                               {item.count}
                             </SpyneChip>
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-1">
-                            Affected VINs — tap for counts and list
+                          <p className={spyneComponentClasses.insightRowMeta}>
+                            Open Active Inventory filtered to this issue
                           </p>
                         </div>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/35 mt-1 self-start" />
+                        <ChevronRight className={spyneComponentClasses.insightRowChevron} />
                       </div>
                     </button>
                   )
@@ -1159,9 +1025,9 @@ export function MerchandisingSummary() {
 
             {/* Opportunities */}
             <div className="rounded-lg border bg-card shadow-none overflow-hidden">
-              <div className="px-5 pt-4 pb-3 border-b">
-                <p className="text-sm font-semibold tracking-tight">Opportunities</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Recommended actions ranked by impact</p>
+              <div className="px-5 pt-4 pb-2">
+                <p className="text-sm font-semibold tracking-tight text-spyne-text">Opportunities</p>
+                <p className="text-xs text-spyne-text-secondary mt-0.5">Recommended actions ranked by impact</p>
               </div>
               <div className="divide-y">
                 {opportunities.map((opp) => {
@@ -1236,18 +1102,6 @@ export function MerchandisingSummary() {
           description={opportunityListModal.description}
           vehicles={opportunityListModal.vehicles}
           inventoryHref={opportunityListModal.href}
-        />
-      )}
-
-      {insightVinModal && (
-        <InsightVinModal
-          open={!!insightVinModal}
-          onClose={() => setInsightVinModal(null)}
-          title={insightVinModal.title}
-          description={insightVinModal.description}
-          stats={insightVinModal.stats}
-          vehicles={insightVinModal.vehicles}
-          inventoryHref={insightVinModal.inventoryHref}
         />
       )}
 

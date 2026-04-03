@@ -1,6 +1,10 @@
 "use client"
 
 import { useState } from 'react'
+import { SpyneLineTab, SpyneLineTabStrip } from '@/components/max-2/spyne-line-tabs'
+import { max2Classes } from '@/lib/design-system/max-2'
+import { cn } from '@/lib/utils'
+import { CHART_SERIES, SPYNE_DRAWER_SHADOW } from '../spyne-palette'
 import {
   X, Phone, ArrowRight, Calendar, Sparkles,
   TrendingUp, TrendingDown, Minus,
@@ -20,20 +24,20 @@ const STAGES = [
 
 const STAGE_LABELS = Object.fromEntries(STAGES.map(s => [s.key, s.label]))
 
-const STAGE_STYLE = {
-  CLOSING:     { bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',          border: 'var(--spyne-brand-muted)' },
-  NEGOTIATION: { bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',          border: 'var(--spyne-brand-muted)' },
-  EVALUATION:  { bg: 'var(--spyne-warning-subtle)', color: 'var(--spyne-warning-text)',   border: 'var(--spyne-warning-muted)' },
-  SHOPPING:    { bg: 'var(--spyne-border)',          color: 'var(--spyne-text-secondary)', border: 'var(--spyne-border-strong)' },
-  RESEARCH:    { bg: 'var(--spyne-border)',          color: 'var(--spyne-text-secondary)', border: 'var(--spyne-border-strong)' },
+const STAGE_BADGE_CLASS = {
+  CLOSING:     'spyne-badge-brand',
+  NEGOTIATION: 'spyne-badge-brand',
+  EVALUATION:  'spyne-badge-warning',
+  SHOPPING:    'spyne-badge-neutral',
+  RESEARCH:    'spyne-badge-neutral',
 }
 
-const SOURCE_STYLE = {
-  'Internet Lead': { bg: 'var(--spyne-info-subtle)',    color: 'var(--spyne-info-text)',      border: 'var(--spyne-info-muted)' },
-  'Phone Lead':    { bg: 'var(--spyne-success-subtle)', color: 'var(--spyne-success-text)',   border: 'var(--spyne-success-muted)' },
-  'Email Lead':    { bg: 'var(--spyne-brand-subtle)',   color: 'var(--spyne-brand)',           border: 'var(--spyne-brand-muted)' },
-  'Walk-in':       { bg: 'var(--spyne-warning-subtle)', color: 'var(--spyne-warning-text)',   border: 'var(--spyne-warning-muted)' },
-  'Referral':      { bg: 'var(--spyne-border)',          color: 'var(--spyne-text-secondary)', border: 'var(--spyne-border-strong)' },
+const SOURCE_BADGE_CLASS = {
+  'Internet Lead': 'spyne-badge-info',
+  'Phone Lead':    'spyne-badge-success',
+  'Email Lead':    'spyne-badge-brand',
+  'Walk-in':       'spyne-badge-warning',
+  'Referral':      'spyne-badge-neutral',
 }
 
 // AI opener per stage — salesperson reads this before calling
@@ -57,7 +61,7 @@ const CHANNEL_FILTERS = [
 // ── Helpers ────────────────────────────────────────────────
 
 function avatarBg(name = '') {
-  const colors = ['#4F46E5','#0D9488','#D97706','#7C3AED','#0EA5E9','#10B981','#EF4444','#F59E0B']
+  const colors = CHART_SERIES
   let h = 0
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % colors.length
   return colors[h]
@@ -204,8 +208,8 @@ export default function CustomerOverviewPanel({ customer, onClose, onViewProfile
 
   if (!customer) return null
 
-  const ss  = STAGE_STYLE[customer.buyingStage]  || STAGE_STYLE.RESEARCH
-  const src = SOURCE_STYLE[customer.source] || SOURCE_STYLE['Referral']
+  const stageCls = STAGE_BADGE_CLASS[customer.buyingStage] || STAGE_BADGE_CLASS.RESEARCH
+  const srcCls   = SOURCE_BADGE_CLASS[customer.source] || SOURCE_BADGE_CLASS.Referral
 
   const trendColor =
     customer.engagementTrend === 'improving' ? 'var(--spyne-success-text)' :
@@ -238,9 +242,7 @@ export default function CustomerOverviewPanel({ customer, onClose, onViewProfile
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
               <div>
-                <p className="spyne-heading" style={{ color: 'var(--spyne-text-primary)', fontSize: 16 }}>
-                  {customer.name}
-                </p>
+                <p className={max2Classes.pageTitle}>{customer.name}</p>
                 <p style={{ fontSize: 11, color: 'var(--spyne-text-muted)', marginTop: 1 }}>
                   Last interacted · {customer.lastInteracted}
                 </p>
@@ -255,10 +257,10 @@ export default function CustomerOverviewPanel({ customer, onClose, onViewProfile
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-              <span className="spyne-badge" style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}>
+              <span className={cn('spyne-badge', stageCls)}>
                 {STAGE_LABELS[customer.buyingStage] || customer.buyingStage}
               </span>
-              <span className="spyne-badge" style={{ background: src.bg, color: src.color, borderColor: src.border }}>
+              <span className={cn('spyne-badge', srcCls)}>
                 {customer.source}
               </span>
               <span style={{ fontSize: 11, color: 'var(--spyne-text-muted)' }}>{customer.salesperson}</span>
@@ -355,31 +357,28 @@ export default function CustomerOverviewPanel({ customer, onClose, onViewProfile
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
           {/* Channel filter tabs — sticky at top of right col */}
-          <div style={{
-            flexShrink: 0,
-            display: 'flex', gap: 0,
-            padding: '10px 16px 0',
-            borderBottom: '1px solid var(--spyne-border)',
-            position: 'sticky', top: 0,
-            background: 'var(--spyne-surface)', zIndex: 3,
-          }}>
-            {CHANNEL_FILTERS.map(f => (
-              <button
-                key={f.id}
-                onClick={() => setChannelFilter(f.id)}
-                style={{
-                  padding: '0 12px', height: 32, fontSize: 12, border: 'none',
-                  cursor: 'pointer', fontFamily: 'inherit', background: 'none',
-                  fontWeight: channelFilter === f.id ? 600 : 500,
-                  color: channelFilter === f.id ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-                  borderBottom: channelFilter === f.id ? '2px solid var(--spyne-brand)' : '2px solid transparent',
-                  marginBottom: -1, transition: 'color 150ms, border-color 150ms',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
+          <div
+            style={{
+              flexShrink: 0,
+              position: 'sticky',
+              top: 0,
+              background: 'var(--spyne-surface)',
+              zIndex: 3,
+            }}
+            className="px-4 pt-2.5"
+          >
+            <SpyneLineTabStrip embedded compact className="min-w-0 overflow-x-auto">
+              {CHANNEL_FILTERS.map((f) => (
+                <SpyneLineTab
+                  key={f.id}
+                  active={channelFilter === f.id}
+                  onClick={() => setChannelFilter(f.id)}
+                  className="shrink-0 whitespace-nowrap"
+                >
+                  {f.label}
+                </SpyneLineTab>
+              ))}
+            </SpyneLineTabStrip>
           </div>
 
           {/* Scrollable thread */}
@@ -435,7 +434,7 @@ export default function CustomerOverviewPanel({ customer, onClose, onViewProfile
         width: 720,
         background: 'var(--spyne-surface)',
         borderLeft: '1px solid var(--spyne-border)',
-        boxShadow: '-4px 0 32px rgba(79,70,229,0.12)',
+        boxShadow: SPYNE_DRAWER_SHADOW,
         zIndex: 60,
         animation: 'spyne-slide-in-right 200ms cubic-bezier(0.0,0,0.2,1) both',
       }}>

@@ -15,10 +15,12 @@ import {
 import { SpyneChip, SpyneMetricChip, SpyneRemovableFilterChip } from "@/components/max-2/spyne-ui"
 import {
   applyMerchandisingFilters,
+  MERCH_MEDIA_ISSUE_LABELS,
   merchandisingDefaultFilters,
   merchandisingFiltersActive,
   merchandisingTransmissionFromVin,
   inMerchAgeBucket,
+  parseMerchMediaIssueFromSearchParams,
   type MerchandisingInventoryFilters,
   type MerchAgeBucket,
   type MerchPriceBucket,
@@ -62,6 +64,8 @@ export function filtersFromSearchParams(
   const search = params.get("search")
   if (search) f.search = search
 
+  f.mediaIssue = parseMerchMediaIssueFromSearchParams(params)
+
   return f
 }
 
@@ -92,7 +96,7 @@ const mediaLabels: Record<MediaStatus, string> = {
 const publishLabels: Record<PublishStatus, string> = {
   live: "Live",
   pending: "Pending",
-  "not-published": "Draft",
+  "not-published": "Not published",
 }
 
 const ageBucketDefs: { id: MerchAgeBucket; label: string }[] = [
@@ -236,42 +240,53 @@ export function InventoryFilterBar({
   )
 
   const certifiedCount = tabScoped.filter((v) => v.listingScore >= 80).length
-  const wholesaleCount = tabScoped.filter((v) => v.publishStatus === "not-published").length
-  const retailCount = tabScoped.filter((v) => v.publishStatus === "live").length
-  const recentsCount = tabScoped.filter((v) => v.daysInStock <= 7).length
-  const age40Count = tabScoped.filter((v) => v.daysInStock > 40).length
 
   const chipCertified =
     filters.scoreBuckets.includes("high") && filters.scoreBuckets.length === 1
-  const chipWholesale =
-    filters.publishStatuses.length === 1 && filters.publishStatuses[0] === "not-published"
-  const chipRetail = filters.publishStatuses.length === 1 && filters.publishStatuses[0] === "live"
-  const chipRecents =
+
+  const inReviewCount = tabScoped.filter((v) => v.publishStatus === "pending").length
+  const failedCount = tabScoped.filter((v) => v.listingScore < 50).length
+  const ageOver30Count = tabScoped.filter((v) => v.daysInStock > 30).length
+  const odometerMissingCount = tabScoped.filter((v) => v.odometer <= 0).length
+  const priceMissingCount = tabScoped.filter((v) => v.price <= 0).length
+
+  const chipInReview =
+    filters.publishStatuses.length === 1 && filters.publishStatuses[0] === "pending"
+  const chipFailed =
+    filters.scoreBuckets.length === 1 && filters.scoreBuckets[0] === "low"
+  const chipAge30 =
     filters.ageBuckets.length === 0 &&
-    filters.ageMax === 7 &&
-    filters.ageMin === null
-  const chipAge40 =
-    filters.ageBuckets.length === 0 && filters.ageMin === 41 && filters.ageMax === null
+    filters.ageMin === 31 &&
+    filters.ageMax === null
+  const chipOdometerMissing = filters.missingOdometerOnly
+  const chipPriceMissing = filters.missingPriceOnly
 
   const toggleCertified = () => {
     if (chipCertified) update({ scoreBuckets: [] })
     else update({ scoreBuckets: ["high"], scoreMin: null })
   }
-  const toggleWholesale = () => {
-    if (chipWholesale) update({ publishStatuses: [] })
-    else update({ publishStatuses: ["not-published"] })
+
+  const toggleInReview = () => {
+    if (chipInReview) update({ publishStatuses: [] })
+    else update({ publishStatuses: ["pending"] })
   }
-  const toggleRetail = () => {
-    if (chipRetail) update({ publishStatuses: [] })
-    else update({ publishStatuses: ["live"] })
+
+  const toggleFailed = () => {
+    if (chipFailed) update({ scoreBuckets: [], scoreMin: null })
+    else update({ scoreBuckets: ["low"], scoreMin: null })
   }
-  const toggleRecents = () => {
-    if (chipRecents) update({ ageMax: null, ageMin: null })
-    else update({ ageMax: 7, ageMin: null, ageBuckets: [] })
+
+  const toggleAge30 = () => {
+    if (chipAge30) update({ ageMin: null })
+    else update({ ageMin: 31, ageMax: null, ageBuckets: [] })
   }
-  const toggleAge40 = () => {
-    if (chipAge40) update({ ageMin: null })
-    else update({ ageMin: 41, ageMax: null, ageBuckets: [] })
+
+  const toggleOdometerMissing = () => {
+    update({ missingOdometerOnly: !filters.missingOdometerOnly })
+  }
+
+  const togglePriceMissing = () => {
+    update({ missingPriceOnly: !filters.missingPriceOnly })
   }
 
   const toggleString = (key: "makes" | "models" | "trims", id: string) => {
@@ -371,38 +386,51 @@ export function InventoryFilterBar({
         viewInput={{ checked: viewInput, onCheckedChange: setViewInput }}
         onApplyFiltersClick={() => setFiltersSheetOpen(true)}
         addVehicleHref="/max-2/studio/add"
-        addVehicleLabel="Add Vehicle"
+        addVehicleLabel="Add vehicle(s)"
+        soldInventoryHref="/max-2/studio/inventory#sold-inventory"
         quickChips={
           <>
             <SpyneMetricChip
+              className="shrink-0"
               label="Certified"
               count={certifiedCount}
               active={chipCertified}
               onClick={toggleCertified}
             />
             <SpyneMetricChip
-              label="Wholesale"
-              count={wholesaleCount}
-              active={chipWholesale}
-              onClick={toggleWholesale}
+              className="shrink-0"
+              label="In Review"
+              count={inReviewCount}
+              active={chipInReview}
+              onClick={toggleInReview}
             />
             <SpyneMetricChip
-              label="Retail"
-              count={retailCount}
-              active={chipRetail}
-              onClick={toggleRetail}
+              className="shrink-0"
+              label="Failed"
+              count={failedCount}
+              active={chipFailed}
+              onClick={toggleFailed}
             />
             <SpyneMetricChip
-              label="Recents"
-              count={recentsCount}
-              active={chipRecents}
-              onClick={toggleRecents}
+              className="shrink-0"
+              label="Age > 30 days"
+              count={ageOver30Count}
+              active={chipAge30}
+              onClick={toggleAge30}
             />
             <SpyneMetricChip
-              label="Age >40 days"
-              count={age40Count}
-              active={chipAge40}
-              onClick={toggleAge40}
+              className="shrink-0"
+              label="Odometer Missing"
+              count={odometerMissingCount}
+              active={chipOdometerMissing}
+              onClick={toggleOdometerMissing}
+            />
+            <SpyneMetricChip
+              className="shrink-0"
+              label="Price Missing"
+              count={priceMissingCount}
+              active={chipPriceMissing}
+              onClick={togglePriceMissing}
             />
           </>
         }
@@ -483,6 +511,12 @@ export function InventoryFilterBar({
           <span className="text-[10px] font-medium uppercase tracking-wider text-spyne-text-secondary">
             Filtered by
           </span>
+          {filters.mediaIssue && (
+            <RemovableChip
+              label={MERCH_MEDIA_ISSUE_LABELS[filters.mediaIssue]}
+              onRemove={() => update({ mediaIssue: null })}
+            />
+          )}
           {filters.makes.map((m) => (
             <RemovableChip key={m} label={`Make: ${m}`} onRemove={() => toggleString("makes", m)} />
           ))}
@@ -563,6 +597,18 @@ export function InventoryFilterBar({
             <RemovableChip
               label={`Score ≥ ${filters.scoreMin}`}
               onRemove={() => update({ scoreMin: null })}
+            />
+          )}
+          {filters.missingOdometerOnly && (
+            <RemovableChip
+              label="Odometer missing"
+              onRemove={() => update({ missingOdometerOnly: false })}
+            />
+          )}
+          {filters.missingPriceOnly && (
+            <RemovableChip
+              label="Price missing"
+              onRemove={() => update({ missingPriceOnly: false })}
             />
           )}
           <SpyneChip

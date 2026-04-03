@@ -1,3 +1,4 @@
+export { SourcingDemandKpiStrip } from "./sourcing-demand-kpi-strip"
 export { DemandSignals } from "./demand-signals"
 export { MarketGaps } from "./market-gaps"
 export { ServiceLaneOpps } from "./service-lane-opps"

@@ -86,7 +86,7 @@ export function CustomerTable() {
       <CardHeader>
         <CardTitle>Customer Board</CardTitle>
         <CardDescription>
-          Every customer in your pipeline — filter, sort, and act
+          Every customer in your pipeline: filter, sort, and act.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

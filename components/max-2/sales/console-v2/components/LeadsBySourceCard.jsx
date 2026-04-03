@@ -1,17 +1,22 @@
 "use client"
 
+import { spyneComponentClasses } from '@/lib/design-system/max-2'
 import InfoTooltip from './InfoTooltip'
 
-export default function LeadsBySourceCard({ data }) {
+export default function LeadsBySourceCard({
+  data,
+  title = 'Leads by Source',
+  tooltipText = 'Breaks down all inbound leads by originating channel. The funnel shows how each source converts from first contact through to a sold vehicle, helping you see which channels drive the highest-quality traffic.',
+}) {
   const { sources, funnel } = data
 
   return (
-    <div className="spyne-card p-5 h-full flex flex-col">
+    <div className="spyne-card p-4 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-1.5">
-          <div className="spyne-heading">Leads by Source</div>
-          <InfoTooltip text="Breaks down all inbound leads by originating channel. The funnel shows how each source converts from first contact through to a sold vehicle — helping you see which channels drive the highest-quality traffic." />
+          <div className={spyneComponentClasses.cardTitle}>{title}</div>
+          <InfoTooltip text={tooltipText} />
         </div>
       </div>
 

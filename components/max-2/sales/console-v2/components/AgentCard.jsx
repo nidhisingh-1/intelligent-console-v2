@@ -19,7 +19,7 @@ export default function AgentCard({ agent }) {
   const isOutbound = agentType === 'outbound'
 
   return (
-    <div className="spyne-card spyne-animate-fade-in p-5 flex flex-col gap-4">
+    <div className="spyne-card spyne-animate-fade-in p-4 flex flex-col gap-4">
       {/* Agent header */}
       <div className="flex items-center gap-3">
         {photo && !imgError ? (

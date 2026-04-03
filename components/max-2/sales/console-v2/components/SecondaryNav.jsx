@@ -1,60 +1,45 @@
 "use client"
 
-import { LayoutDashboard, ListChecks, CalendarCheck, Users, Megaphone } from 'lucide-react'
+import { MaterialSymbol } from '@/components/max-2/material-symbol'
+import { SpyneLineTab, SpyneLineTabBadge, SpyneLineTabStrip } from '@/components/max-2/spyne-line-tabs'
+import { cn } from '@/lib/utils'
 
 const navItems = [
-  { id: 'overview',      label: 'Overview',      icon: LayoutDashboard, badge: null },
-  { id: 'campaigns',     label: 'Campaigns',     icon: Megaphone,       badge: 4   },
-  { id: 'action-items',  label: 'Action Items',  icon: ListChecks,      badge: 6   },
-  { id: 'appointments',  label: 'Appointments',  icon: CalendarCheck,   badge: 3   },
-  { id: 'customers',     label: 'Leads',          icon: Users,           badge: null },
+  { id: 'overview',      label: 'Overview',     symbol: 'dashboard',       badge: null },
+  { id: 'campaigns',     label: 'Campaigns',    symbol: 'campaign',        badge: 4   },
+  { id: 'action-items',  label: 'Action Items', symbol: 'checklist',       badge: 6   },
+  { id: 'appointments',  label: 'Appointments', symbol: 'event_available', badge: 3   },
+  { id: 'customers',     label: 'Leads',        symbol: 'group',           badge: null },
 ]
 
 export default function SecondaryNav({ activePage, onPageChange, navLeftPx = 220, embedded = false }) {
   if (embedded) {
     return (
       <div
-        className="sticky top-0 z-20 flex h-11 w-full items-center border-b transition-all duration-200"
-        style={{
-          background: 'var(--spyne-surface)',
-          borderColor: 'var(--spyne-border)',
-        }}
+        className={cn(
+          /* Full width of main column (layout has no horizontal padding on Sales) */
+          'sticky top-14 z-[40] lg:top-0',
+          'w-full min-w-0 bg-spyne-surface',
+        )}
       >
-        <div className="flex h-full items-center gap-0.5 px-5">
-          {navItems.map((item) => {
-            const active = activePage === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onPageChange(item.id)}
-                className="relative flex h-full cursor-pointer items-center gap-2 border-b-2 px-4 transition-colors"
-                style={{
-                  borderColor: active ? 'var(--spyne-brand)' : 'transparent',
-                  color: active ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-                  fontWeight: active ? 600 : 500,
-                  fontSize: 13,
-                }}
-                aria-current={active ? 'page' : undefined}
-              >
-                <item.icon size={14} strokeWidth={active ? 2.2 : 1.8} />
-                {item.label}
-                {item.badge ? (
-                  <span
-                    className="flex h-[18px] min-w-[18px] items-center justify-center px-1 font-bold leading-none"
-                    style={{
-                      borderRadius: 'var(--spyne-radius-pill)',
-                      background: 'var(--spyne-brand)',
-                      color: 'var(--spyne-brand-on)',
-                      fontSize: 10,
-                    }}
-                  >
-                    {item.badge}
-                  </span>
-                ) : null}
-              </button>
-            )
-          })}
+        <div className="min-w-0 px-max2-page">
+          <SpyneLineTabStrip embedded className="min-h-10 w-full min-w-0">
+            {navItems.map((item) => {
+              const active = activePage === item.id
+              return (
+                <SpyneLineTab
+                  key={item.id}
+                  active={active}
+                  onClick={() => onPageChange(item.id)}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  <MaterialSymbol name={item.symbol} size={14} className="text-current" />
+                  {item.label}
+                  {item.badge != null ? <SpyneLineTabBadge>{item.badge}</SpyneLineTabBadge> : null}
+                </SpyneLineTab>
+              )
+            })}
+          </SpyneLineTabStrip>
         </div>
       </div>
     )
@@ -62,50 +47,30 @@ export default function SecondaryNav({ activePage, onPageChange, navLeftPx = 220
 
   return (
     <div
-      className="fixed right-0 flex items-center z-20 transition-all duration-200"
+      className="fixed right-0 z-20 flex min-h-11 items-end bg-spyne-surface transition-all duration-200"
       style={{
         top: 56,
         left: navLeftPx,
-        height: 44,
-        background: 'var(--spyne-surface)',
-        borderBottom: '1px solid var(--spyne-border)',
       }}
     >
-      <div className="flex items-center px-5 h-full gap-0.5">
-        {navItems.map((item) => {
-          const active = activePage === item.id
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onPageChange(item.id)}
-              className="relative flex items-center gap-2 px-4 h-full border-b-2 transition-colors cursor-pointer"
-              style={{
-                borderColor: active ? 'var(--spyne-brand)' : 'transparent',
-                color: active ? 'var(--spyne-brand)' : 'var(--spyne-text-muted)',
-                fontWeight: active ? 600 : 500,
-                fontSize: 13,
-              }}
-              aria-current={active ? 'page' : undefined}
-            >
-              <item.icon size={14} strokeWidth={active ? 2.2 : 1.8} />
-              {item.label}
-              {item.badge ? (
-                <span
-                  className="flex items-center justify-center min-w-[18px] h-[18px] px-1 font-bold leading-none"
-                  style={{
-                    borderRadius: 'var(--spyne-radius-pill)',
-                    background: 'var(--spyne-brand)',
-                    color: 'var(--spyne-brand-on)',
-                    fontSize: 10,
-                  }}
-                >
-                  {item.badge}
-                </span>
-              ) : null}
-            </button>
-          )
-        })}
+      <div className="min-w-0 flex-1 px-5">
+        <SpyneLineTabStrip embedded className="min-h-11 w-full">
+          {navItems.map((item) => {
+            const active = activePage === item.id
+            return (
+              <SpyneLineTab
+                key={item.id}
+                active={active}
+                onClick={() => onPageChange(item.id)}
+                aria-current={active ? 'page' : undefined}
+              >
+                <MaterialSymbol name={item.symbol} size={14} className="text-current" />
+                {item.label}
+                {item.badge != null ? <SpyneLineTabBadge>{item.badge}</SpyneLineTabBadge> : null}
+              </SpyneLineTab>
+            )
+          })}
+        </SpyneLineTabStrip>
       </div>
     </div>
   )

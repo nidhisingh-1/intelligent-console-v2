@@ -1,19 +1,19 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { Max2UiProvider } from "@/components/max-2/max-2-ui-context"
 import { Max2SpyneScope } from "@/components/max-2/max2-spyne-scope"
 import {
   Max2SidebarRail,
+  Max2SidebarRailChildLink,
   Max2SidebarRailDivider,
   Max2SidebarRailNavLink,
 } from "@/components/max-2/max2-sidebar-rail"
 import { MaterialSymbol } from "@/components/max-2/material-symbol"
 import { cn } from "@/lib/utils"
-import { isMax2SpyneScopedPath, max2Classes, max2Layout } from "@/lib/design-system/max-2"
+import { max2Classes, max2Layout, spyneComponentClasses } from "@/lib/design-system/max-2"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 
@@ -33,7 +33,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/max-2", label: "Dashboard", icon: "space_dashboard", exact: true },
+  { href: "/max-2", label: "Home", icon: "home", exact: true },
   {
     href: "/max-2/studio",
     label: "Studio AI",
@@ -65,10 +65,17 @@ const navItems: NavItem[] = [
 
 export default function Max2Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isSalesRoute = pathname.startsWith("/max-2/sales")
-  const spyneScoped = isMax2SpyneScopedPath(pathname)
-  const [collapsed, setCollapsed] = React.useState(false)
+  /** Sales + Service: same chrome (full-width sticky tab strip, body padding inside experience). */
+  const isConsoleTabRoute =
+    pathname.startsWith("/max-2/sales") || pathname.startsWith("/max-2/service")
+  const [collapsed, setCollapsed] = React.useState(isConsoleTabRoute)
   const [mobileOpen, setMobileOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    if (isConsoleTabRoute) {
+      setCollapsed(true)
+    }
+  }, [isConsoleTabRoute])
   const [hoveredParent, setHoveredParent] = React.useState<string | null>(null)
 
   const SidebarNav = ({
@@ -107,25 +114,19 @@ export default function Max2Layout({ children }: { children: React.ReactNode }) 
                   isExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
                 )}
               >
-                <div className="ml-8 mt-1 flex flex-col gap-1 border-l border-spyne-border pl-3">
+                <div className={spyneComponentClasses.sidebarRailChildGroup}>
                   {item.children!.map((child) => {
                     const childActive = child.href === item.href
                       ? pathname === child.href
                       : pathname.startsWith(child.href)
                     return (
-                      <Link
+                      <Max2SidebarRailChildLink
                         key={child.href}
                         href={child.href}
-                        onClick={onNavigate}
-                        className={cn(
-                          "rounded-md px-2 py-2 text-xs font-medium transition-colors",
-                          childActive
-                            ? max2Classes.navChildActive
-                            : "text-spyne-text-secondary hover:bg-spyne-primary-soft/40 hover:text-spyne-text"
-                        )}
-                      >
-                        {child.label}
-                      </Link>
+                        label={child.label}
+                        active={childActive}
+                        onNavigate={onNavigate}
+                      />
                     )
                   })}
                 </div>
@@ -137,15 +138,13 @@ export default function Max2Layout({ children }: { children: React.ReactNode }) 
     </div>
   )
 
-  const mainInner = spyneScoped ? <Max2SpyneScope>{children}</Max2SpyneScope> : children
-
   return (
     <AppShell>
       <Max2UiProvider
         sidebarCollapsed={collapsed}
         openMobileSidebar={() => setMobileOpen(true)}
       >
-        <div className="flex min-h-screen bg-max2-shell">
+        <Max2SpyneScope className="flex min-h-screen min-w-0 w-full bg-max2-shell">
           <Max2SidebarRail
             collapsed={collapsed}
             onToggleCollapsed={() => setCollapsed(!collapsed)}
@@ -155,7 +154,13 @@ export default function Max2Layout({ children }: { children: React.ReactNode }) 
           </Max2SidebarRail>
 
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetContent side="left" className="w-[260px] border-spyne-border p-0 bg-spyne-surface">
+            <SheetContent
+              side="left"
+              className={cn(
+                "w-[260px] border-spyne-border bg-spyne-surface p-0",
+                max2Classes.spyneScope,
+              )}
+            >
               <div className="flex h-14 items-center border-b border-spyne-border px-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-spyne-text-secondary">
                   Max 2.0
@@ -181,14 +186,14 @@ export default function Max2Layout({ children }: { children: React.ReactNode }) 
             </div>
             <div
               className={cn(
-                max2Layout.pagePadding,
-                !isSalesRoute && !spyneScoped && max2Layout.contentTone
+                /* Sales / Service: no horizontal padding here; tab strip is full width; page body pads inside experience */
+                isConsoleTabRoute ? "pb-max2-page pt-0" : max2Layout.pagePadding
               )}
             >
-              {mainInner}
+              {children}
             </div>
           </div>
-        </div>
+        </Max2SpyneScope>
       </Max2UiProvider>
     </AppShell>
   )

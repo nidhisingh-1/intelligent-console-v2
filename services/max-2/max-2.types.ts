@@ -138,6 +138,15 @@ export interface MerchandisingVehicle {
   make: string
   model: string
   trim: string
+  /** Dealer stock number shown in inventory tables (e.g. STK1122). */
+  stockNumber?: string
+  /** Correlation or DMS id shown next to stock (optional). */
+  listingExternalId?: string
+  /** ISO 8601; drives “Last updated” when present. */
+  listingUpdatedAt?: string
+  bodyStyle?: string
+  exteriorColor?: string
+  fuelType?: string
   thumbnailUrl: string
   mediaStatus: MediaStatus
   photoCount: number
