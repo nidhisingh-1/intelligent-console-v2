@@ -6,6 +6,7 @@ import {
   CampaignOpportunities,
   HotCarPromotions,
   ListingPerformance,
+  CampaignFunnel,
 } from "@/components/max-2/marketing"
 import { max2Classes, max2Layout } from "@/lib/design-system/max-2"
 import { cn } from "@/lib/utils"
@@ -21,6 +22,8 @@ export default function MarketingPage() {
       </div>
 
       <MarketingChannelKpiStrip />
+
+      <CampaignFunnel />
 
       <ChannelROITable />
 

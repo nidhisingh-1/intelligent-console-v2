@@ -1299,9 +1299,10 @@ function DetailLeadsTab({ campaign, selectedLead, onSelectLead }) {
   }
 
   return (
-    <div className="spyne-card overflow-hidden">
+    <div className="spyne-card overflow-hidden" style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 340px)' }}>
+      <div style={{ overflowY: 'auto', flex: 1 }}>
       <table className="w-full">
-        <thead>
+        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
           <tr style={{ background: 'var(--spyne-surface-hover)' }}>
             <th className="text-left px-5 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Lead</th>
             <th className="text-left px-3 py-3 spyne-caption font-semibold" style={{ color: 'var(--spyne-text-muted)' }}>Vehicle</th>
@@ -1360,6 +1361,7 @@ function DetailLeadsTab({ campaign, selectedLead, onSelectLead }) {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
