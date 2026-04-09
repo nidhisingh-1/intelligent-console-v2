@@ -446,35 +446,32 @@ function LotInventoryContent() {
         quickChips={
           <>
             <SpyneMetricChip
-              label="Certified"
-              count={chipCounts.certified}
-              active={false}
-              disabled
-              onClick={() => {}}
-            />
-            <SpyneMetricChip
               label="Wholesale"
               count={chipCounts.wholesale}
               active={chipWholesale}
               onClick={toggleWholesaleChip}
+              className="bg-white"
             />
             <SpyneMetricChip
               label="Retail"
               count={chipCounts.retail}
               active={chipRetail}
               onClick={toggleRetailChip}
+              className="bg-white"
             />
             <SpyneMetricChip
               label="Recents"
               count={chipCounts.recents}
               active={lotFilters.recentsOnly}
               onClick={() => updateLot({ recentsOnly: !lotFilters.recentsOnly })}
+              className="bg-white"
             />
             <SpyneMetricChip
               label="Age >40 days"
               count={chipCounts.age40}
               active={lotFilters.agedOver40}
               onClick={() => updateLot({ agedOver40: !lotFilters.agedOver40 })}
+              className="bg-white"
             />
           </>
         }

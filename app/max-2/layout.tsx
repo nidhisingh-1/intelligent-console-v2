@@ -46,7 +46,6 @@ const navItems: NavItem[] = [
       { href: "/max-2/studio/add", label: "Add Media" },
       { href: "/max-2/studio/inventory", label: "Active Inventory" },
       { href: "/max-2/studio/media-lot", label: "Lot Services", exact: true },
-      { href: "/max-2/studio/lot-inventory", label: "Lot Inventory" },
     ],
   },
   { href: "/max-2/marketing", label: "Marketing", icon: "campaign" },

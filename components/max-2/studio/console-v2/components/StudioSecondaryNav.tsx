@@ -34,13 +34,6 @@ const STUDIO_NAV_ITEMS: readonly {
     exact: false,
     badge: null,
   },
-  {
-    href: "/max-2/studio/lot-inventory",
-    label: "Lot Inventory",
-    symbol: "garage",
-    exact: false,
-    badge: null,
-  },
 ]
 
 function isTabActive(pathname: string, href: string, exact: boolean) {

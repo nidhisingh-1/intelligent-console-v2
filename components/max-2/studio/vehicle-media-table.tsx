@@ -2,12 +2,9 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { formatDistanceToNowStrict, parseISO } from "date-fns"
 import { mockMerchandisingVehicles } from "@/lib/max-2-mocks"
-import type { MerchandisingVehicle, PublishStatus } from "@/services/max-2/max-2.types"
+import type { MerchandisingVehicle } from "@/services/max-2/max-2.types"
 import { cn } from "@/lib/utils"
-import { spyneComponentClasses } from "@/lib/design-system/max-2"
-import { SpyneChip, SpynePublishStatusChip } from "@/components/max-2/spyne-ui"
 import { MaterialSymbol } from "@/components/max-2/material-symbol"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -31,26 +28,15 @@ function formatOdometer(miles: number) {
 
 function inferBodyStyle(model: string): string {
   const m = model.toLowerCase()
-  if (
-    /f-150|silverado|sierra|tacoma|tundra|1500|2500|ranger|frontier|pickup|ram/.test(m)
-  ) {
-    return "Truck"
-  }
-  if (
-    /cr-v|rav4|pilot|highlander|explorer|equinox|tucson|tiguan|cx-|escape|rogue|pathfinder|telluride|palisade|outback|forester|wrangler|bronco|durango|traverse|blazer|edge|tahoe|yukon|suburban|expedition|sequoia|4runner/.test(
-      m
-    )
-  ) {
-    return "SUV"
-  }
+  if (/f-150|silverado|sierra|tacoma|tundra|1500|2500|ranger|frontier|pickup|ram/.test(m)) return "Truck"
+  if (/cr-v|rav4|pilot|highlander|explorer|equinox|tucson|tiguan|cx-|escape|rogue|pathfinder|telluride|palisade|outback|forester|wrangler|bronco|durango|traverse|blazer|edge|tahoe|yukon|suburban|expedition|sequoia|4runner/.test(m)) return "SUV"
   return "Sedan"
 }
 
-function pseudoExteriorColor(vin: string): string {
-  const palette = ["Red", "Gray", "White", "Black", "Silver", "Blue"]
-  let h = 0
-  for (let i = 0; i < vin.length; i++) h += vin.charCodeAt(i)
-  return palette[h % palette.length]
+function stockLabel(v: MerchandisingVehicle): string {
+  if (v.stockNumber) return v.stockNumber
+  const n = v.vin.replace(/\D/g, "")
+  return n ? `STK${n.slice(0, 3)}` : `STK${v.vin.slice(0, 3)}`
 }
 
 function listingCorrelationId(v: MerchandisingVehicle): string {
@@ -60,227 +46,117 @@ function listingCorrelationId(v: MerchandisingVehicle): string {
   return chunk.slice(0, 16)
 }
 
-function stockLabel(v: MerchandisingVehicle): string {
-  if (v.stockNumber) return v.stockNumber
-  const n = v.vin.replace(/\D/g, "")
-  return n ? `STK${n}` : `STK${v.vin}`
-}
-
-function getListingUpdatedAt(v: MerchandisingVehicle): Date {
-  if (v.listingUpdatedAt) {
-    try {
-      return parseISO(v.listingUpdatedAt)
-    } catch {
-      /* fall through */
-    }
-  }
-  const d = new Date()
-  d.setHours(9 + (v.vin.charCodeAt(0) % 8), 30 + (v.vin.length % 30), 0, 0)
-  d.setDate(d.getDate() - Math.min(v.daysInStock, 90))
-  return d
-}
-
-function merchReviewFlags(v: MerchandisingVehicle) {
+function ReviewStatusBadge({ v }: { v: MerchandisingVehicle }) {
   const copyNeedsReview = !v.hasDescription
-  const vehicleNeedsReview =
-    v.mediaStatus !== "real-photos" ||
-    v.incompletePhotoSet ||
-    v.wrongHeroAngle
-  const videoNeedsReview =
-    v.missingWalkaroundVideo || (!v.hasVideo && v.photoCount > 0)
-  return { copyNeedsReview, vehicleNeedsReview, videoNeedsReview }
-}
+  const vehicleNeedsReview = v.mediaStatus !== "real-photos" || v.incompletePhotoSet || v.wrongHeroAngle
+  const needsReview = copyNeedsReview || vehicleNeedsReview
 
-function reviewIssueCount(v: MerchandisingVehicle): number {
-  const f = merchReviewFlags(v)
-  return [f.copyNeedsReview, f.vehicleNeedsReview, f.videoNeedsReview].filter(Boolean).length
-}
-
-function publishSortRank(s: PublishStatus): number {
-  switch (s) {
-    case "live":
-      return 0
-    case "pending":
-      return 1
-    case "not-published":
-      return 2
-  }
-}
-
-type VehicleTableSortKey = "vehicle" | "lastUpdated" | "review" | "publication"
-
-function defaultSortDir(key: VehicleTableSortKey): "asc" | "desc" {
-  return key === "lastUpdated" || key === "review" ? "desc" : "asc"
-}
-
-function compareVehicles(a: MerchandisingVehicle, b: MerchandisingVehicle, key: VehicleTableSortKey): number {
-  switch (key) {
-    case "vehicle":
-      return `${a.year} ${a.make} ${a.model}`.localeCompare(
-        `${b.year} ${b.make} ${b.model}`,
-        undefined,
-        { sensitivity: "base", numeric: true }
-      )
-    case "lastUpdated":
-      return getListingUpdatedAt(a).getTime() - getListingUpdatedAt(b).getTime()
-    case "review":
-      return reviewIssueCount(a) - reviewIssueCount(b)
-    case "publication":
-      return publishSortRank(a.publishStatus) - publishSortRank(b.publishStatus)
-  }
-}
-
-function sortVehicleRows(
-  rows: MerchandisingVehicle[],
-  key: VehicleTableSortKey,
-  dir: "asc" | "desc"
-): MerchandisingVehicle[] {
-  const mult = dir === "asc" ? 1 : -1
-  return [...rows].sort((a, b) => mult * compareVehicles(a, b, key))
-}
-
-function StudioPublishCell({ publishStatus }: { publishStatus: PublishStatus }) {
-  if (publishStatus === "not-published") {
+  if (!needsReview) {
     return (
-      <SpyneChip
-        variant="soft"
-        tone="neutral"
-        compact
-        className="max-w-full"
-        leading={
-          <span
-            className={cn(
-              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-              "bg-spyne-text-secondary text-[10px] font-semibold text-white"
-            )}
-            aria-hidden
-          >
-            N
-          </span>
-        }
-      >
-        Not published
-      </SpyneChip>
+      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#DAF5E8", color: "#008743" }}>
+        Ready
+      </span>
     )
   }
-  return <SpynePublishStatusChip publishStatus={publishStatus} compact />
-}
-
-function VehicleTableSortHeader({
-  columnKey,
-  activeKey,
-  dir,
-  icon,
-  label,
-  onSort,
-  className,
-}: {
-  columnKey: VehicleTableSortKey
-  activeKey: VehicleTableSortKey
-  dir: "asc" | "desc"
-  icon: string
-  label: string
-  onSort: (key: VehicleTableSortKey) => void
-  className?: string
-}) {
-  const active = activeKey === columnKey
   return (
-    <th
-      scope="col"
-      aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}
-      className={cn("border-l border-spyne-border py-2.5 align-middle", className)}
-    >
-      <button
-        type="button"
-        onClick={() => onSort(columnKey)}
-        aria-label={
-          active
-            ? `${label}, sorted ${dir === "asc" ? "ascending" : "descending"}, click to reverse`
-            : `Sort by ${label}`
-        }
-        className={cn(
-          "inline-flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 pl-0.5 pr-1 text-left transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/30",
-          active ? "text-spyne-primary" : "text-spyne-text-secondary hover:text-spyne-text"
-        )}
-      >
-        <MaterialSymbol
-          name={icon}
-          size={16}
-          className="shrink-0 opacity-90"
-          aria-hidden
-        />
-        <span className="min-w-0 text-[10px] font-medium uppercase tracking-widest">{label}</span>
-        <MaterialSymbol
-          name={active ? (dir === "asc" ? "arrow_upward" : "arrow_downward") : "swap_vert"}
-          size={14}
-          className={cn("ml-auto shrink-0", active ? "text-spyne-primary" : "opacity-35")}
-          aria-hidden
-        />
-      </button>
-    </th>
+    <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#FEF3C7", color: "#B45309" }}>
+      In Review
+    </span>
   )
 }
 
-function ReviewStack({ v }: { v: MerchandisingVehicle }) {
-  const { copyNeedsReview, vehicleNeedsReview, videoNeedsReview } = merchReviewFlags(v)
-  const rows: { key: string; icon: string; show: boolean }[] = [
-    { key: "copy", icon: "description", show: copyNeedsReview },
-    { key: "vehicle", icon: "directions_car", show: vehicleNeedsReview },
-    { key: "video", icon: "videocam", show: videoNeedsReview },
-  ]
-  const any = rows.some((r) => r.show)
-  if (!any) {
+function PublishStateBadge({ status }: { status: MerchandisingVehicle["publishStatus"] }) {
+  if (status === "live") {
     return (
-      <span className="text-xs text-spyne-text-secondary">Ready</span>
+      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#F2F0FA", color: "#3700BF" }}>
+        Published
+      </span>
+    )
+  }
+  if (status === "pending") {
+    return (
+      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#E2F4FF", color: "#4D7FFF" }}>
+        Pending
+      </span>
     )
   }
   return (
-    <div className="flex flex-col gap-1.5">
-      {rows.map(
-        (r) =>
-          r.show && (
-            <SpyneChip
-              key={r.key}
-              variant="soft"
-              tone="warning"
-              compact
-              leading={<MaterialSymbol name={r.icon} size={14} className="text-spyne-warning" />}
-            >
-              In review
-            </SpyneChip>
-          )
+    <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#F1F1F5", color: "#3C4464" }}>
+      Not Published
+    </span>
+  )
+}
+
+function ImagePreviewCell({ v }: { v: MerchandisingVehicle }) {
+  const [hovered, setHovered] = React.useState(false)
+  const [pos, setPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 })
+  const cellRef = React.useRef<HTMLDivElement>(null)
+
+  const handleMouseEnter = () => {
+    if (!cellRef.current) return
+    const rect = cellRef.current.getBoundingClientRect()
+    setPos({
+      top: rect.top + window.scrollY + rect.height / 2,
+      left: rect.right + window.scrollX + 12,
+    })
+    setHovered(true)
+  }
+
+  return (
+    <div
+      ref={cellRef}
+      className="relative aspect-[4/3] w-14 overflow-hidden rounded bg-gray-100 shrink-0 cursor-pointer"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {v.thumbnailUrl ? (
+        <img src={v.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-gray-400">
+          <MaterialSymbol name="photo_camera" size={22} />
+        </div>
+      )}
+      {v.photoCount > 0 && (
+        <span className="absolute bottom-0.5 right-0.5 rounded bg-white/90 px-1 text-[10px] font-semibold tabular-nums text-gray-700 shadow-sm">
+          {v.photoCount}
+        </span>
+      )}
+
+      {hovered && v.thumbnailUrl && typeof document !== "undefined" && (
+        <ImagePreviewPortal src={v.thumbnailUrl} top={pos.top} left={pos.left} />
       )}
     </div>
   )
 }
 
+function ImagePreviewPortal({ src, top, left }: { src: string; top: number; left: number }) {
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return null
+
+  const { createPortal } = require("react-dom")
+  return createPortal(
+    <div
+      className="pointer-events-none fixed z-[9999]"
+      style={{ top, left, transform: "translateY(-50%)" }}
+    >
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_8px_32px_rgba(0,0,0,0.16),0_2px_8px_rgba(0,0,0,0.08)]"
+        style={{ width: 280 }}
+      >
+        <img src={src} alt="" className="h-auto w-full object-cover" style={{ aspectRatio: "4/3" }} />
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 interface VehicleMediaTableProps {
   vehicles?: MerchandisingVehicle[]
-  /** Optional title strip above the table (hidden when omitted) */
   title?: string
 }
 
 export function VehicleMediaTable({ vehicles, title }: VehicleMediaTableProps) {
   const data = vehicles ?? mockMerchandisingVehicles
-
-  const [sort, setSort] = React.useState<{
-    key: VehicleTableSortKey
-    dir: "asc" | "desc"
-  }>({ key: "lastUpdated", dir: "desc" })
-
-  const handleSort = React.useCallback((key: VehicleTableSortKey) => {
-    setSort((prev) =>
-      prev.key === key
-        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: defaultSortDir(key) }
-    )
-  }, [])
-
-  const sorted = React.useMemo(
-    () => sortVehicleRows(data, sort.key, sort.dir),
-    [data, sort.key, sort.dir]
-  )
 
   const [selected, setSelected] = React.useState<Set<string>>(() => new Set())
 
@@ -293,123 +169,84 @@ export function VehicleMediaTable({ vehicles, title }: VehicleMediaTableProps) {
     })
   }, [])
 
-  const selectedOnPage = sorted.filter((v) => selected.has(v.vin)).length
+  const selectedOnPage = data.filter((v) => selected.has(v.vin)).length
   const headerChecked =
-    sorted.length === 0
-      ? false
-      : selectedOnPage === sorted.length
-        ? true
-        : selectedOnPage > 0
-          ? "indeterminate"
-          : false
+    data.length === 0 ? false
+    : selectedOnPage === data.length ? true
+    : selectedOnPage > 0 ? "indeterminate"
+    : false
 
   const copyStockLine = React.useCallback(async (v: MerchandisingVehicle) => {
     const line = `${stockLabel(v)} • ${listingCorrelationId(v)}`
-    try {
-      await navigator.clipboard.writeText(line)
-    } catch {
-      /* ignore */
-    }
+    try { await navigator.clipboard.writeText(line) } catch { /* ignore */ }
   }, [])
 
   return (
-    <div className="overflow-hidden rounded-md border border-spyne-border bg-spyne-surface">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
       {title ? (
-        <div className="border-b border-spyne-border px-4 py-3">
-          <h3 className="text-sm font-semibold text-spyne-text">{title}</h3>
+        <div className="border-b border-gray-200 px-5 py-3.5">
+          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
         </div>
       ) : null}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[960px] border-collapse text-sm text-spyne-text">
+        <table className="w-full min-w-[900px] border-collapse text-sm">
+          {/* Header */}
           <thead>
-            <tr className="border-b border-spyne-border bg-muted/20 text-left">
-              <th className="w-12 py-2.5 pl-4 pr-2 align-middle">
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="w-10 py-3 pl-4 pr-3 align-middle">
                 <Checkbox
                   checked={headerChecked}
-                  onCheckedChange={(c) => {
-                    if (c === true) {
-                      setSelected(new Set(sorted.map((v) => v.vin)))
-                    } else {
-                      setSelected(new Set())
-                    }
-                  }}
+                  onCheckedChange={(c) =>
+                    c === true
+                      ? setSelected(new Set(data.map((v) => v.vin)))
+                      : setSelected(new Set())
+                  }
                   aria-label="Select all vehicles"
                 />
               </th>
-              <VehicleTableSortHeader
-                columnKey="vehicle"
-                activeKey={sort.key}
-                dir={sort.dir}
-                icon="directions_car"
-                label="Vehicle"
-                onSort={handleSort}
-                className="pl-3 pr-2"
-              />
-              <VehicleTableSortHeader
-                columnKey="lastUpdated"
-                activeKey={sort.key}
-                dir={sort.dir}
-                icon="schedule"
-                label="Last updated"
-                onSort={handleSort}
-                className="px-3 whitespace-nowrap"
-              />
-              <VehicleTableSortHeader
-                columnKey="review"
-                activeKey={sort.key}
-                dir={sort.dir}
-                icon="rate_review"
-                label="Review"
-                onSort={handleSort}
-                className="px-3"
-              />
-              <VehicleTableSortHeader
-                columnKey="publication"
-                activeKey={sort.key}
-                dir={sort.dir}
-                icon="newspaper"
-                label="Publication"
-                onSort={handleSort}
-                className="px-3"
-              />
-              <th
-                scope="col"
-                className="border-l border-spyne-border py-2.5 pl-3 pr-3 text-right align-middle w-[140px]"
-              >
-                <span className="inline-flex items-center justify-end gap-1.5 text-[10px] font-medium uppercase tracking-widest text-spyne-text-secondary">
-                  <MaterialSymbol name="more_horiz" size={16} className="shrink-0 opacity-90" aria-hidden />
-                  Actions
-                </span>
+              {/* Stock Image — no label, just the col width */}
+              <th className="w-20 py-3 pr-3 align-middle" />
+              <th className="py-3 pr-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-gray-500">
+                Vehicle
+              </th>
+              <th className="py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+                Stock #
+              </th>
+              <th className="py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-gray-500">
+                Status
+              </th>
+              <th className="py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+                Publish State
+              </th>
+              <th className="py-3 px-4 text-center align-middle text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+                Age
+              </th>
+              <th className="py-3 px-4 text-right align-middle text-xs font-medium uppercase tracking-wider text-gray-500">
+                Price
+              </th>
+              <th className="py-3 pl-4 pr-5 text-right align-middle text-xs font-medium uppercase tracking-wider text-gray-500">
+                Action
               </th>
             </tr>
           </thead>
-          <tbody>
-            {sorted.map((v) => {
-              const hasIssue =
-                v.mediaStatus === "no-photos" ||
-                v.mediaStatus === "stock-photos" ||
-                v.listingScore < 50
-              const updated = getListingUpdatedAt(v)
+
+          {/* Body */}
+          <tbody className="divide-y divide-gray-100">
+            {data.map((v) => {
               const specLine = [
-                v.bodyStyle ?? inferBodyStyle(v.model),
-                v.exteriorColor ?? pseudoExteriorColor(v.vin),
-                v.fuelType ?? "Petrol",
+                v.isNew ? "New" : "Pre-Owned",
+                formatOdometer(v.odometer) + " mi",
               ].join(" • ")
+              const bodyStyle = v.bodyStyle ?? inferBodyStyle(v.model)
 
               return (
                 <tr
                   key={v.vin}
-                  className={cn(
-                    "border-b border-spyne-border transition-colors hover:bg-muted/30",
-                    hasIssue && "bg-muted/10"
-                  )}
+                  className="group cursor-pointer bg-white transition-colors hover:bg-gray-50"
+                  onClick={() => window.location.href = `/max-2/studio/inventory?vin=${encodeURIComponent(v.vin)}`}
                 >
-                  <td
-                    className={cn(
-                      "align-top py-3 pl-4 pr-2",
-                      hasIssue && spyneComponentClasses.overviewIssueRowAccent
-                    )}
-                  >
+                  {/* Checkbox */}
+                  <td className="py-3.5 pl-4 pr-3 align-middle">
                     <Checkbox
                       checked={selected.has(v.vin)}
                       onCheckedChange={(c) => toggleOne(v.vin, c === true)}
@@ -417,141 +254,72 @@ export function VehicleMediaTable({ vehicles, title }: VehicleMediaTableProps) {
                     />
                   </td>
 
-                  <td className="border-l border-spyne-border py-3 pl-4 pr-4 align-top">
-                    <div className="flex min-w-0 items-stretch gap-3">
-                      {/* Stretched height matches text block; aspect-video sets width from that height (16:9) */}
-                      <div
-                        className={cn(
-                          "relative shrink-0 self-stretch overflow-hidden rounded-md bg-muted",
-                          "aspect-video min-h-[4.5rem] min-w-0"
-                        )}
-                      >
-                        {v.thumbnailUrl ? (
-                          <img
-                            src={v.thumbnailUrl}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full min-h-[4.5rem] w-full items-center justify-center text-spyne-text-secondary">
-                            <MaterialSymbol name="photo_camera" size={24} />
-                          </div>
-                        )}
-                        <span
-                          className={cn(
-                            "absolute left-1 top-1 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white",
-                            v.isNew ? "bg-spyne-primary" : "bg-spyne-info"
-                          )}
-                        >
-                          {v.isNew ? "New" : "Pre owned"}
-                        </span>
-                        {v.photoCount > 0 ? (
-                          <span className="absolute bottom-1 right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white/95 px-1 text-[11px] font-semibold tabular-nums text-spyne-text shadow-sm">
-                            {v.photoCount}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="flex min-w-0 flex-1 gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-spyne-text-secondary">
-                            <span className="tabular-nums">
-                              {stockLabel(v)} • {listingCorrelationId(v)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => void copyStockLine(v)}
-                              className="inline-flex rounded p-0.5 text-spyne-primary hover:bg-spyne-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/30"
-                              aria-label="Copy stock and listing id"
-                            >
-                              <MaterialSymbol name="content_copy" size={14} />
-                            </button>
-                          </div>
-                          <p className="mt-0.5 truncate font-semibold text-spyne-text">
-                            {v.year} {v.make} {v.model}
-                          </p>
-                          <p className="mt-0.5 text-xs text-spyne-text-secondary">{specLine}</p>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1 text-xs text-spyne-text-secondary">
-                            <MaterialSymbol name="speed" size={14} className="text-spyne-text-secondary" />
-                            <span className="tabular-nums">
-                              {formatOdometer(v.odometer)} miles
-                            </span>
-                            <span className="text-spyne-border" aria-hidden>
-                              |
-                            </span>
-                            <span className="tabular-nums font-medium text-spyne-text">
-                              {formatPrice(v.price)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 flex-col gap-1 pt-0.5">
-                          <button
-                            type="button"
-                            className="inline-flex rounded p-1 text-spyne-primary hover:bg-spyne-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/30"
-                            aria-label="Download assets"
-                          >
-                            <MaterialSymbol name="download" size={20} />
-                          </button>
-                          <button
-                            type="button"
-                            className="inline-flex rounded p-1 text-spyne-primary hover:bg-spyne-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/30"
-                            aria-label="Open listing"
-                          >
-                            <MaterialSymbol name="public" size={20} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                  {/* Stock Image */}
+                  <td className="py-3 pr-3 align-middle">
+                    <ImagePreviewCell v={v} />
                   </td>
 
-                  <td className="border-l border-spyne-border py-3 px-4 align-top whitespace-nowrap">
-                    <p className="text-sm text-spyne-text">
-                      {Intl.DateTimeFormat("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      }).format(updated)}
+                  {/* Vehicle */}
+                  <td className="py-3.5 pr-4 align-middle">
+                    <p className="font-semibold text-gray-900">
+                      {v.year} {v.make} {v.model}
+                      {v.trim ? ` ${v.trim}` : ""}
                     </p>
-                    <p className="mt-0.5 text-xs text-spyne-text-secondary">
-                      {formatDistanceToNowStrict(updated, { addSuffix: true })}
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {bodyStyle} • {specLine}
                     </p>
                   </td>
 
-                  <td className="border-l border-spyne-border py-3 px-4 align-top">
-                    <ReviewStack v={v} />
+                  {/* Stock # */}
+                  <td className="py-3.5 px-4 align-middle">
+                    <span className="font-['Inter',ui-sans-serif,system-ui,sans-serif] text-sm text-gray-700">{stockLabel(v)}</span>
                   </td>
 
-                  <td className="border-l border-spyne-border py-3 px-4 align-top">
-                    <StudioPublishCell publishStatus={v.publishStatus} />
+                  {/* Status */}
+                  <td className="py-3.5 px-4 align-middle">
+                    <ReviewStatusBadge v={v} />
                   </td>
 
-                  <td className="border-l border-spyne-border py-3 pl-4 pr-2 align-top">
-                    <div className="flex items-start justify-end gap-1">
-                      <Link
-                        href={`/max-2/studio/inventory?vin=${encodeURIComponent(v.vin)}`}
-                        className="inline-flex items-center gap-0.5 whitespace-nowrap text-sm font-medium text-spyne-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/30 rounded-sm"
-                      >
-                        View details
-                        <MaterialSymbol name="arrow_forward" size={14} />
-                      </Link>
+                  {/* Publish State */}
+                  <td className="py-3.5 px-4 align-middle">
+                    <PublishStateBadge status={v.publishStatus} />
+                  </td>
+
+                  {/* Days in Stock */}
+                  <td className="py-3.5 px-4 align-middle text-center">
+                    <span
+                      className={cn(
+                        "text-sm font-medium tabular-nums",
+                        v.daysInStock >= 45 ? "text-red-600" : "text-[#333333]"
+                      )}
+                    >
+                      {v.daysInStock} <span className="font-medium">days</span>
+                    </span>
+                  </td>
+
+                  {/* Price */}
+                  <td className="py-3.5 px-4 align-middle text-right">
+                    <span className="text-sm font-medium tabular-nums text-[#333333]">
+                      {formatPrice(v.price)}
+                    </span>
+                  </td>
+
+                  {/* Action */}
+                  <td className="py-3.5 pl-4 pr-5 align-middle text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="inline-flex items-center gap-1">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-spyne-text-secondary hover:bg-muted hover:text-spyne-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/30"
+                            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/30"
                             aria-label="Row actions"
                           >
-                            <MaterialSymbol name="more_vert" size={20} />
+                            <MaterialSymbol name="more_vert" size={18} />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-[200px]">
+                        <DropdownMenuContent align="end" className="min-w-[180px]">
                           <DropdownMenuItem
-                            onSelect={(e) => {
-                              e.preventDefault()
-                              void copyStockLine(v)
-                            }}
+                            onSelect={(e) => { e.preventDefault(); void copyStockLine(v) }}
                           >
                             Copy stock line
                           </DropdownMenuItem>
