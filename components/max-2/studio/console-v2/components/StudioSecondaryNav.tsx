@@ -18,15 +18,7 @@ const STUDIO_NAV_ITEMS: readonly {
   exact: boolean
   badge: number | null
 }[] = [
-  { href: "/max-2/studio", label: "Overview", symbol: "dashboard", exact: true, badge: null },
-  { href: "/max-2/studio/add", label: "Add Media", symbol: "post_add", exact: true, badge: null },
-  {
-    href: "/max-2/studio/inventory",
-    label: "Active Inventory",
-    symbol: "inventory_2",
-    exact: false,
-    badge: inventoryVehicleCount,
-  },
+  { href: "/max-2/studio", label: "Studio Overview", symbol: "dashboard", exact: true, badge: null },
   {
     href: "/max-2/studio/media-lot",
     label: "Lot Services",
@@ -34,6 +26,14 @@ const STUDIO_NAV_ITEMS: readonly {
     exact: false,
     badge: null,
   },
+  {
+    href: "/max-2/studio/inventory",
+    label: "Inventory",
+    symbol: "inventory_2",
+    exact: false,
+    badge: inventoryVehicleCount,
+  },
+  { href: "/max-2/studio/add", label: "Add Media", symbol: "post_add", exact: true, badge: null },
 ]
 
 function isTabActive(pathname: string, href: string, exact: boolean) {

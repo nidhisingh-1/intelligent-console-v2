@@ -41,10 +41,7 @@ const DEFAULTS: State = {
 export function LotHoldingCostWidget() {
   const [s, setS] = React.useState<State>(DEFAULTS)
   /** When set, user typed a daily $/car override; cleared when calculator inputs change. */
-  const [dailyOverrideText, setDailyOverrideText] = React.useState<string>("")
-
   const upd = (k: keyof State, v: string) => {
-    setDailyOverrideText("")
     setS((p) => ({ ...p, [k]: v }))
   }
 
@@ -60,40 +57,8 @@ export function LotHoldingCostWidget() {
   const costPerUnit      = avgUnits > 0 ? monthlyFixed / avgUnits : 0
   const dailyRate        = costPerUnit / daysOpen
 
-  const parsedOverride =
-    dailyOverrideText.trim() !== "" ? parseFloat(dailyOverrideText) : NaN
-  const hasValidOverride =
-    !Number.isNaN(parsedOverride) && parsedOverride >= 0
-  const effectiveDaily = hasValidOverride ? parsedOverride : dailyRate
-
   return (
     <div className="flex flex-wrap items-end justify-end gap-3 sm:gap-4">
-      <div className="flex flex-col gap-1 min-w-0">
-        <label
-          htmlFor="lot-holding-daily-cost"
-          className="text-[10px] font-semibold uppercase tracking-widest text-spyne-text-secondary"
-        >
-          Daily cost
-        </label>
-        <div className="flex h-9 items-center rounded-[6px] border border-spyne-border bg-white px-2 gap-1 min-w-[9.5rem]">
-          <span className="text-xs text-muted-foreground tabular-nums shrink-0">$</span>
-          <input
-            id="lot-holding-daily-cost"
-            type="number"
-            min={0}
-            step={0.01}
-            inputMode="decimal"
-            value={dailyOverrideText}
-            onChange={(e) => setDailyOverrideText(e.target.value)}
-            placeholder={dailyRate > 0 ? dailyRate.toFixed(2) : "0.00"}
-            className="min-w-0 flex-1 bg-transparent text-sm font-semibold tabular-nums text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
-          <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
-            /car/day
-          </span>
-        </div>
-      </div>
-
       <Popover>
         <PopoverTrigger asChild>
           <button
@@ -111,7 +76,7 @@ export function LotHoldingCostWidget() {
               <MaterialSymbol name="expand_more" size={14} className="text-spyne-text-secondary transition-transform duration-150 group-data-[state=open]:rotate-180" />
             </div>
             <p className="text-base font-bold tracking-tight text-spyne-error tabular-nums mt-0.5">
-              {fmt2(effectiveDaily)}
+              {fmt2(dailyRate)}
               <span className="text-xs font-medium text-muted-foreground ml-1">/car/day</span>
             </p>
           </button>
@@ -191,11 +156,6 @@ export function LotHoldingCostWidget() {
               {fmt2(dailyRate)}
               <span className="text-sm font-normal text-spyne-error/80 ml-1">/car/day</span>
             </p>
-            {hasValidOverride ? (
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Header shows {fmt2(parsedOverride)} /car/day (manual input).
-              </p>
-            ) : null}
           </div>
         </div>
       </PopoverContent>

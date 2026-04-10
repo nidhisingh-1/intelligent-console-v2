@@ -164,41 +164,41 @@ export function Max2InventoryListHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:gap-3">
-        {quickChips ? (
-          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto shrink-0 [scrollbar-width:thin]">
-            {quickChips}
-          </div>
-        ) : null}
+        <div className="relative min-w-[180px] max-w-[240px]">
+          <MaterialSymbol
+            name="search"
+            size={16}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-spyne-text-secondary"
+          />
+          <Input
+            placeholder={inputPlaceholder}
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            aria-label={searchAriaLabel}
+            className="h-9 rounded-md border-spyne-border bg-white pl-8 pr-3 text-[13px] leading-tight text-spyne-text shadow-none placeholder:text-spyne-text-secondary"
+          />
+          {showHintOverlay && hints[hintIndex] ? (
+            <span
+              key={hintIndex}
+              className={cn(
+                "pointer-events-none absolute left-8 right-3 top-1/2 -translate-y-1/2",
+                spyneComponentClasses.inventorySearchHint
+              )}
+              aria-hidden
+            >
+              {hints[hintIndex]}
+            </span>
+          ) : null}
+        </div>
 
         <div className="flex items-center gap-2 lg:gap-3 shrink-0 ml-auto">
-          <div className="relative min-w-[180px] max-w-[240px]">
-            <MaterialSymbol
-              name="search"
-              size={16}
-              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-spyne-text-secondary"
-            />
-            <Input
-              placeholder={inputPlaceholder}
-              value={searchValue}
-              onChange={(e) => onSearchChange(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              aria-label={searchAriaLabel}
-              className="h-9 rounded-md border-spyne-border bg-white pl-8 pr-3 text-[13px] leading-tight text-spyne-text shadow-none placeholder:text-spyne-text-secondary"
-            />
-            {showHintOverlay && hints[hintIndex] ? (
-              <span
-                key={hintIndex}
-                className={cn(
-                  "pointer-events-none absolute left-8 right-3 top-1/2 -translate-y-1/2",
-                  spyneComponentClasses.inventorySearchHint
-                )}
-                aria-hidden
-              >
-                {hints[hintIndex]}
-              </span>
-            ) : null}
-          </div>
+          {quickChips ? (
+            <div className="flex flex-nowrap items-center gap-2 overflow-x-auto shrink-0 [scrollbar-width:thin]">
+              {quickChips}
+            </div>
+          ) : null}
 
           {viewInput && (
             <label className={cn(spyneComponentClasses.btnSecondaryMd, "cursor-pointer whitespace-nowrap bg-white")}>

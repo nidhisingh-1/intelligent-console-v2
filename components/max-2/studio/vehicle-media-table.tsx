@@ -22,16 +22,6 @@ function formatPrice(price: number) {
   }).format(price)
 }
 
-function formatOdometer(miles: number) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(miles)
-}
-
-function inferBodyStyle(model: string): string {
-  const m = model.toLowerCase()
-  if (/f-150|silverado|sierra|tacoma|tundra|1500|2500|ranger|frontier|pickup|ram/.test(m)) return "Truck"
-  if (/cr-v|rav4|pilot|highlander|explorer|equinox|tucson|tiguan|cx-|escape|rogue|pathfinder|telluride|palisade|outback|forester|wrangler|bronco|durango|traverse|blazer|edge|tahoe|yukon|suburban|expedition|sequoia|4runner/.test(m)) return "SUV"
-  return "Sedan"
-}
 
 function stockLabel(v: MerchandisingVehicle): string {
   if (v.stockNumber) return v.stockNumber
@@ -210,8 +200,9 @@ export function VehicleMediaTable({ vehicles, title }: VehicleMediaTableProps) {
                 Vehicle
               </th>
               <th className="py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
-                Stock #
+                Type
               </th>
+
               <th className="py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-gray-500">
                 Status
               </th>
@@ -221,24 +212,19 @@ export function VehicleMediaTable({ vehicles, title }: VehicleMediaTableProps) {
               <th className="py-3 px-4 text-center align-middle text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
                 Age
               </th>
+              <th className="py-3 px-4 text-right align-middle text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+                Holding Cost
+              </th>
               <th className="py-3 px-4 text-right align-middle text-xs font-medium uppercase tracking-wider text-gray-500">
                 Price
               </th>
-              <th className="py-3 pl-4 pr-5 text-right align-middle text-xs font-medium uppercase tracking-wider text-gray-500">
-                Action
-              </th>
+              <th className="w-10 py-3 pl-4 pr-5 align-middle" />
             </tr>
           </thead>
 
           {/* Body */}
           <tbody className="divide-y divide-gray-100">
             {data.map((v) => {
-              const specLine = [
-                v.isNew ? "New" : "Pre-Owned",
-                formatOdometer(v.odometer) + " mi",
-              ].join(" • ")
-              const bodyStyle = v.bodyStyle ?? inferBodyStyle(v.model)
-
               return (
                 <tr
                   key={v.vin}
@@ -266,13 +252,22 @@ export function VehicleMediaTable({ vehicles, title }: VehicleMediaTableProps) {
                       {v.trim ? ` ${v.trim}` : ""}
                     </p>
                     <p className="mt-0.5 text-xs text-gray-500">
-                      {bodyStyle} • {specLine}
+                      VIN{v.vin} • {stockLabel(v)}
                     </p>
                   </td>
 
-                  {/* Stock # */}
+
+                  {/* Type */}
                   <td className="py-3.5 px-4 align-middle">
-                    <span className="font-['Inter',ui-sans-serif,system-ui,sans-serif] text-sm text-gray-700">{stockLabel(v)}</span>
+                    {v.isNew ? (
+                      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#E2F4FF", color: "#4D7FFF" }}>
+                        New
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#F1F1F5", color: "#3C4464" }}>
+                        Pre-Owned
+                      </span>
+                    )}
                   </td>
 
                   {/* Status */}
@@ -294,6 +289,16 @@ export function VehicleMediaTable({ vehicles, title }: VehicleMediaTableProps) {
                       )}
                     >
                       {v.daysInStock} <span className="font-medium">days</span>
+                    </span>
+                  </td>
+
+                  {/* Holding Cost */}
+                  <td className="py-3.5 px-4 align-middle text-right">
+                    <span className={cn(
+                      "text-sm font-medium tabular-nums",
+                      v.daysInStock >= 45 ? "text-red-600" : "text-[#333333]"
+                    )}>
+                      {formatPrice(v.daysInStock * 38)}
                     </span>
                   </td>
 

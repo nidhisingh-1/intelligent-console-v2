@@ -383,7 +383,7 @@ export function InventoryFilterBar({
         searchHintRotation={MERCH_SEARCH_HINT_ROTATION}
         searchValue={filters.search}
         onSearchChange={(search) => update({ search })}
-        viewInput={{ checked: viewInput, onCheckedChange: setViewInput }}
+
         onApplyFiltersClick={() => setFiltersSheetOpen(true)}
         addVehicleHref="/max-2/studio/add"
         addVehicleLabel="Add vehicle(s)"
@@ -417,20 +417,6 @@ export function InventoryFilterBar({
               count={ageOver30Count}
               active={chipAge30}
               onClick={toggleAge30}
-            />
-            <SpyneMetricChip
-              className="shrink-0"
-              label="Odometer Missing"
-              count={odometerMissingCount}
-              active={chipOdometerMissing}
-              onClick={toggleOdometerMissing}
-            />
-            <SpyneMetricChip
-              className="shrink-0"
-              label="Price Missing"
-              count={priceMissingCount}
-              active={chipPriceMissing}
-              onClick={togglePriceMissing}
             />
           </>
         }

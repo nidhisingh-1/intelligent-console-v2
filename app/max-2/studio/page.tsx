@@ -26,7 +26,7 @@ export default function StudioPage() {
           )}
         >
           <MaterialSymbol name="add" size={20} />
-          Add Vehicle
+          Add Media
         </Link>
       </div>
 
