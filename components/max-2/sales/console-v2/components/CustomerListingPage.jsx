@@ -263,7 +263,7 @@ function SwimlaneCard({ customer, onViewProfile, isService = false }) {
       )}
 
       <div className={cn('mb-3 flex items-start justify-between gap-2', customer.needsAttention && 'pr-6')}>
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <div
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
             style={{ background: bg }}
@@ -411,7 +411,7 @@ function SwimlaneView({ data, onViewProfile, emptyColumnLabel = 'No leads', isSe
           return (
             <div
               key={col.key}
-              className="flex min-w-0 flex-col rounded-2xl border border-spyne-border p-2.5"
+              className="flex min-w-0 flex-col rounded-2xl border border-spyne-border p-3"
               style={swimlaneColumnSurface}
             >
               <div className="mb-3 flex items-center justify-between gap-2 px-0.5">
@@ -506,7 +506,7 @@ export default function CustomerListingPage({ onViewProfile, department = 'sales
         {/* Sticky page header — matches Sales Overview / Appointments */}
         <div
           className={cn(
-            'sticky z-[30] -mx-max2-page bg-spyne-page px-max2-page pt-6 pb-3 -mt-6',
+            'sticky z-[30] -mx-max2-page bg-spyne-page px-max2-page pt-4 pb-3',
             'top-[6rem] lg:top-10',
           )}
         >

@@ -159,7 +159,7 @@ function QueueCard({ card, isActive, onOpen, resolved, outcome }) {
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{card.price}</span>
           </div>
         </div>
-        <div className="px-4 py-2.5 border-t" style={{ borderColor: 'var(--spyne-border)' }}>
+        <div className="px-4 py-3 border-t" style={{ borderColor: 'var(--spyne-border)' }}>
           <span className="spyne-caption" style={{ color: 'var(--spyne-text-muted)' }}>
             Logged {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · <strong style={{ color: 'var(--spyne-text-secondary)', fontWeight: 500 }}>Dravid Roy</strong>
           </span>
@@ -417,7 +417,7 @@ function Panel({ card, onClose, onSave }) {
         }}
       >
         <div className="flex flex-col gap-2 p-4" style={{ borderBottom: '1px solid var(--spyne-border)' }}>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
               style={{ background: 'var(--spyne-brand-subtle)', color: 'var(--spyne-brand)' }}>
               {card.initials}
@@ -468,7 +468,7 @@ function Panel({ card, onClose, onSave }) {
             {OUTCOMES.map((o) => (
               <div
                 key={o} onClick={() => setSelected(o)}
-                className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer"
+                className="flex items-center gap-3 px-3 py-3 cursor-pointer"
                 style={{
                   borderRadius: 'var(--spyne-radius-md)',
                   border: selected === o ? '1.5px solid var(--spyne-brand)' : '1.5px solid var(--spyne-border)',
@@ -566,56 +566,64 @@ export default function ActionItemsPage({ sidebarCollapsed, department = 'sales'
 
   return (
     <div className={spyneSalesLayout.pageStack}>
-      {/* Page header */}
-      <div>
-        <div className="flex flex-wrap items-center gap-2.5">
-        <h1 className={max2Classes.pageTitle}>Action Items</h1>
-        <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-spyne-primary px-1.5 text-[11px] font-bold leading-none text-white">
-          {activeQueue.length}
-        </span>
-
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <SpyneSegmentedControl aria-label="Action items layout" className="shrink-0">
-            <SpyneSegmentedButton active={view === 'table'} onClick={() => setView('table')}>
-              <MaterialSymbol name="view_list" size={14} aria-hidden />
-              Table
-            </SpyneSegmentedButton>
-            <SpyneSegmentedButton active={view === 'cards'} onClick={() => setView('cards')}>
-              <MaterialSymbol name="view_column" size={14} aria-hidden />
-              Cards
-            </SpyneSegmentedButton>
-          </SpyneSegmentedControl>
-
-          {['Intent', 'Priority'].map((f) => (
-            <button key={f} type="button" className="spyne-pill h-[30px] text-xs">
-              {f}{' '}
-              <span className="text-[10px] text-spyne-text-secondary">▾</span>
-            </button>
-          ))}
-          <SpyneSegmentedControl
-            aria-label={isService ? SERVICE_CONSOLE_TAB_CONTENT.actionItems.pageDescription : 'Vehicle category'}
-            className="shrink-0"
-          >
-            {(isService
-              ? [
-                  SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterAll,
-                  SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterExpress,
-                  SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterMainShop,
-                ]
-              : ['All', 'New', 'Used']
-            ).map((f) => (
-              <SpyneSegmentedButton key={f} active={filter === f} onClick={() => setFilter(f)}>
-                {f}
+      {/* Sticky page header — matches Appointments / Leads */}
+      <div
+        className={cn(
+          'sticky z-[30] -mx-max2-page bg-spyne-page px-max2-page pb-3 pt-4',
+          'top-[6rem] lg:top-10',
+        )}
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className={max2Classes.pageTitle}>Action Items</h1>
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-spyne-primary px-1.5 text-[11px] font-bold leading-none text-white">
+                {activeQueue.length}
+              </span>
+            </div>
+            <p className={`${max2Classes.pageDescription} mt-0.5`}>
+              {isService
+                ? SERVICE_CONSOLE_TAB_CONTENT.actionItems.pageDescription
+                : 'Prioritized queue, outcomes, and daily follow-ups'}
+            </p>
+          </div>
+          <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+            <SpyneSegmentedControl aria-label="Action items layout" className="shrink-0">
+              <SpyneSegmentedButton active={view === 'table'} onClick={() => setView('table')}>
+                <MaterialSymbol name="view_list" size={14} aria-hidden />
+                Table
               </SpyneSegmentedButton>
+              <SpyneSegmentedButton active={view === 'cards'} onClick={() => setView('cards')}>
+                <MaterialSymbol name="view_column" size={14} aria-hidden />
+                Cards
+              </SpyneSegmentedButton>
+            </SpyneSegmentedControl>
+
+            {['Intent', 'Priority'].map((f) => (
+              <button key={f} type="button" className="spyne-pill h-[30px] text-xs">
+                {f}{' '}
+                <span className="text-[10px] text-spyne-text-secondary">▾</span>
+              </button>
             ))}
-          </SpyneSegmentedControl>
+            <SpyneSegmentedControl
+              aria-label={isService ? SERVICE_CONSOLE_TAB_CONTENT.actionItems.pageDescription : 'Vehicle category'}
+              className="shrink-0"
+            >
+              {(isService
+                ? [
+                    SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterAll,
+                    SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterExpress,
+                    SERVICE_CONSOLE_TAB_CONTENT.actionItems.filterMainShop,
+                  ]
+                : ['All', 'New', 'Used']
+              ).map((f) => (
+                <SpyneSegmentedButton key={f} active={filter === f} onClick={() => setFilter(f)}>
+                  {f}
+                </SpyneSegmentedButton>
+              ))}
+            </SpyneSegmentedControl>
+          </div>
         </div>
-        </div>
-        <p className={`${max2Classes.pageDescription} mt-1`}>
-          {isService
-            ? SERVICE_CONSOLE_TAB_CONTENT.actionItems.pageDescription
-            : 'Prioritized queue, outcomes, and daily follow-ups'}
-        </p>
       </div>
 
       {/* Tabs */}
@@ -685,7 +693,7 @@ export default function ActionItemsPage({ sidebarCollapsed, department = 'sales'
         ) : (
           <div>
             <div
-              className="flex items-center gap-2 mb-4 px-3 py-2.5 rounded-[8px]"
+              className="flex items-center gap-2 mb-4 px-3 py-3 rounded-[8px]"
               style={{ background: 'var(--spyne-warning-subtle)', border: '1px solid var(--spyne-warning-border)' }}
             >
               <MaterialSymbol name="archive" size={13} style={{ color: 'var(--spyne-warning-text)', flexShrink: 0 }} />

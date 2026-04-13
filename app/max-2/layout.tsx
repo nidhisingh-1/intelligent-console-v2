@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { Max2UiProvider } from "@/components/max-2/max-2-ui-context"
 import { Max2SpyneScope } from "@/components/max-2/max2-spyne-scope"
@@ -22,6 +22,8 @@ interface NavChild {
   label: string
   /** When true, only this exact path is active (avoids parent path matching a sub-route). */
   exact?: boolean
+  /** If set, this child is active when on the parent path AND ?tab=tabParam is present (or absent for "overview"). */
+  tabParam?: string
 }
 
 interface NavItem {
@@ -49,8 +51,30 @@ const navItems: NavItem[] = [
     ],
   },
   { href: "/max-2/marketing", label: "Marketing", icon: "campaign" },
-  { href: "/max-2/sales", label: "Sales", icon: "shopping_cart" },
-  { href: "/max-2/service", label: "Service", icon: "build" },
+  {
+    href: "/max-2/sales",
+    label: "Sales",
+    icon: "shopping_cart",
+    children: [
+      { href: "/max-2/sales", label: "Overview", tabParam: "overview" },
+      { href: "/max-2/sales?tab=campaigns", label: "Campaigns", tabParam: "campaigns" },
+      { href: "/max-2/sales?tab=action-items", label: "Action Items", tabParam: "action-items" },
+      { href: "/max-2/sales?tab=appointments", label: "Appointments", tabParam: "appointments" },
+      { href: "/max-2/sales?tab=customers", label: "Leads", tabParam: "customers" },
+    ],
+  },
+  {
+    href: "/max-2/service",
+    label: "Service",
+    icon: "build",
+    children: [
+      { href: "/max-2/service", label: "Overview", tabParam: "overview" },
+      { href: "/max-2/service?tab=campaigns", label: "Campaigns", tabParam: "campaigns" },
+      { href: "/max-2/service?tab=action-items", label: "Action Items", tabParam: "action-items" },
+      { href: "/max-2/service?tab=appointments", label: "Appointments", tabParam: "appointments" },
+      { href: "/max-2/service?tab=customers", label: "Customers", tabParam: "customers" },
+    ],
+  },
   // { href: "/max-2/sourcing", label: "Sourcing", icon: "manage_search" },
   // { href: "/max-2/recon", label: "Inspection & Recon", icon: "fact_check" },
   { href: "/max-2/customers", label: "Customers", icon: "group" },
@@ -63,14 +87,8 @@ export default function Max2Layout({ children }: { children: React.ReactNode }) 
     pathname.startsWith("/max-2/sales") ||
     pathname.startsWith("/max-2/service") ||
     pathname.startsWith("/max-2/studio")
-  const [collapsed, setCollapsed] = React.useState(isConsoleTabRoute)
+  const [collapsed, setCollapsed] = React.useState(false)
   const [mobileOpen, setMobileOpen] = React.useState(false)
-
-  React.useEffect(() => {
-    if (isConsoleTabRoute) {
-      setCollapsed(true)
-    }
-  }, [isConsoleTabRoute])
   const [hoveredParent, setHoveredParent] = React.useState<string | null>(null)
 
   const SidebarNav = ({
@@ -79,61 +97,72 @@ export default function Max2Layout({ children }: { children: React.ReactNode }) 
   }: {
     onNavigate?: () => void
     railCollapsed: boolean
-  }) => (
-    <div className="flex flex-col gap-0">
-      {navItems.map((item) => {
-        const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href)
-        const hasChildren = item.children && item.children.length > 0
-        const isExpanded = hasChildren && (hoveredParent === item.href || isActive)
+  }) => {
+    const searchParams = useSearchParams()
+    const currentTab = searchParams.get("tab") ?? "overview"
 
-        return (
-          <div
-            key={item.href}
-            onMouseEnter={() => hasChildren && !railCollapsed && setHoveredParent(item.href)}
-            onMouseLeave={() => hasChildren && !railCollapsed && setHoveredParent(null)}
-          >
-            {item.dividerBefore ? <Max2SidebarRailDivider /> : null}
-            <Max2SidebarRailNavLink
-              href={item.href}
-              label={item.label}
-              icon={item.icon}
-              collapsed={railCollapsed}
-              active={isActive}
-              onNavigate={onNavigate}
-            />
+    return (
+      <div className="flex flex-col gap-0">
+        {navItems.map((item) => {
+          const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href)
+          const hasChildren = item.children && item.children.length > 0
+          const isExpanded = hasChildren && (hoveredParent === item.href || isActive)
 
-            {hasChildren && !railCollapsed && (
-              <div
-                className={cn(
-                  "overflow-hidden transition-all duration-200 ease-in-out",
-                  isExpanded ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
-                )}
-              >
-                <div className={spyneComponentClasses.sidebarRailChildGroup}>
-                  {item.children!.map((child) => {
-                    const childActive = child.exact
-                      ? pathname === child.href
-                      : child.href === item.href
-                        ? pathname === child.href
-                        : pathname.startsWith(child.href)
-                    return (
-                      <Max2SidebarRailChildLink
-                        key={child.href}
-                        href={child.href}
-                        label={child.label}
-                        active={childActive}
-                        onNavigate={onNavigate}
-                      />
-                    )
-                  })}
+          return (
+            <div
+              key={item.href}
+              onMouseEnter={() => hasChildren && !railCollapsed && setHoveredParent(item.href)}
+              onMouseLeave={() => hasChildren && !railCollapsed && setHoveredParent(null)}
+            >
+              {item.dividerBefore ? <Max2SidebarRailDivider /> : null}
+              <Max2SidebarRailNavLink
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                collapsed={railCollapsed}
+                active={isActive}
+                onNavigate={onNavigate}
+              />
+
+              {hasChildren && !railCollapsed && (
+                <div
+                  className={cn(
+                    "overflow-hidden transition-all duration-200 ease-in-out",
+                    isExpanded ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+                  )}
+                >
+                  <div className={spyneComponentClasses.sidebarRailChildGroup}>
+                    {item.children!.map((child) => {
+                      let childActive: boolean
+                      if (child.tabParam) {
+                        childActive =
+                          pathname === item.href && currentTab === child.tabParam
+                      } else {
+                        childActive = child.exact
+                          ? pathname === child.href
+                          : child.href === item.href
+                            ? pathname === child.href
+                            : pathname.startsWith(child.href)
+                      }
+                      return (
+                        <Max2SidebarRailChildLink
+                          key={child.href}
+                          href={child.href}
+                          label={child.label}
+                          active={childActive}
+                          onNavigate={onNavigate}
+                        />
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <AppShell>
@@ -147,7 +176,9 @@ export default function Max2Layout({ children }: { children: React.ReactNode }) 
             onToggleCollapsed={() => setCollapsed(!collapsed)}
             headerTitle="Max 2.0"
           >
-            <SidebarNav railCollapsed={collapsed} />
+            <React.Suspense fallback={null}>
+              <SidebarNav railCollapsed={collapsed} />
+            </React.Suspense>
           </Max2SidebarRail>
 
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -164,7 +195,9 @@ export default function Max2Layout({ children }: { children: React.ReactNode }) 
                 </span>
               </div>
               <div className="p-2">
-                <SidebarNav railCollapsed={false} onNavigate={() => setMobileOpen(false)} />
+                <React.Suspense fallback={null}>
+                  <SidebarNav railCollapsed={false} onNavigate={() => setMobileOpen(false)} />
+                </React.Suspense>
               </div>
             </SheetContent>
           </Sheet>

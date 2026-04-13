@@ -106,6 +106,11 @@ export const spyneSalesLayout = {
   pageStack: "space-y-6",
   /** Match `--spyne-sales-stack-gap` (24px) */
   sectionGap: "gap-6",
+  /**
+   * Sales / Service overview row: agent summary, upcoming appointments, priority follow-ups.
+   * Same breakpoints as the inbound Sales overview (`md`: three columns).
+   */
+  overviewAgentRow: "grid grid-cols-1 md:grid-cols-3",
 } as const
 
 export const spyneToolbarTokens = {
@@ -178,6 +183,22 @@ export const max2Classes = {
   spyneScope: "max2-spyne",
   navActive: "max2-nav-active",
   navChildActive: "max2-nav-child-active",
+  /**
+   * Sticky shell for **Studio AI**, **Sales**, and **Service** secondary nav.
+   * Pair with `SpyneLineTabStrip` + `embedded` and `px-max2-page` on the inner wrapper.
+   * Height follows the tab strip (no fixed `h-14`) so there is no empty band **below** the strip hairline inside the white block.
+   */
+  moduleSecondaryNavShell:
+    "sticky top-14 z-[40] lg:top-0 w-full min-w-0 shrink-0 bg-spyne-surface pt-2",
+  /**
+   * Main column under **Sales / Service** secondary nav: horizontal gutters + bottom padding only.
+   * Omit top padding so the page body meets the nav hairline without a dead band (overview stickies supply `pt-4`).
+   */
+  moduleSecondaryNavPageBody: "px-max2-page pb-6 pt-0",
+  /**
+   * **Studio AI** layout under secondary nav: small top inset (**16px**) so page titles are not flush on the hairline.
+   */
+  moduleSecondaryNavPageBodyStudio: "px-max2-page pb-6 pt-4",
 } as const
 
 /** Semantic badge/chip utilities (inside `.max2-spyne` only) */

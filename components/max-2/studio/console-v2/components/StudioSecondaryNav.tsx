@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { MaterialSymbol } from "@/components/max-2/material-symbol"
 import { SpyneLineTabBadge, SpyneLineTabStrip } from "@/components/max-2/spyne-line-tabs"
 import { mockMerchandisingVehicles } from "@/lib/max-2-mocks"
-import { spyneComponentClasses } from "@/lib/design-system/max-2"
+import { max2Classes, spyneComponentClasses } from "@/lib/design-system/max-2"
 import { cn } from "@/lib/utils"
 
 const inventoryVehicleCount = mockMerchandisingVehicles.length
@@ -45,14 +45,7 @@ export default function StudioSecondaryNav() {
   const pathname = usePathname()
 
   return (
-    <div
-      className={cn(
-        /* Match sidebar rail header row (h-14) and Sales/Service SecondaryNav embedded */
-        "sticky top-14 z-[40] lg:top-0",
-        "flex h-14 min-h-14 shrink-0 flex-col justify-end",
-        "w-full min-w-0 bg-spyne-surface",
-      )}
-    >
+    <div className={cn(max2Classes.moduleSecondaryNavShell)}>
       <div className="min-w-0 w-full px-max2-page">
         <SpyneLineTabStrip embedded className="min-h-0 w-full min-w-0">
           {STUDIO_NAV_ITEMS.map((item) => {

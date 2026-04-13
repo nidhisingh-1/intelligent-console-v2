@@ -137,6 +137,12 @@
   --spyne-chart-on-dark-8: #fcd34d;
 
   /*
+   * Pills / circular caps — line-tab count badges, chips; must exist outside `.console-v2-sales-root`
+   * (that file also sets this for legacy Sales scope)
+   */
+  --spyne-radius-pill: 9999px;
+
+  /*
    * Cards — Studio / Lot / Sales (shadcn `Card` under `.max2-spyne` + `.spyne-card` in Sales Console V2)
    * Border radius 8px, section title 14px/600, padding 1rem — see design-system/max-2.md
    */
@@ -1178,6 +1184,14 @@
   .max2-spyne .spyne-line-tab:hover,
   .max2-spyne .spyne-inventory-tab:hover {
     color: var(--spyne-text-primary);
+  }
+
+  .max2-spyne .spyne-line-tab:focus-visible,
+  .max2-spyne .spyne-inventory-tab:focus-visible {
+    outline: 2px solid var(--spyne-primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+    z-index: 1;
   }
 
   .max2-spyne .spyne-line-tab--active,

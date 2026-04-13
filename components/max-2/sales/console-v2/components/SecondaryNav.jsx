@@ -2,6 +2,7 @@
 
 import { MaterialSymbol } from '@/components/max-2/material-symbol'
 import { SpyneLineTab, SpyneLineTabBadge, SpyneLineTabStrip } from '@/components/max-2/spyne-line-tabs'
+import { max2Classes } from '@/lib/design-system/max-2'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -20,14 +21,7 @@ export default function SecondaryNav({ activePage, onPageChange, navLeftPx = 220
   const navItems = department === 'service' ? SERVICE_NAV_ITEMS : NAV_ITEMS
   if (embedded) {
     return (
-      <div
-        className={cn(
-          /* Match sidebar rail header row (h-14) next to collapser */
-          'sticky top-14 z-[40] lg:top-0',
-          'flex h-14 min-h-14 shrink-0 flex-col justify-end',
-          'w-full min-w-0 bg-spyne-surface',
-        )}
-      >
+      <div className={cn(max2Classes.moduleSecondaryNavShell)}>
         <div className="min-w-0 w-full px-max2-page">
           <SpyneLineTabStrip embedded className="min-h-0 w-full min-w-0">
             {navItems.map((item) => {
@@ -59,7 +53,7 @@ export default function SecondaryNav({ activePage, onPageChange, navLeftPx = 220
         left: navLeftPx,
       }}
     >
-      <div className="min-w-0 flex-1 px-5">
+      <div className="min-w-0 flex-1 px-max2-page">
         <SpyneLineTabStrip embedded className="min-h-11 w-full">
           {navItems.map((item) => {
             const active = activePage === item.id
