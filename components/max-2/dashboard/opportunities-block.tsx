@@ -85,7 +85,7 @@ function OpportunityCard({ opp }: { opp: Opportunity }) {
           </div>
           <Link
             href={opp.href}
-            className="inline-flex items-center gap-1 text-xs font-medium text-spyne-success hover:opacity-80 transition-opacity"
+            className="inline-flex items-center gap-1 text-xs font-medium text-spyne-primary hover:opacity-80 transition-opacity"
           >
             View all & take action
             <ArrowRight className="h-3 w-3" />

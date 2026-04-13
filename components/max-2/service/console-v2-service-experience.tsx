@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useState, useRef, useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import "@/styles/console-v2-sales.css"
 import SecondaryNav from "@/components/max-2/sales/console-v2/components/SecondaryNav"
 import UpcomingAppointments from "@/components/max-2/sales/console-v2/components/UpcomingAppointments"
@@ -45,16 +46,30 @@ import { cn } from "@/lib/utils"
 
 export function ConsoleV2ServiceExperience() {
   const { sidebarCollapsed } = useMax2Ui()
-  const [activePage, setActivePage] = useState<string>("overview")
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const tabParam = searchParams.get("tab") ?? "overview"
+  const [activePage, setActivePage] = useState<string>(tabParam)
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const tab = searchParams.get("tab") ?? "overview"
+    setActivePage(tab)
+  }, [searchParams])
+
+  function handlePageChange(page: string) {
+    setActivePage(page)
+    const url = page === "overview" ? "/max-2/service" : `/max-2/service?tab=${page}`
+    router.push(url, { scroll: false })
+  }
 
   return (
     <div className="console-v2-sales-root relative min-h-[calc(100dvh-4rem)] w-full min-w-0 bg-spyne-page">
-      <SecondaryNav activePage={activePage} embedded onPageChange={setActivePage} department="service" />
+      <SecondaryNav activePage={activePage} embedded onPageChange={handlePageChange} department="service" />
 
       <main className="min-w-0 transition-all duration-200">
-        <div className="px-max2-page py-6">
-          {activePage === "overview" && <ServiceOverviewPage onNavigate={setActivePage} />}
+        <div className={max2Classes.moduleSecondaryNavPageBody}>
+          {activePage === "overview" && <ServiceOverviewPage onNavigate={handlePageChange} />}
           {activePage === "campaigns" && (
             <CampaignsPage
               data={serviceCampaignsData}
@@ -75,7 +90,7 @@ export function ConsoleV2ServiceExperience() {
               department="service"
               onViewProfile={(id: string) => {
                 setSelectedCustomerId(id)
-                setActivePage("customer-profile")
+                handlePageChange("customer-profile")
               }}
             />
           )}
@@ -83,7 +98,7 @@ export function ConsoleV2ServiceExperience() {
             <CustomerProfilePage
               customerId={selectedCustomerId}
               department="service"
-              onBack={() => setActivePage("customers")}
+              onBack={() => handlePageChange("customers")}
             />
           )}
         </div>
@@ -222,9 +237,37 @@ function ServiceAgentToggle({
     <SpyneSegmentedControl aria-label="Active service agent">
       {agents.map(({ id, data }) => {
         const active = activeAgent === id
+        const isOnline = data.status === "online"
         return (
           <SpyneSegmentedButton key={id} active={active} onClick={() => onSwitch(id)}>
-            <SpyneSegmentedStatusDot live={data.status === "online"} />
+            <span className="relative inline-flex shrink-0">
+              {data.photo ? (
+                <img
+                  src={data.photo}
+                  alt={data.name}
+                  className="h-5 w-5 rounded-full object-cover object-top"
+                  style={{ border: isOnline ? "1.5px solid var(--spyne-success)" : "1.5px solid var(--spyne-border)" }}
+                />
+              ) : (
+                <span
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold"
+                  style={{
+                    background: "var(--spyne-brand-subtle)",
+                    color: "var(--spyne-brand)",
+                    border: isOnline ? "1.5px solid var(--spyne-success)" : "1.5px solid var(--spyne-border)",
+                  }}
+                >
+                  {data.name.charAt(0)}
+                </span>
+              )}
+              <span
+                className="absolute bottom-0 right-0 h-1.5 w-1.5 rounded-full"
+                style={{
+                  background: isOnline ? "var(--spyne-success)" : "var(--spyne-text-muted)",
+                  border: "1px solid var(--spyne-surface)",
+                }}
+              />
+            </span>
             {data.name} · {id.charAt(0).toUpperCase() + id.slice(1)}
           </SpyneSegmentedButton>
         )
@@ -261,7 +304,7 @@ function ServiceOverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
     <div className={spyneSalesLayout.pageStack}>
       <div
         className={cn(
-          "sticky z-[30] -mx-max2-page bg-spyne-page px-max2-page pt-6 pb-3 -mt-6",
+          "sticky z-[30] -mx-max2-page bg-spyne-page px-max2-page pt-4 pb-3",
           "top-[6rem] lg:top-10",
         )}
       >
@@ -299,7 +342,7 @@ function ServiceOverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
         </div>
       )}
 
-      <div className={cn("grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3", spyneSalesLayout.sectionGap)}>
+      <div className={cn(spyneSalesLayout.overviewAgentRow, spyneSalesLayout.sectionGap)}>
         <ServiceAgentOverviewCard agent={agentData} />
         <UpcomingAppointments appointments={appointmentsData} variant="service" />
         <PriorityFollowUps

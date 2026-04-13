@@ -1163,7 +1163,7 @@ export function MerchandisingSummary() {
                         <div className="flex-1" />
                         <Link
                           href={item.inventoryHref}
-                          className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-spyne-text hover:underline whitespace-nowrap"
+                          className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-spyne-primary hover:underline whitespace-nowrap"
                         >
                           View Details
                           <ChevronRight className="h-3 w-3 opacity-60" aria-hidden />

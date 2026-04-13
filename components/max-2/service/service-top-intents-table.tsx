@@ -59,17 +59,17 @@ export function ServiceTopIntentsTable({
                 key={row.intent}
                 className={cn("border-b border-spyne-border last:border-b-0", i % 2 === 1 ? "bg-muted/20" : "")}
               >
-                <td className="spyne-body py-2.5 pr-3 font-medium text-spyne-text-primary">{row.intent}</td>
-                <td className="spyne-body py-2.5 pr-3 text-center tabular-nums text-spyne-text-primary">
+                <td className="spyne-body py-3 pr-3 font-medium text-spyne-text-primary">{row.intent}</td>
+                <td className="spyne-body py-3 pr-3 text-center tabular-nums text-spyne-text-primary">
                   {row.calls}
                 </td>
-                <td className="spyne-body py-2.5 pr-3 text-center tabular-nums text-spyne-text-primary">
+                <td className="spyne-body py-3 pr-3 text-center tabular-nums text-spyne-text-primary">
                   {row.resolved}
                 </td>
-                <td className="spyne-body py-2.5 pr-3 text-center tabular-nums text-spyne-text-primary">
+                <td className="spyne-body py-3 pr-3 text-center tabular-nums text-spyne-text-primary">
                   {row.appts}
                 </td>
-                <td className={cn("spyne-body py-2.5 text-right tabular-nums", rateToneClass[row.tone])}>
+                <td className={cn("spyne-body py-3 text-right tabular-nums", rateToneClass[row.tone])}>
                   {row.ratePct}%
                 </td>
               </tr>

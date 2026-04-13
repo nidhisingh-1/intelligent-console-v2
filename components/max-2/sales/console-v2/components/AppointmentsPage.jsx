@@ -1124,18 +1124,18 @@ export default function AppointmentsPage({ department = 'sales' }) {
   return (
     <div className={cn('spyne-animate-fade-in', spyneSalesLayout.pageStack)}>
       {/* Sticky header */}
-      <div className={cn('sticky z-[30] -mx-max2-page bg-spyne-page px-max2-page pt-6 pb-3 -mt-6', 'top-[6rem] lg:top-10')}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className={cn('sticky z-[30] -mx-max2-page bg-spyne-page px-max2-page pt-4 pb-3', 'top-[6rem] lg:top-10')}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className={max2Classes.pageTitle}>Appointments</h1>
             <p className={`${max2Classes.pageDescription} mt-0.5`}>
               {week.weekLabel} · {totalAppts} appointment{totalAppts !== 1 ? 's' : ''}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Service legend */}
             {isService && (
-              <div className="mr-2 flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-3">
                 {SERVICE_LEGEND_KEYS.map((key) => {
                   const cfg = typeConfig[key]
                   return (
@@ -1175,7 +1175,7 @@ export default function AppointmentsPage({ department = 'sales' }) {
       ) : (
         <>
           {/* Week strip */}
-          <div className="spyne-card p-3">
+          <div className="spyne-card p-4">
             <WeekStrip days={week.days} selectedDayKey={effectiveDayKey} onSelectDay={handleSelectDay} />
           </div>
 

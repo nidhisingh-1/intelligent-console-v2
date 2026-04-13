@@ -41,7 +41,7 @@ When editing files matched by this rule, **follow `design-system/max-2.md` and `
 
 - Use **Inter** and the typography scale defined in the doc (page title 20px/600/1.4, body 14px, small 12px).
 - Use **only** the documented colors (primary `#4600F2`, soft `#4600F214`, page `#F4F5F8`, surface `#FFFFFF`, text/semantic/border tokens).
-- Use **only** the documented spacing steps and layout padding (**24px** all sides via `p-max2-page` / `px-max2-page`). Use **`max2Layout.pageStack`** (`space-y-6`) between major page blocks; **`max2Classes.sectionTitle`** or **`Max2PageSection`** for section headings above tables and card groups.
+- Use **only** the documented spacing steps and layout padding (**24px** all sides via `p-max2-page` / `px-max2-page`), except under **module secondary nav**: **Sales / Service** use **`max2Classes.moduleSecondaryNavPageBody`**; **Studio** uses **`max2Classes.moduleSecondaryNavPageBodyStudio`** (see `design-system/max-2.md`). Use **`max2Layout.pageStack`** (`space-y-6`) between major page blocks; **`max2Classes.sectionTitle`** or **`Max2PageSection`** for section headings above tables and card groups.
 - Use **Material Symbols** by default (`components/max-2/material-symbol.tsx`); avoid Lucide unless no symbol exists.
 - Use **tokenized** Tailwind classes (`text-spyne-text`, `border-spyne-border`, `spyneComponentClasses.*`) or `spyneConsoleTokens` for charts; no random hex except tokens.
 - Keep **radii**: buttons 8px, inputs 6px, cards 8px, modals 12px, chips full.

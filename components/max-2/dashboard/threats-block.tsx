@@ -98,7 +98,7 @@ function ThreatCard({ threat }: { threat: Threat }) {
           </div>
           <Link
             href={threat.href}
-            className="inline-flex items-center gap-1 text-xs font-medium text-spyne-error hover:opacity-80 transition-opacity"
+            className="inline-flex items-center gap-1 text-xs font-medium text-spyne-primary hover:opacity-80 transition-opacity"
           >
             View all & take action
             <ArrowRight className="h-3 w-3" />

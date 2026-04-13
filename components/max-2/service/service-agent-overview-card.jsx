@@ -1,100 +1,126 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRight } from "lucide-react"
+import { MaterialSymbol } from "@/components/max-2/material-symbol"
 import InfoTooltip from "@/components/max-2/sales/console-v2/components/InfoTooltip"
 
-const SECTION_LABEL = {
+const SECTION_LABEL_STYLE = {
   fontSize: 10,
   fontWeight: 700,
   textTransform: "uppercase",
-  letterSpacing: "0.07em",
+  letterSpacing: "0.08em",
   color: "var(--spyne-text-muted)",
-  marginBottom: 8,
+}
+
+function StatCell({ value, label, accent }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span
+        className="tabular-nums"
+        style={{
+          fontSize: 22,
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          lineHeight: 1.1,
+          color: accent ? "var(--spyne-brand)" : "var(--spyne-text-primary)",
+        }}
+      >
+        {value}
+      </span>
+      <span style={{ fontSize: 11, color: "var(--spyne-text-muted)", lineHeight: 1.3 }}>
+        {label}
+      </span>
+    </div>
+  )
 }
 
 export default function ServiceAgentOverviewCard({ agent }) {
   const { name, role, photo, status, yesterdaySnapshot, performance } = agent
   const [imgError, setImgError] = useState(false)
+  const isOnline = status === "online"
 
   return (
-    <div className="spyne-card spyne-animate-fade-in flex flex-col gap-4 p-4">
-      <div className="flex items-center gap-3">
-        {photo && !imgError ? (
-          <img
-            src={photo}
-            alt={name}
-            onError={() => setImgError(true)}
-            className="h-12 w-12 shrink-0 rounded-full object-cover object-top"
-            style={{ border: "2px solid var(--spyne-border)" }}
-          />
-        ) : (
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-bold"
+    <div className="spyne-card spyne-animate-fade-in flex flex-col overflow-hidden">
+      {/* Agent header */}
+      <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+        {/* Avatar with status ring */}
+        <div className="relative shrink-0">
+          {photo && !imgError ? (
+            <img
+              src={photo}
+              alt={name}
+              onError={() => setImgError(true)}
+              className="h-11 w-11 rounded-full object-cover object-top"
+              style={{
+                border: isOnline
+                  ? "2.5px solid var(--spyne-success)"
+                  : "2px solid var(--spyne-border)",
+              }}
+            />
+          ) : (
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-full text-base font-bold"
+              style={{
+                background: "var(--spyne-brand-subtle)",
+                color: "var(--spyne-brand)",
+                border: isOnline
+                  ? "2.5px solid var(--spyne-success)"
+                  : "2px solid var(--spyne-brand-muted)",
+              }}
+            >
+              {name.charAt(0)}
+            </div>
+          )}
+          {/* Status dot */}
+          <span
+            className="absolute bottom-0 right-0 h-3 w-3 rounded-full"
             style={{
-              background: "var(--spyne-brand-subtle)",
-              color: "var(--spyne-brand)",
-              border: "2px solid var(--spyne-brand-muted)",
+              background: isOnline ? "var(--spyne-success)" : "var(--spyne-text-muted)",
+              border: "2px solid var(--spyne-surface)",
             }}
-          >
-            {name.charAt(0)}
-          </div>
-        )}
+          />
+        </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="spyne-label" style={{ color: "var(--spyne-text-primary)", fontWeight: 700 }}>
+          <div className="flex items-center gap-1.5">
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--spyne-text-primary)" }}>
               {name}
             </span>
-            <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ background: status === "online" ? "var(--spyne-success)" : "var(--spyne-text-muted)" }}
-            />
             <InfoTooltip text="Vini AI summary for service drive activity for the selected period: appointments, follow-ups, and after-hours coverage." />
           </div>
-          <div className="spyne-caption mt-0.5" style={{ color: "var(--spyne-text-muted)" }}>
+          <div style={{ fontSize: 11, color: "var(--spyne-text-muted)", marginTop: 1 }}>
             {role}
           </div>
         </div>
       </div>
 
-      <div>
-        <div style={SECTION_LABEL}>Today</div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-          <PerfStat value={yesterdaySnapshot.appointmentsBooked} label="Appts yesterday" />
-          <PerfStat value={yesterdaySnapshot.activeFollowUpLeads} label="Active follow-ups" accent />
-          <PerfStat value={performance.afterHours.leadsEngaged} label="After-hrs handled" />
-          <PerfStat value={performance.afterHours.apptsBooked} label="After-hrs appts" accent />
+      {/* Divider */}
+      <div className="border-t border-spyne-border" />
+
+      {/* Stats */}
+      <div className="flex flex-1 flex-col gap-3 px-4 py-3">
+        <div style={SECTION_LABEL_STYLE}>Today's Activity</div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+          <StatCell value={yesterdaySnapshot.appointmentsBooked}    label="appts yesterday" />
+          <StatCell value={yesterdaySnapshot.activeFollowUpLeads}   label="active follow-ups" accent />
+          <StatCell value={performance.afterHours.leadsEngaged}     label="after-hrs handled" />
+          <StatCell value={performance.afterHours.apptsBooked}      label="after-hrs appts" accent />
         </div>
       </div>
 
-      <button type="button" className="mt-auto flex cursor-pointer items-center gap-1" style={{ background: "none", border: "none", padding: 0 }}>
-        <span className="spyne-label" style={{ color: "var(--spyne-brand)", fontWeight: 600 }}>
-          View full performance
-        </span>
-        <ArrowRight size={11} style={{ color: "var(--spyne-brand)" }} />
-      </button>
-    </div>
-  )
-}
-
-function PerfStat({ value, label, accent }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span
-        className="spyne-number"
-        style={{
-          fontSize: 18,
-          lineHeight: 1.1,
-          color: accent ? "var(--spyne-brand)" : "var(--spyne-text-primary)",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {value}
-      </span>
-      <span className="spyne-caption" style={{ color: "var(--spyne-text-muted)", lineHeight: 1.3 }}>
-        {label}
-      </span>
+      {/* Footer */}
+      <div className="border-t border-spyne-border px-4 py-3">
+        <button
+          type="button"
+          className="flex items-center gap-1 cursor-pointer"
+          style={{ background: "none", border: "none", padding: 0 }}
+        >
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--spyne-brand)" }}>
+            View full performance
+          </span>
+          <MaterialSymbol name="arrow_forward" size={11} style={{ color: "var(--spyne-brand)" }} />
+        </button>
+      </div>
     </div>
   )
 }
