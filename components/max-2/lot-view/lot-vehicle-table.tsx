@@ -107,10 +107,7 @@ export function LotVehicleTable() {
                     className="border-b last:border-0 border-spyne-border transition-colors hover:bg-muted/30"
                   >
                     <td
-                      className={cn(
-                        "py-3.5 pr-4 text-xs text-muted-foreground tabular-nums",
-                        isAged && spyneComponentClasses.overviewIssueRowAccent,
-                      )}
+                      className="py-3.5 pr-4 text-xs text-muted-foreground tabular-nums"
                     >
                       {v.stockNumber}
                     </td>

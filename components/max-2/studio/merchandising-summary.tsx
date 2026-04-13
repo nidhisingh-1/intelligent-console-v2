@@ -39,6 +39,21 @@ function fmtPrice(p: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(p)
 }
 
+function HighlightNums({ text }: { text: string }) {
+  const parts = text.split(/([\d,]+(?:\.\d+)?)/)
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^\d/.test(part) ? (
+          <span key={i} className="font-semibold text-[#1a1a1a]">{part}</span>
+        ) : (
+          part
+        )
+      )}
+    </>
+  )
+}
+
 function VehicleTable({ vehicles, issueBadge }: { vehicles: MerchandisingVehicle[]; issueBadge?: (v: MerchandisingVehicle) => ReactNode }) {
   if (vehicles.length === 0) {
     return <p className="py-8 text-center text-sm text-muted-foreground">No vehicles in this category.</p>
@@ -923,11 +938,16 @@ export function MerchandisingSummary() {
             cardTitle: "Sun glare in photos",
             iconTone: "warning" as const,
             icon: Sun,
-            metricLine: `${sunGlareAffected} vehicles affected · ${sunGlareAutoFixed} fixed`,
+            status: "RESOLVED" as const,
+            metricLine: `Studio AI automatically corrected all ${sunGlareAutoFixed} affected listings.`,
             inventoryHref: "/max-2/studio/inventory?issue=glare",
             badInput: "Shooting into direct sun left blown highlights on glass and paint; detail was lost in post.",
-            improvement:
-              "We applied glare-aware correction on flagged frames and queued the rest for a quick re-shoot at a better angle.",
+            improvement: `All ${sunGlareAffected} vehicles publish-ready. Studio AI saved your team ~2 hrs of manual retouching.`,
+            metrics: [
+              { label: "corrected", value: `${sunGlareAutoFixed}` },
+              { label: "publish-ready", value: `${sunGlareAutoFixed}` },
+              { label: "time saved", value: "~2 hrs" },
+            ],
             severity: "warning" as const,
             sections: [
               {
@@ -951,10 +971,16 @@ export function MerchandisingSummary() {
             cardTitle: "Missing 360° Videos",
             iconTone: "warning" as const,
             icon: Video,
-            metricLine: `${walkaroundVehicles.length} vehicles need a walk-around video.`,
+            status: "IN PROGRESS" as const,
+            metricLine: `Studio AI is generating 360° walk-arounds for ${walkaroundVehicles.length} vehicles right now.`,
             inventoryHref: "/max-2/studio/inventory?issue=no360",
             badInput: "Clips were too short, shaky, or skipped the full vehicle perimeter, so the 360 pipeline could not align frames.",
-            improvement: "We re-ran capture guidance in-app and queued re-shoots only where the path was incomplete.",
+            improvement: `Videos auto-publish when done, ~1 day out. No action needed from your team.`,
+            metrics: [
+              { label: "queued", value: `${walkaroundVehicles.length}` },
+              { label: "ETA", value: "~1 day" },
+              { label: "dealer action", value: "not needed" },
+            ],
             severity: "warning" as const,
             sections: [
               {
@@ -978,10 +1004,16 @@ export function MerchandisingSummary() {
             cardTitle: "Below Photo Standard",
             iconTone: "success" as const,
             icon: Images,
-            metricLine: `${lowPhotoVehicles.length} vehicles under 25 photos`,
+            status: "PARTIALLY RECOVERED" as const,
+            metricLine: `Studio AI recovered ${Math.round(lowPhotoVehicles.length * 0.75)} of ${lowPhotoVehicles.length} vehicles.`,
             inventoryHref: "/max-2/studio/inventory?issue=incomplete",
             badInput: "Sets stopped after basics (front, rear, dash) without full exterior walk, interior detail, and feature shots.",
-            improvement: "We templated a 25-shot checklist per vehicle and auto-flagged anything under 20 before publish.",
+            improvement: `${lowPhotoVehicles.length - Math.round(lowPhotoVehicles.length * 0.75)} vehicles still need a reshoot. Studio AI can't fill angles never captured.`,
+            metrics: [
+              { label: "recovered for listing", value: `${Math.round(lowPhotoVehicles.length * 0.75)}` },
+              { label: "publish-ready", value: `${Math.round(lowPhotoVehicles.length * 0.75)}` },
+              { label: "still need more photos", value: `${lowPhotoVehicles.length - Math.round(lowPhotoVehicles.length * 0.75)}` },
+            ],
             severity: "warning" as const,
             sections: [
               {
@@ -1005,10 +1037,16 @@ export function MerchandisingSummary() {
             cardTitle: "Missing Exterior Photos",
             iconTone: "critical" as const,
             icon: AlertTriangle,
-            metricLine: `${under8Vehicles.length} vehicles under 8 exterior photos`,
+            status: "NEEDS DEALER ACTION" as const,
+            metricLine: `${under8Vehicles.length - Math.round(under8Vehicles.length * 0.6)} vehicles have exterior gaps Studio AI can’t fill.`,
             inventoryHref: "/max-2/studio/inventory?issue=under8",
             badInput: "Exteriors were rushed or partial, leaving gaps in the buyer’s visual walk-around.",
-            improvement: "We blocked go-live on under-8 sets for new units and surfaced a same-day re-shoot task.",
+            improvement: `Too incomplete for AI recovery. Schedule a reshoot today. Each day offline costs ~$38/unit.`,
+            metrics: [
+              { label: "enhanced by AI", value: `${Math.round(under8Vehicles.length * 0.6)}` },
+              { label: "need reshoot", value: `${under8Vehicles.length - Math.round(under8Vehicles.length * 0.6)}` },
+              { label: "time saved", value: "~3 hrs" },
+            ],
             severity: "critical" as const,
             sections: [
               {
@@ -1086,46 +1124,69 @@ export function MerchandisingSummary() {
         return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Insights */}
-            <div className="rounded-2xl border border-spyne-border bg-spyne-surface p-5 shadow-none sm:p-6">
-              <div className="mb-4">
+            <div className="rounded-2xl border border-spyne-border bg-spyne-surface shadow-none overflow-hidden">
+              {/* Header */}
+              <div className="px-5 pt-5 pb-4 border-b border-spyne-border">
                 <p className="text-sm font-semibold tracking-tight text-spyne-text">Insights</p>
                 <p className="text-xs text-spyne-text-secondary mt-0.5">
-                  Capture and media signals from your inventory.
+                  Studio AI recovered merchandising quality from incomplete media input.
                 </p>
               </div>
-              <div className="space-y-4">
+
+              {/* Cards */}
+              <div className="p-4 space-y-3">
                 {insights.map((item) => {
                   const Icon = item.icon
                   const tone = item.iconTone
+                  const status = item.status
+                  const statusStyle =
+                    status === "RESOLVED" ? "bg-spyne-success/10 text-spyne-success" :
+                    status === "IN PROGRESS" ? "bg-spyne-primary/10 text-spyne-primary" :
+                    status === "PARTIALLY RECOVERED" ? "bg-spyne-warning/10 text-spyne-warning-ink" :
+                    "bg-spyne-error/10 text-spyne-error"
+
                   return (
-                    <div
-                      key={item.id}
-                      className="overflow-hidden rounded-lg border border-spyne-border bg-card"
-                    >
-                      <div className="flex items-center gap-3 bg-muted px-4 py-3">
-                        <div
-                          className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-transparent",
-                            tone === "success" && "bg-spyne-success text-white",
-                            tone === "warning" && "bg-spyne-warning text-spyne-warning-ink",
-                            tone === "critical" && "bg-spyne-error text-white",
-                          )}
-                        >
-                          <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                    <div key={item.id} className="overflow-hidden rounded-xl border border-spyne-border bg-white">
+                      {/* Card header */}
+                      <div className="flex items-center gap-3 px-4 py-3 border-b border-spyne-border" style={{ background: "var(--core-grey-50, #FAFAFA)" }}>
+                        <div className={cn(
+                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                          tone === "success" && "bg-spyne-success text-white",
+                          tone === "warning" && "bg-spyne-warning text-spyne-warning-ink",
+                          tone === "critical" && "bg-spyne-error text-white",
+                        )}>
+                          <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
                         </div>
                         <p className="text-sm font-semibold text-spyne-text">{item.cardTitle}</p>
+                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", statusStyle)}>
+                          {status}
+                        </span>
+                        <div className="flex-1" />
+                        <Link
+                          href={item.inventoryHref}
+                          className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-spyne-border bg-white px-3 py-1.5 text-xs font-semibold text-spyne-text hover:bg-muted/50 transition-colors whitespace-nowrap"
+                        >
+                          View Details
+                          <ChevronRight className="h-3 w-3 opacity-60" aria-hidden />
+                        </Link>
                       </div>
-                      <div className="border-t border-spyne-border bg-card px-4 py-3 text-left">
-                        <p className="text-sm text-spyne-text leading-snug">{item.metricLine}</p>
-                        <div className="mt-3 flex justify-end">
-                          <Link
-                            href={item.inventoryHref}
-                            className={cn(spyneComponentClasses.btnSecondaryMd, "w-fit")}
-                          >
-                            View Details
-                            <ChevronRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
-                          </Link>
+
+                      {/* Card body */}
+                      <div className="px-4 pt-3 pb-4 space-y-3">
+                        <p className="text-sm text-spyne-text">{item.metricLine}</p>
+
+                        {/* Metric chips */}
+                        <div className="flex flex-wrap gap-2">
+                          {item.metrics.map((m) => (
+                            <div key={m.label} className="flex items-center gap-1 rounded-md border border-spyne-border bg-muted/50 px-2.5 py-1">
+                              <span className="text-xs font-bold tabular-nums text-spyne-text">{m.value}</span>
+                              <span className="text-xs text-spyne-text-secondary">{m.label}</span>
+                            </div>
+                          ))}
                         </div>
+
+                        {/* AI summary */}
+                        <p className="text-xs text-spyne-text-secondary leading-snug pt-0.5"><HighlightNums text={item.improvement} /></p>
                       </div>
                     </div>
                   )
