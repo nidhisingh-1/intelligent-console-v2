@@ -260,7 +260,7 @@ export const spyneComponentClasses = {
    * ROI / KPI metric strip (Lot View lot KPI row, Sales overview metrics).
    * White shell, 8px radius, theme border; grid with responsive row/column dividers.
    */
-  roiKpiStrip: "rounded-lg border bg-card overflow-hidden",
+  roiKpiStrip: "rounded-xl border bg-card overflow-hidden",
   roiKpiStripGrid:
     "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x",
   /** Studio-style KPI cards: separate rounded shells with gap (no shared outer border). */

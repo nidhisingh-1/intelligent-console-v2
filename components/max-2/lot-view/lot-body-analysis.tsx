@@ -4,7 +4,6 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import {
   LotAgeDistributionPanel,
-  LOT_ANALYSIS_ROW_GRID,
   formatHoldingVsGrossPctValue,
 } from "./lot-age-analysis"
 import { mockLotVehicles } from "@/lib/max-2-mocks"
@@ -76,10 +75,6 @@ const PRICE_STYLE = [
   { bar: "bg-spyne-primary", dot: "bg-spyne-primary" },
   { bar: "bg-[var(--spyne-primary-pressed)]", dot: "bg-[var(--spyne-primary-pressed)]" },
 ]
-
-/** Cost share column: grow with cell up to a cap; gap keeps air before the % and Cars column */
-const costShareBarTrackClass =
-  "h-2 min-w-0 flex-1 max-w-[28rem] overflow-hidden rounded-full bg-muted"
 
 export function LotBodyAnalysis() {
   const router = useRouter()
@@ -170,111 +165,160 @@ export function LotBodyAnalysis() {
   const worstPrice = [...priceBuckets].sort((a, b) => b.avgDays - a.avgDays)[0]
 
   return (
-    <Card className="shadow-none gap-0">
+    <Card className="shadow-none gap-0 pt-5">
       <CardHeader className="pt-0 pb-5">
-        <CardTitle>Inventory Analysis</CardTitle>
-        <CardDescription>
-          Which segments are turning fast, which are aging — and where your money is tied up
-        </CardDescription>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle>Inventory Analysis</CardTitle>
+            <CardDescription className="mt-2">
+              Which segments are turning fast, which are aging and where your money is tied up
+            </CardDescription>
+          </div>
+          <div className="shrink-0 overflow-x-auto">
+            <SpyneSegmentedControl aria-label="Inventory analysis view" className="w-max max-w-none">
+              {ANALYSIS_TABS.map((t) => (
+                <SpyneSegmentedButton
+                  key={t.id}
+                  active={analysisTab === t.id}
+                  onClick={() => setAnalysisTab(t.id)}
+                  className="shrink-0 whitespace-nowrap text-xs sm:text-sm"
+                >
+                  {t.label}
+                </SpyneSegmentedButton>
+              ))}
+            </SpyneSegmentedControl>
+          </div>
+        </div>
       </CardHeader>
 
-      <CardContent className="pt-0">
-        <div className="min-w-0 overflow-x-auto pb-5">
-          <SpyneSegmentedControl aria-label="Inventory analysis view" className="w-max max-w-none">
-            {ANALYSIS_TABS.map((t) => (
-              <SpyneSegmentedButton
-                key={t.id}
-                active={analysisTab === t.id}
-                onClick={() => setAnalysisTab(t.id)}
-                className="shrink-0 whitespace-nowrap text-xs sm:text-sm"
-              >
-                {t.label}
-              </SpyneSegmentedButton>
-            ))}
-          </SpyneSegmentedControl>
-        </div>
+      <CardContent className="p-0 overflow-hidden">
 
         {analysisTab === "ageing-distribution" ? (
-          <LotAgeDistributionPanel className="pt-0 pb-5" />
+          <LotAgeDistributionPanel noBorder />
         ) : null}
 
         {analysisTab === "body-type" ? (
           <>
-            <div className="overflow-x-auto pt-0">
-              <div className="min-w-[720px] space-y-3">
-                <div className={cn(LOT_ANALYSIS_ROW_GRID, "px-3")}>
-                  {["Body Type", "Cost Share", "Cars", "Avg Days", "Holding Cost", "% of gross", "Status"].map((h) => (
-                    <p key={h} className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{h}</p>
-                  ))}
-                </div>
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] table-fixed text-sm">
+                  <colgroup>
+                    <col className="w-[18%]" />
+                    <col className="w-[24%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[9%]" />
+                  </colgroup>
+                  <thead>
+                    <tr className="border-b border-t border-spyne-border text-left bg-muted">
+                      {["Body Type", "Cost Share", "Cars", "Avg Days", "Holding Cost", "% of gross", "Status"].map((h, i) => (
+                        <th
+                          key={h}
+                          className={cn(
+                            "py-3 px-4 text-xs font-medium uppercase tracking-wider text-spyne-text-secondary whitespace-nowrap",
+                            i === 2 && "text-right",
+                            i === 3 && "text-right",
+                            i === 4 && "text-right",
+                            i === 5 && "text-right",
+                            i === 6 && "text-center",
+                          )}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map((g) => {
+                      const style  = BODY_STYLE[g.bodyType]
+                      const pct    = totalAccumulated > 0 ? (g.accumulated / totalAccumulated) * 100 : 0
+                      const status = STATUS_CFG[g.status]
 
-                {groups.map((g) => {
-                  const style  = BODY_STYLE[g.bodyType]
-                  const pct    = totalAccumulated > 0 ? (g.accumulated / totalAccumulated) * 100 : 0
-                  const status = STATUS_CFG[g.status]
+                      return (
+                        <tr
+                          key={g.bodyType}
+                          onClick={g.count > 0 ? () => router.push(`/max-2/studio/media-lot/inventory?bodyType=${encodeURIComponent(g.bodyType)}`) : undefined}
+                          className={cn(
+                            "border-b last:border-0 border-spyne-border transition-colors",
+                            g.count === 0 ? "opacity-40" : "cursor-pointer hover:bg-muted/40",
+                          )}
+                        >
+                          {/* Body Type */}
+                          <td className="py-3.5 px-4 align-middle">
+                            <div className="flex items-center gap-2">
+                              <span className={cn("h-2 w-2 shrink-0 rounded-full", style.dot)} />
+                              <span className="text-sm font-semibold">{g.bodyType}</span>
+                            </div>
+                          </td>
 
-                  return (
-                    <div
-                      key={g.bodyType}
-                      onClick={g.count > 0 ? () => router.push(`/max-2/studio/media-lot/inventory?bodyType=${encodeURIComponent(g.bodyType)}`) : undefined}
-                      className={cn(
-                        LOT_ANALYSIS_ROW_GRID,
-                        "rounded-lg border bg-muted/10 px-3 py-3.5 group",
-                        g.count > 0 && "cursor-pointer transition-colors hover:bg-muted/20",
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={cn("h-2 w-2 shrink-0 rounded-full", style.dot)} />
-                        <span className="text-sm font-semibold">{g.bodyType}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="mb-0.5 flex w-full min-w-0 items-center gap-3 pr-1">
-                          <div className={costShareBarTrackClass}>
-                            <div className={cn("h-full rounded-full transition-all duration-500", style.bar)} style={{ width: `${(g.accumulated / maxAccumulated) * 100}%` }} />
-                          </div>
-                          <span className="w-[34px] shrink-0 text-right text-xs font-semibold tabular-nums">{pct.toFixed(0)}%</span>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">of total holding cost</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold">{g.count}</p>
-                        <p className="text-[10px] text-muted-foreground">{g.sellableCount} avail.</p>
-                      </div>
-                      <div>
-                        <p className={cn("text-sm font-bold tabular-nums", g.avgDays > 35 ? "text-spyne-error" : g.avgDays > 22 ? "text-spyne-text" : "text-spyne-success")}>{g.avgDays}d</p>
-                        <p className="text-[10px] text-muted-foreground">avg in stock</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold tabular-nums">${g.accumulated.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold tabular-nums">
-                          {g.count > 0
-                            ? formatHoldingVsGrossPctValue(g.accumulated, g.grossMargin)
-                            : "—"}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">of gross margin</p>
-                      </div>
-                      <div className="flex items-center justify-center gap-1.5">
-                        <span className={cn("inline-flex justify-center rounded-full px-2 py-0.5 text-[10px] font-semibold", status.cls)}>{status.label}</span>
-                        {g.count > 0 ? (
-                          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" aria-hidden />
-                        ) : null}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                          {/* Cost Share */}
+                          <td className="py-3.5 px-4 align-middle">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-spyne-border">
+                                <div
+                                  className={cn("h-full rounded-full transition-all duration-500", style.bar)}
+                                  style={{ width: `${(g.accumulated / maxAccumulated) * 100}%`, minWidth: g.accumulated > 0 ? "4px" : "0" }}
+                                />
+                              </div>
+                              <span className="shrink-0 text-xs font-semibold tabular-nums w-8 text-right">{pct.toFixed(0)}%</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">of total holding cost</p>
+                          </td>
+
+                          {/* Cars */}
+                          <td className="py-3.5 px-4 align-middle text-right">
+                            <p className="text-sm font-bold tabular-nums">{g.count}</p>
+                            <p className="text-[10px] text-muted-foreground tabular-nums">{g.sellableCount} avail.</p>
+                          </td>
+
+                          {/* Avg Days */}
+                          <td className="py-3.5 px-4 align-middle text-right">
+                            <p className={cn("text-sm font-bold tabular-nums", g.avgDays > 35 ? "text-spyne-error" : g.avgDays > 22 ? "text-foreground" : "text-spyne-success")}>{g.avgDays}d</p>
+                            <p className="text-[10px] text-muted-foreground">avg in stock</p>
+                          </td>
+
+                          {/* Holding Cost */}
+                          <td className="py-3.5 px-4 align-middle text-right">
+                            <p className="text-sm font-semibold tabular-nums">{g.count > 0 ? `$${g.accumulated.toLocaleString()}` : "—"}</p>
+                          </td>
+
+                          {/* % of gross */}
+                          <td className="py-3.5 px-4 align-middle text-right">
+                            <p className="text-sm font-semibold tabular-nums">
+                              {g.count > 0 ? formatHoldingVsGrossPctValue(g.accumulated, g.grossMargin) : "—"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">of gross margin</p>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3.5 px-4 align-middle text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {g.count > 0 ? (
+                                <>
+                                  <span className={cn("inline-flex justify-center rounded-full px-2.5 py-1 text-xs font-medium", status.cls)}>{status.label}</span>
+                                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" aria-hidden />
+                                </>
+                              ) : (
+                                <span className="h-4 w-4" />
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
             </div>
 
-            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="rounded-lg border-l-[3px] border-l-spyne-success spyne-row-positive px-4 py-3">
+            <div className="px-6 pb-6 pt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-lg spyne-row-positive px-4 py-3">
                 <p className="text-[11px] font-semibold text-spyne-success mb-1">Best Performer</p>
                 <p className="text-sm text-spyne-text leading-snug">
                   <strong>{best.bodyType}</strong> moving fastest at {best.avgDays}d avg — consider increasing buying in this segment to maintain velocity
                 </p>
               </div>
-              <div className="rounded-lg border-l-[3px] border-l-spyne-warning spyne-row-warn px-4 py-3">
+              <div className="rounded-lg spyne-row-warn px-4 py-3">
                 <p className="text-[11px] font-semibold text-spyne-text mb-1">Needs Attention</p>
                 <p className="text-sm text-spyne-text leading-snug">
                   <strong>{worst.bodyType}</strong> averaging {worst.avgDays}d — {worst.agedCount > 0 ? `${worst.agedCount} aged unit${worst.agedCount !== 1 ? "s" : ""} need immediate repricing or liquidation` : "monitor pricing and online visibility to prevent aging"}
@@ -286,76 +330,117 @@ export function LotBodyAnalysis() {
 
         {analysisTab === "avg-sale-price" ? (
           <>
-            <div className="overflow-x-auto pt-0">
-              <div className="min-w-[720px] space-y-3">
-                <div className={cn(LOT_ANALYSIS_ROW_GRID, "px-3")}>
-                  {["Price Range", "Cost Share", "Cars", "Avg Price", "Holding Cost", "% of gross", "Status"].map((h) => (
-                    <p key={h} className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{h}</p>
-                  ))}
-                </div>
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] table-fixed text-sm">
+                  <colgroup>
+                    <col className="w-[18%]" />
+                    <col className="w-[24%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[9%]" />
+                  </colgroup>
+                  <thead>
+                    <tr className="border-b border-t border-spyne-border text-left bg-muted">
+                      {["Price Range", "Cost Share", "Cars", "Avg Price", "Holding Cost", "% of gross", "Status"].map((h, i) => (
+                        <th
+                          key={h}
+                          className={cn(
+                            "py-3 px-4 text-xs font-medium uppercase tracking-wider text-spyne-text-secondary whitespace-nowrap",
+                            i === 2 && "text-right",
+                            i === 3 && "text-right",
+                            i === 4 && "text-right",
+                            i === 5 && "text-right",
+                            i === 6 && "text-center",
+                          )}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {priceBuckets.map((b) => {
+                      const style  = PRICE_STYLE[b.styleIdx]
+                      const pct    = totalPriceAccumulated > 0 ? (b.accumulated / totalPriceAccumulated) * 100 : 0
+                      const status = STATUS_CFG[b.status]
 
-                {priceBuckets.map((b) => {
-                  const style  = PRICE_STYLE[b.styleIdx]
-                  const pct    = totalPriceAccumulated > 0 ? (b.accumulated / totalPriceAccumulated) * 100 : 0
-                  const status = STATUS_CFG[b.status]
+                      return (
+                        <tr
+                          key={b.label}
+                          onClick={() => router.push(`/max-2/studio/media-lot/inventory?priceRange=${encodeURIComponent(b.rangeParam)}`)}
+                          className="border-b last:border-0 border-spyne-border transition-colors cursor-pointer hover:bg-muted/40"
+                        >
+                          {/* Price Range */}
+                          <td className="py-3.5 px-4 align-middle">
+                            <div className="flex items-center gap-2">
+                              <span className={cn("h-2 w-2 shrink-0 rounded-full", style.dot)} />
+                              <span className="text-sm font-semibold">{b.label}</span>
+                            </div>
+                          </td>
 
-                  return (
-                    <div
-                      key={b.label}
-                      onClick={() => router.push(`/max-2/studio/media-lot/inventory?priceRange=${encodeURIComponent(b.rangeParam)}`)}
-                      className={cn(
-                        LOT_ANALYSIS_ROW_GRID,
-                        "cursor-pointer rounded-lg border bg-muted/10 px-3 py-3.5 transition-colors hover:bg-muted/20 group",
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={cn("h-2 w-2 shrink-0 rounded-full", style.dot)} />
-                        <span className="text-sm font-semibold">{b.label}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="mb-0.5 flex w-full min-w-0 items-center gap-3 pr-1">
-                          <div className={costShareBarTrackClass}>
-                            <div className={cn("h-full rounded-full transition-all duration-500", style.bar)} style={{ width: `${(b.accumulated / maxPriceAccumulated) * 100}%` }} />
-                          </div>
-                          <span className="w-[34px] shrink-0 text-right text-xs font-semibold tabular-nums">{pct.toFixed(0)}%</span>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">of total holding cost</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold">{b.count}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold tabular-nums">${b.avgPrice.toLocaleString()}</p>
-                        <p className="text-[10px] text-muted-foreground">{b.avgDays}d avg</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold tabular-nums">${b.accumulated.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold tabular-nums">
-                          {formatHoldingVsGrossPctValue(b.accumulated, b.grossMargin)}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">of gross margin</p>
-                      </div>
-                      <div className="flex items-center justify-center gap-1.5">
-                        <span className={cn("inline-flex justify-center rounded-full px-2 py-0.5 text-[10px] font-semibold", status.cls)}>{status.label}</span>
-                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" aria-hidden />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                          {/* Cost Share */}
+                          <td className="py-3.5 px-4 align-middle">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-spyne-border">
+                                <div
+                                  className={cn("h-full rounded-full transition-all duration-500", style.bar)}
+                                  style={{ width: `${(b.accumulated / maxPriceAccumulated) * 100}%`, minWidth: "4px" }}
+                                />
+                              </div>
+                              <span className="shrink-0 text-xs font-semibold tabular-nums w-8 text-right">{pct.toFixed(0)}%</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">of total holding cost</p>
+                          </td>
+
+                          {/* Cars */}
+                          <td className="py-3.5 px-4 align-middle text-right">
+                            <p className="text-sm font-bold tabular-nums">{b.count}</p>
+                          </td>
+
+                          {/* Avg Price */}
+                          <td className="py-3.5 px-4 align-middle text-right">
+                            <p className="text-sm font-bold tabular-nums">${b.avgPrice.toLocaleString()}</p>
+                            <p className="text-[10px] text-muted-foreground">{b.avgDays}d avg</p>
+                          </td>
+
+                          {/* Holding Cost */}
+                          <td className="py-3.5 px-4 align-middle text-right">
+                            <p className="text-sm font-semibold tabular-nums">${b.accumulated.toLocaleString()}</p>
+                          </td>
+
+                          {/* % of gross */}
+                          <td className="py-3.5 px-4 align-middle text-right">
+                            <p className="text-sm font-semibold tabular-nums">
+                              {formatHoldingVsGrossPctValue(b.accumulated, b.grossMargin)}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">of gross margin</p>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3.5 px-4 align-middle text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <span className={cn("inline-flex justify-center rounded-full px-2.5 py-1 text-xs font-medium", status.cls)}>{status.label}</span>
+                              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" aria-hidden />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
             </div>
 
             {bestPrice && worstPrice && (
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-lg border-l-[3px] border-l-spyne-success spyne-row-positive px-4 py-3">
+              <div className="px-6 pb-6 pt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-lg spyne-row-positive px-4 py-3">
                   <p className="text-[11px] font-semibold text-spyne-success mb-1">Fastest Moving</p>
                   <p className="text-sm text-spyne-text leading-snug">
                     <strong>{bestPrice.label}</strong> turning fastest at {bestPrice.avgDays}d avg — strong demand in this price segment
                   </p>
                 </div>
-                <div className="rounded-lg border-l-[3px] border-l-spyne-warning spyne-row-warn px-4 py-3">
+                <div className="rounded-lg spyne-row-warn px-4 py-3">
                   <p className="text-[11px] font-semibold text-spyne-text mb-1">Slowest Moving</p>
                   <p className="text-sm text-spyne-text leading-snug">
                     <strong>{worstPrice.label}</strong> averaging {worstPrice.avgDays}d — {worstPrice.agedCount > 0 ? `${worstPrice.agedCount} aged unit${worstPrice.agedCount !== 1 ? "s" : ""} may need repricing` : "consider adjusting pricing or marketing focus"}

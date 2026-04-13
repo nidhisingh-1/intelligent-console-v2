@@ -126,15 +126,15 @@ export function LotIssueBuckets() {
   }
 
   return (
-    <div>
-      <div className="mb-3">
-        <h2 className={max2Classes.sectionTitle}>Action Items</h2>
-        <p className={cn("text-xs mt-0.5", "text-spyne-text-secondary")}>
+    <div className="rounded-xl border border-spyne-border bg-spyne-surface shadow-none overflow-hidden">
+      <div className="px-5 pt-5 pb-4">
+        <p className="font-semibold leading-none text-spyne-text">Action Items</p>
+        <p className="text-sm mt-2 text-muted-foreground">
           Vehicles grouped by lot issue. Click a tab to review.
         </p>
       </div>
 
-      <div className="rounded-[8px] border border-spyne-border bg-spyne-surface shadow-none overflow-hidden">
+      <div>
         <Max2ActionTabStrip className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           {tabDefs.map((t, i) => {
             const count = vehicles.filter(t.filter).length
@@ -211,3 +211,4 @@ export function LotIssueBuckets() {
     </div>
   )
 }
+

@@ -87,8 +87,10 @@ const STATUS_CFG: Record<string, { label: string; cls: string }> = {
 export function LotAgeDistributionPanel({
   className,
   vehicles: vehiclesProp,
+  noBorder = false,
 }: {
   className?: string
+  noBorder?: boolean
   /** When set, uses this list (caller should already exclude non-lot units if desired). */
   vehicles?: LotVehicle[]
 }) {
@@ -137,105 +139,106 @@ export function LotAgeDistributionPanel({
   ]
 
   return (
-    <div className={cn("pt-1 pb-5", className)}>
-      <div className="overflow-x-auto">
-        <div className="min-w-[720px] space-y-3">
-          <div className={cn(LOT_ANALYSIS_ROW_GRID, "px-3")}>
-            {headers.map((h, i) => (
-              <p
-                key={`${h}-${i}`}
-                className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                {h}
-              </p>
-            ))}
-          </div>
-
+    <div className={cn(!noBorder && "pt-1 pb-5", className)}>
+      <div className={cn("overflow-x-auto", !noBorder && "overflow-hidden rounded-[8px] border border-spyne-border bg-spyne-surface")}>
+        <table className="w-full min-w-[760px] table-fixed text-sm">
+          <colgroup>
+            <col className="w-[18%]" />
+            <col className="w-[24%]" />
+            <col className="w-[9%]" />
+            <col className="w-[14%]" />
+            <col className="w-[13%]" />
+            <col className="w-[13%]" />
+            <col className="w-[9%]" />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-t border-spyne-border text-left bg-muted">
+              {headers.map((h, i) => (
+                <th
+                  key={`${h}-${i}`}
+                  className={cn(
+                    "py-3 px-4 text-xs font-medium uppercase tracking-wider text-spyne-text-secondary whitespace-nowrap",
+                    i === 2 && "text-right",
+                    i === 3 && "text-right",
+                    i === 4 && "text-right",
+                    i === 5 && "text-right",
+                    i === 6 && "text-center",
+                  )}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
           {rows.map((row) => {
             const status = STATUS_CFG[row.status]
             return (
-            <div
+            <tr
               key={row.label}
               onClick={row.count > 0 ? () => router.push(`/max-2/studio/media-lot/inventory?age=${encodeURIComponent(row.ageParam)}`) : undefined}
               className={cn(
-                LOT_ANALYSIS_ROW_GRID,
-                "rounded-lg border bg-muted/10 px-3 py-3.5 group",
-                row.count === 0 ? "opacity-40" : "cursor-pointer transition-colors hover:bg-muted/20",
+                "border-b last:border-0 border-spyne-border transition-colors",
+                row.count === 0 ? "opacity-40" : "cursor-pointer hover:bg-muted/40",
               )}
             >
-              <div className="flex items-start gap-2">
-                <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", row.dot)} />
-                <div>
-                  <p className="text-sm font-semibold leading-tight">{row.phase}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{row.label}</p>
+              {/* Phase / Age */}
+              <td className="py-3.5 px-4 align-middle">
+                <div className="flex items-center gap-2">
+                  <span className={cn("h-2 w-2 shrink-0 rounded-full", row.dot)} />
+                  <div>
+                    <p className="text-sm font-semibold leading-tight">{row.phase}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{row.label}</p>
+                  </div>
                 </div>
-              </div>
+              </td>
 
-              <div>
-                <div className="mb-0.5 flex items-center gap-2">
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+              {/* Distribution bar */}
+              <td className="py-3.5 px-4 align-middle">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-spyne-border">
                     <div
                       className={cn("h-full rounded-full transition-all duration-500", row.barColor)}
-                      style={{
-                        width: `${(row.count / maxCount) * 100}%`,
-                        minWidth: row.count > 0 ? "4px" : "0",
-                      }}
+                      style={{ width: `${(row.count / maxCount) * 100}%`, minWidth: row.count > 0 ? "4px" : "0" }}
                     />
                   </div>
-                  <span className="w-[34px] shrink-0" aria-hidden />
                 </div>
-                <p className="text-[10px] text-muted-foreground">by unit count</p>
-              </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">by unit count</p>
+              </td>
 
-              <div>
-                <p className={cn(
-                  "text-sm font-bold tabular-nums",
-                  row.urgency >= 2 && row.count > 0 ? "text-spyne-error" : "text-foreground",
-                )}>
-                  {row.count}
-                </p>
-                <p className="text-[10px] text-muted-foreground tabular-nums">
-                  {row.pct.toFixed(0)}%
-                </p>
-              </div>
+              {/* Cars */}
+              <td className="py-3.5 px-4 align-middle text-right">
+                <p className={cn("text-sm font-bold tabular-nums", row.urgency >= 2 && row.count > 0 ? "text-spyne-error" : "text-foreground")}>{row.count}</p>
+                <p className="text-[10px] text-muted-foreground tabular-nums">{row.pct.toFixed(0)}%</p>
+              </td>
 
-              <div>
-                <p className="text-sm font-semibold tabular-nums text-foreground">
-                  {row.count > 0 ? `$${row.grossMargin.toLocaleString()}` : "—"}
-                </p>
+              {/* Gross Margin */}
+              <td className="py-3.5 px-4 align-middle text-right">
+                <p className="text-sm font-semibold tabular-nums">{row.count > 0 ? `$${row.grossMargin.toLocaleString()}` : "—"}</p>
                 <p className="text-[10px] text-muted-foreground">est. gross</p>
-              </div>
+              </td>
 
-              <div>
-                <p className={cn(
-                  "text-sm font-semibold tabular-nums",
-                  row.urgency >= 2 && row.count > 0 ? "text-spyne-error" : "text-foreground",
-                )}>
+              {/* Holding Cost */}
+              <td className="py-3.5 px-4 align-middle text-right">
+                <p className={cn("text-sm font-semibold tabular-nums", row.urgency >= 2 && row.count > 0 ? "text-spyne-error" : "text-foreground")}>
                   {row.count > 0 ? `$${row.accumulated.toLocaleString()}` : "—"}
                 </p>
-              </div>
+              </td>
 
-              <div>
-                <p className={cn(
-                  "text-sm font-semibold tabular-nums",
-                  row.urgency >= 2 && row.count > 0 ? "text-spyne-error" : "text-foreground",
-                )}>
-                  {row.count > 0
-                    ? formatHoldingVsGrossPctValue(row.accumulated, row.grossMargin)
-                    : "—"}
+              {/* % of Gross */}
+              <td className="py-3.5 px-4 align-middle text-right">
+                <p className={cn("text-sm font-semibold tabular-nums", row.urgency >= 2 && row.count > 0 ? "text-spyne-error" : "text-foreground")}>
+                  {row.count > 0 ? formatHoldingVsGrossPctValue(row.accumulated, row.grossMargin) : "—"}
                 </p>
                 <p className="text-[10px] text-muted-foreground">of gross margin</p>
-              </div>
+              </td>
 
-              <div className="flex items-center justify-center gap-1.5">
+              {/* Status */}
+              <td className="py-3.5 px-4 align-middle text-center">
+                <div className="flex items-center justify-center gap-1.5">
                 {row.count > 0 ? (
                   <>
-                    <span
-                      className={cn(
-                        "inline-flex justify-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                        status.cls,
-                      )}
-                    >
+                    <span className={cn("inline-flex justify-center rounded-full px-2.5 py-1 text-xs font-medium", status.cls)}>
                       {status.label}
                     </span>
                     <ChevronRight
@@ -247,10 +250,12 @@ export function LotAgeDistributionPanel({
                   <span className="h-4 w-4" />
                 )}
               </div>
-            </div>
+              </td>
+            </tr>
             )
           })}
-        </div>
+          </tbody>
+        </table>
       </div>
     </div>
   )
@@ -266,8 +271,8 @@ export function LotAgeAnalysis() {
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="px-6 pb-6 pt-0">
-        <LotAgeDistributionPanel />
+      <CardContent className="p-0 overflow-hidden">
+        <LotAgeDistributionPanel noBorder />
       </CardContent>
     </Card>
   )
