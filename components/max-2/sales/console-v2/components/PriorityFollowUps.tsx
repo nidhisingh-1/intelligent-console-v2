@@ -81,9 +81,9 @@ function ServicePriorityFollowUpsBody({
           <span className="spyne-caption shrink-0 tabular-nums text-spyne-text-secondary">{urgentCount} urgent</span>
         ) : null}
       </div>
-      <div className="max-h-[280px] flex-1 space-y-3 overflow-y-auto">
-        {items.map((lead) => (
-          <div key={lead.id} className="flex items-start gap-2.5">
+      <div className="max-h-[280px] flex-1 overflow-y-auto" style={{ marginLeft: -16, marginRight: -16, marginTop: -8 }}>
+        {items.map((lead, i) => (
+          <div key={lead.id} className="flex items-start gap-2.5" style={{ padding: '12px 16px', borderBottom: i < items.length - 1 ? '1px solid var(--spyne-border)' : 'none' }}>
             <div
               className={`${lead.color} flex h-7 w-7 shrink-0 items-center justify-center text-white`}
               style={{ borderRadius: "50%", fontSize: 11, fontWeight: 700 }}
@@ -154,9 +154,9 @@ function SalesPriorityFollowUpsBody({ followUps }: { followUps: SalesFollowUps }
           )
         })}
       </SpyneLineTabStrip>
-      <div className="max-h-[280px] flex-1 space-y-3 overflow-y-auto">
-        {items.map((lead) => (
-          <div key={lead.id} className="flex items-start gap-2.5">
+      <div className="max-h-[280px] flex-1 overflow-y-auto" style={{ marginLeft: -16, marginRight: -16, marginTop: -8 }}>
+        {items.map((lead, i) => (
+          <div key={lead.id} className="flex items-start gap-2.5" style={{ padding: '12px 16px', borderBottom: i < items.length - 1 ? '1px solid var(--spyne-border)' : 'none' }}>
             <div
               className={`${lead.color} flex h-7 w-7 shrink-0 items-center justify-center text-white`}
               style={{ borderRadius: "50%", fontSize: 11, fontWeight: 700 }}

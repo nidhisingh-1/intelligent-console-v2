@@ -51,12 +51,12 @@ export default function UpcomingAppointments({ appointments, variant = 'sales' }
       ) : null}
 
       {/* List */}
-      <div className="space-y-1 flex-1">
+      <div className="flex-1" style={{ marginLeft: -16, marginRight: -16 }}>
         {items.map((appt) => (
           <div
             key={appt.id}
             className="flex items-start justify-between gap-3 py-2"
-            style={{ borderBottom: '1px solid var(--spyne-border)' }}
+            style={{ borderBottom: '1px solid var(--spyne-border)', paddingLeft: 16, paddingRight: 16 }}
           >
             {isService ? (
               <>

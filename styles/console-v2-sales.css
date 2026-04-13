@@ -37,6 +37,8 @@
   --spyne-info-muted: color-mix(in srgb, var(--spyne-info) 38%, #ffffff);
   --spyne-info-text: var(--spyne-info);
 
+  --spyne-card-radius: 12px;
+
   --spyne-radius-sm: 4px;
   --spyne-radius-md: 6px;
   /** Large radius — aligned with Studio / Lot cards (`:root` `--spyne-card-radius`) */

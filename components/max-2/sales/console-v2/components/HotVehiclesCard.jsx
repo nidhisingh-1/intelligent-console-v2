@@ -24,7 +24,7 @@ export default function HotVehiclesCard({ data }) {
       </div>
 
       {/* Column headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: COL_GRID, gap: '0 16px', marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid var(--spyne-border)', alignItems: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: COL_GRID, gap: '0 16px', marginBottom: 6, paddingBottom: 6, paddingLeft: 20, paddingRight: 20, marginLeft: -20, marginRight: -20, borderBottom: '1px solid var(--spyne-border)', alignItems: 'center' }}>
         <span style={thStyle}>Vehicle</span>
         <span style={{ ...thStyle, textAlign: 'right' }}>Leads</span>
         <span style={{ ...thStyle, textAlign: 'right', color: 'var(--spyne-success-text)' }}>This Week</span>
@@ -33,7 +33,7 @@ export default function HotVehiclesCard({ data }) {
       </div>
 
       {/* Rows */}
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1" style={{ marginLeft: -20, marginRight: -20 }}>
         {data.map((item, i) => {
           const color = COLORS[i % COLORS.length]
           const dc    = dayColor(item.daysOnLot)
@@ -45,7 +45,7 @@ export default function HotVehiclesCard({ data }) {
                 gridTemplateColumns: COL_GRID,
                 gap: '0 16px',
                 alignItems: 'center',
-                padding: '7px 0',
+                padding: '7px 20px',
                 borderBottom: i < data.length - 1 ? '1px solid var(--spyne-border)' : 'none',
               }}
             >

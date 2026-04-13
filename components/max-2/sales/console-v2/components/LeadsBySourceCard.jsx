@@ -42,20 +42,21 @@ export default function LeadsBySourceCard({
       </div>
 
       {/* Divider */}
-      <div style={{ height: 1, background: 'var(--spyne-border)', marginBottom: 12 }} />
+      <div style={{ height: 1, background: 'var(--spyne-border)', marginBottom: 12, marginLeft: -16, marginRight: -16 }} />
 
       {/* Funnel table — rows = sources, cols = funnel stages */}
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', marginLeft: -16, marginRight: -16 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
           <thead>
             <tr style={{ borderBottom: '1.5px solid var(--spyne-border)' }}>
-              <th style={thStyle}>Source</th>
-              {funnel.map((col) => (
+              <th style={{ ...thStyle, paddingLeft: 16 }}>Source</th>
+              {funnel.map((col, ci) => (
                 <th
                   key={col.metric}
                   style={{
                     ...thStyle,
                     color: col.highlight ? 'var(--spyne-brand)' : undefined,
+                    paddingRight: ci === funnel.length - 1 ? 16 : 10,
                   }}
                 >
                   {col.metric}
@@ -72,14 +73,14 @@ export default function LeadsBySourceCard({
                 <td style={{ ...tdRowLabel, color: 'rgba(0, 0, 0, 0.8)' }}>
                   {s.label}
                 </td>
-                {funnel.map((col) => {
+                {funnel.map((col, ci) => {
                   const cell = col[s.key]
                   const isHighlight = col.highlight
                   const isNull = !cell || cell.count == null
                   return (
                     <td
                       key={col.metric}
-                      style={{ ...tdCell, color: isNull ? 'var(--spyne-text-muted)' : isHighlight ? 'var(--spyne-brand)' : 'var(--spyne-text-primary)' }}
+                      style={{ ...tdCell, color: isNull ? 'var(--spyne-text-muted)' : isHighlight ? 'var(--spyne-brand)' : 'var(--spyne-text-primary)', paddingRight: ci === funnel.length - 1 ? 16 : 10 }}
                     >
                       {isNull ? (
                         <span style={{ fontWeight: 400 }}>—</span>
@@ -125,7 +126,7 @@ const tdRowLabel = {
   ...tdBaseBorder,
   fontSize: 12,
   fontWeight: 600,
-  padding: '8px 10px 8px 0',
+  padding: '8px 10px 8px 16px',
   backgroundColor: 'rgba(255, 255, 255, 1)',
 }
 
