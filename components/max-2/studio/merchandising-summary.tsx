@@ -1270,7 +1270,7 @@ export function MerchandisingSummary() {
             id: "go-live" as const,
             icon: Zap,
             title: "Go live instantly",
-            desc: "Auto-publish the moment Studio AI finishes — no manual gate.",
+            desc: "No photos on the vehicle yet? Publish the moment Studio AI finishes, with no manual gate on ready listings.",
             benefit: "Faster time-to-live",
             rank: 1 as const,
             proIncludes: [] as string[],
@@ -1285,7 +1285,7 @@ export function MerchandisingSummary() {
             id: "smart-campaign" as const,
             icon: Megaphone,
             title: "Run smart campaigns",
-            desc: "Auto-boost weak VDPs with targeted creative and budget rules.",
+            desc: "Some vehicles have aged a lot on the lot. Auto-boost weak VDPs with the right creative and budget rules.",
             benefit: "Lift leads on aged and weak listings",
             rank: 2 as const,
             proIncludes: [] as string[],
@@ -1300,7 +1300,7 @@ export function MerchandisingSummary() {
             id: "pro-plan" as const,
             icon: Crown,
             title: "Pro Plan",
-            desc: "Full-stack media, priority QA, and automation so every VDP ships complete.",
+            desc: "Full-stack media, priority QA, and automation so every VDP ships complete. Best for high volume stores.",
             benefit: "Best for high volume stores",
             rank: 3 as const,
             proIncludes: [
@@ -1336,93 +1336,82 @@ export function MerchandisingSummary() {
             </Card>
 
             {/* Opportunities */}
-            <Card className="gap-0 pt-px pb-0 shadow-none overflow-hidden">
-              <CardHeader className="px-5 pb-4 pt-5">
+            <Card className="gap-4 pt-px pb-5 shadow-none overflow-hidden">
+              <CardHeader className="px-5 pb-0">
                 <CardTitle>Opportunities</CardTitle>
-                <CardDescription className="text-xs mt-1">
+                <CardDescription className="text-xs">
                   Here's how Spyne can resolve the issues above automatically.
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="p-0">
-                {/* Action rows — divider-separated, no border boxes */}
-                <div className="divide-y divide-spyne-border/60">
-                  {opportunities.filter((o) => o.id !== "pro-plan").map((opp) => {
-                    const Icon = opp.icon
-                    return (
-                      <button
-                        key={opp.id}
-                        type="button"
-                        onClick={() => router.push(opp.href)}
-                        className="group flex w-full items-start gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/40"
-                      >
+              <CardContent className="flex flex-col gap-3 px-5 pb-0">
+                {opportunities.map((opp) => {
+                  const Icon = opp.icon
+                  const isPro = opp.id === "pro-plan"
+                  return (
+                    <button
+                      key={opp.id}
+                      type="button"
+                      onClick={() => (isPro ? setProPlanModalOpen(true) : router.push(opp.href))}
+                      className={cn(
+                        "group flex w-full flex-col gap-3 rounded-xl border p-4 text-left transition-all hover:shadow-sm",
+                        isPro
+                          ? "border-spyne-primary/20 bg-[var(--spyne-primary-soft)] hover:border-spyne-primary/35"
+                          : "border-spyne-border bg-spyne-surface hover:border-spyne-primary/25"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
                         <div
                           className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] text-white bg-gradient-to-br",
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white bg-gradient-to-br",
                             opp.gradient,
+                            isPro && "shadow-sm"
                           )}
                         >
-                          <Icon className="h-[18px] w-[18px]" />
+                          <Icon className="h-4 w-4" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-spyne-text leading-tight">{opp.title}</p>
-                          <p className="mt-1 text-[12px] leading-snug text-spyne-text-secondary line-clamp-2">{opp.desc}</p>
-                        </div>
-                        {opp.count != null && (
-                          <div className="shrink-0 text-right mt-0.5">
-                            <p className="text-xl font-bold tabular-nums leading-none text-spyne-primary">{opp.count}</p>
-                            <p className="mt-0.5 text-[10px] text-spyne-primary/60 whitespace-nowrap">{opp.countLabel}</p>
-                          </div>
-                        )}
-                        <ChevronRight className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground/60" />
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {/* Pro Plan — dark gradient featured block */}
-                {(() => {
-                  const pro = opportunities.find((o) => o.id === "pro-plan")
-                  if (!pro) return null
-                  const ProIcon = pro.icon
-                  return (
-                    <div className="px-5 pt-4 pb-5">
-                      <button
-                        type="button"
-                        onClick={() => setProPlanModalOpen(true)}
-                        className="group w-full rounded-2xl text-left overflow-hidden transition-opacity hover:opacity-95"
-                        style={{ background: "linear-gradient(135deg, #ede9fe 0%, #dbeafe 100%)" }}
-                      >
-                        <div className="p-5">
-                          <div className="flex items-start justify-between gap-2 mb-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] text-white" style={{ background: "var(--spyne-primary)" }}>
-                                <ProIcon className="h-4 w-4" />
-                              </div>
-                              <span className="text-sm font-bold text-spyne-text">{pro.title}</span>
-                            </div>
-                            <span className="inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white" style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4600f2 50%, #2563eb 100%)" }}>
-                              Recommended
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[13px] font-semibold leading-tight text-spyne-text">
+                              {opp.title}
                             </span>
+                            {isPro && (
+                              <span
+                                className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest"
+                                style={{ background: "var(--spyne-primary)", color: "#fff" }}
+                              >
+                                Recommended
+                              </span>
+                            )}
                           </div>
-                          <p className="text-[12px] leading-relaxed text-spyne-text-secondary mb-4">{pro.desc}</p>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-5">
-                            {pro.proIncludes.slice(0, 4).map((line) => (
-                              <div key={line} className="flex items-start gap-1.5">
-                                <MaterialSymbol name="check" size={13} className="text-spyne-primary shrink-0 mt-[1px]" />
-                                <span className="text-[11px] leading-snug text-spyne-text-secondary">{line}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[12px] font-semibold text-spyne-primary group-hover:text-spyne-primary/80 transition-colors">
-                            See what Pro includes
-                            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                          </div>
+                          <p className="text-[12px] font-semibold leading-snug text-spyne-text">{opp.desc}</p>
+                          {!isPro && opp.count != null && (
+                            <div className="pt-0.5">
+                              <span
+                                className="text-[22px] font-bold tabular-nums leading-none"
+                                style={{ color: "var(--spyne-text-primary)" }}
+                              >
+                                {opp.count}
+                              </span>
+                              <p className="mt-0.5 text-[10px] text-spyne-text-secondary">{opp.countLabel}</p>
+                            </div>
+                          )}
                         </div>
-                      </button>
-                    </div>
+                        <ArrowRight
+                          className="h-3.5 w-3.5 shrink-0 self-center transition-transform group-hover:translate-x-0.5"
+                          style={{ color: "var(--spyne-primary)", opacity: 0.5 }}
+                        />
+                      </div>
+                      <div
+                        className="flex items-center gap-1 border-t border-spyne-border/80 pt-2.5 text-[11px] font-semibold"
+                        style={{ color: "var(--spyne-primary)" }}
+                      >
+                        {isPro ? "See what Pro includes" : "Take action"}
+                        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    </button>
                   )
-                })()}
+                })}
               </CardContent>
             </Card>
           </div>

@@ -538,7 +538,8 @@ function ShowRateBannerInline({ allDays, selectedDay }) {
 // ── Day list ──────────────────────────────────────────────────
 
 // Phone moved under customer name — no dedicated phone column
-const LIST_COLS = '68px 160px minmax(160px,1fr) 100px 52px 108px minmax(160px,1fr) 80px'
+const LIST_COLS         = '68px 160px minmax(160px,1fr) 100px 52px 108px minmax(160px,1fr) 80px'
+const LIST_COLS_SERVICE = '68px 160px minmax(160px,1fr) 150px 108px minmax(160px,1fr) 80px'
 
 const TH = {
   fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
@@ -592,7 +593,8 @@ function ActionBtn({ title: tip, color, hoverBg, icon, onClick }) {
   )
 }
 
-function DayList({ appts, typeConfig = TYPE_CONFIG, onSelectAppt, allDays = [], selectedDay = null }) {
+function DayList({ appts, typeConfig = TYPE_CONFIG, onSelectAppt, allDays = [], selectedDay = null, isService = false }) {
+  const cols = isService ? LIST_COLS_SERVICE : LIST_COLS
   const [filterType,   setFilterType]   = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [search,       setSearch]       = useState('')
@@ -718,7 +720,7 @@ function DayList({ appts, typeConfig = TYPE_CONFIG, onSelectAppt, allDays = [], 
 
       {/* Column headers */}
       <div style={{
-        display: 'grid', gridTemplateColumns: LIST_COLS, gap: '0 20px',
+        display: 'grid', gridTemplateColumns: cols, gap: '0 20px',
         padding: '8px 16px', borderBottom: '1px solid var(--spyne-border)',
         background: '#f3f4f6',
       }}>
@@ -726,11 +728,11 @@ function DayList({ appts, typeConfig = TYPE_CONFIG, onSelectAppt, allDays = [], 
         <span style={TH}>Customer</span>
         <span style={TH}>Vehicle</span>
         <span style={TH}>Type</span>
-        <span style={TH}>Rep</span>
+        {!isService && <span style={TH}>Rep</span>}
         <span style={TH}>Status</span>
         <span style={{ ...TH, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <MaterialSymbol name="auto_awesome" size={10} style={{ color: 'var(--spyne-brand)' }} />
-          Vini Summary
+          <MaterialSymbol name={isService ? 'event_note' : 'auto_awesome'} size={10} style={{ color: 'var(--spyne-brand)' }} />
+          {isService ? 'Advisor Note' : 'Vini Summary'}
         </span>
         <span style={{ ...TH, textAlign: 'right' }}>Actions</span>
       </div>
@@ -752,7 +754,7 @@ function DayList({ appts, typeConfig = TYPE_CONFIG, onSelectAppt, allDays = [], 
             key={appt.id}
             onClick={() => onSelectAppt(appt)}
             style={{
-              display: 'grid', gridTemplateColumns: LIST_COLS, gap: '0 20px',
+              display: 'grid', gridTemplateColumns: cols, gap: '0 20px',
               alignItems: 'center',
               padding: '10px 16px',
               borderBottom: i < filtered.length - 1 ? '1px solid var(--spyne-border)' : 'none',
@@ -805,15 +807,17 @@ function DayList({ appts, typeConfig = TYPE_CONFIG, onSelectAppt, allDays = [], 
               color: cfg.color, background: 'transparent',
               border: `1px solid ${cfg.color}`,
               borderRadius: 'var(--spyne-radius-pill)', padding: '2px 7px',
-              whiteSpace: 'nowrap', display: 'inline-block',
+              whiteSpace: 'nowrap', display: 'inline-block', justifySelf: 'start',
             }}>
               {cfg.label}
             </span>
 
             {/* Rep */}
-            <span style={{ fontSize: 12, color: 'var(--spyne-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {appt.salesperson}
-            </span>
+            {!isService && (
+              <span style={{ fontSize: 12, color: 'var(--spyne-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {appt.salesperson}
+              </span>
+            )}
 
             {/* Status — filled */}
             <span style={{
@@ -825,14 +829,14 @@ function DayList({ appts, typeConfig = TYPE_CONFIG, onSelectAppt, allDays = [], 
               {sCfg.label}
             </span>
 
-            {/* Vini Summary — 2-line clamp */}
-            {appt.viniSummary ? (
+            {/* Vini Summary / Advisor Note — 2-line clamp */}
+            {(isService ? appt.agentAction : appt.viniSummary) ? (
               <div style={{
                 fontSize: 12, color: 'var(--spyne-text-secondary)', lineHeight: 1.55,
                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
               }}>
-                {appt.viniSummary}
+                {isService ? appt.agentAction : appt.viniSummary}
               </div>
             ) : <span />}
 
@@ -1270,54 +1274,44 @@ export default function AppointmentsPage({ department = 'sales' }) {
         </div>
       </div>
 
-      {isService ? (
-        <div className="spyne-card overflow-x-auto">
-          <div style={{ minWidth: 720 }}>
-            <WeekGrid days={week.days} onSelectAppt={setSelectedAppt} typeConfig={typeConfig} />
+      <div className="flex flex-col gap-2" style={{ marginTop: -16 }}>
+        {/* Month + week navigation bar */}
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setShowMonthPicker(v => !v)}
+            className="flex h-8 cursor-pointer items-center gap-1 rounded-md border border-spyne-border bg-spyne-surface px-3 text-xs font-semibold text-spyne-text-secondary"
+          >
+            {currentMonthAbbr} {currentYear}
+            <MaterialSymbol name={showMonthPicker ? 'expand_less' : 'expand_more'} size={14} />
+          </button>
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={() => handleWeekChange(-1)} disabled={weekIdx === 0}
+              className="flex size-8 cursor-pointer items-center justify-center rounded-md border border-spyne-border bg-spyne-surface text-spyne-text-secondary disabled:cursor-not-allowed disabled:opacity-40">
+              <MaterialSymbol name="chevron_left" size={15} />
+            </button>
+            <button type="button" onClick={() => handleWeekChange(-weekIdx)}
+              className={cn('h-8 cursor-pointer rounded-md border border-spyne-border px-3 font-semibold text-xs', weekIdx === 0 ? 'bg-spyne-primary-soft text-spyne-primary' : 'bg-spyne-surface text-spyne-text-secondary')}>
+              This Week
+            </button>
+            <button type="button" onClick={() => handleWeekChange(1)} disabled={weekIdx === weekSource.length - 1}
+              className="flex size-8 cursor-pointer items-center justify-center rounded-md border border-spyne-border bg-spyne-surface text-spyne-text-secondary disabled:cursor-not-allowed disabled:opacity-40">
+              <MaterialSymbol name="chevron_right" size={15} />
+            </button>
           </div>
         </div>
-      ) : (
-        <>
-          <div className="flex flex-col gap-2" style={{ marginTop: -16 }}>
-          {/* Month + week navigation bar */}
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowMonthPicker(v => !v)}
-              className="flex h-8 cursor-pointer items-center gap-1 rounded-md border border-spyne-border bg-spyne-surface px-3 text-xs font-semibold text-spyne-text-secondary"
-            >
-              {currentMonthAbbr} {currentYear}
-              <MaterialSymbol name={showMonthPicker ? 'expand_less' : 'expand_more'} size={14} />
-            </button>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => handleWeekChange(-1)} disabled={weekIdx === 0}
-                className="flex size-8 cursor-pointer items-center justify-center rounded-md border border-spyne-border bg-spyne-surface text-spyne-text-secondary disabled:cursor-not-allowed disabled:opacity-40">
-                <MaterialSymbol name="chevron_left" size={15} />
-              </button>
-              <button type="button" onClick={() => handleWeekChange(-weekIdx)}
-                className={cn('h-8 cursor-pointer rounded-md border border-spyne-border px-3 font-semibold text-xs', weekIdx === 0 ? 'bg-spyne-primary-soft text-spyne-primary' : 'bg-spyne-surface text-spyne-text-secondary')}>
-                This Week
-              </button>
-              <button type="button" onClick={() => handleWeekChange(1)} disabled={weekIdx === weekSource.length - 1}
-                className="flex size-8 cursor-pointer items-center justify-center rounded-md border border-spyne-border bg-spyne-surface text-spyne-text-secondary disabled:cursor-not-allowed disabled:opacity-40">
-                <MaterialSymbol name="chevron_right" size={15} />
-              </button>
-            </div>
-          </div>
 
-          {/* Week strip + Day list in one card */}
-          <div className="spyne-card">
-            <div className="p-4">
-              <WeekStrip days={week.days} selectedDayKey={effectiveDayKey} onSelectDay={handleSelectDay} />
-            </div>
-            <DayList appts={selectedDay.appts} typeConfig={typeConfig} onSelectAppt={setSelectedAppt} allDays={week.days} selectedDay={selectedDay} />
+        {/* Week strip + Day list in one card */}
+        <div className="spyne-card">
+          <div className="p-4">
+            <WeekStrip days={week.days} selectedDayKey={effectiveDayKey} onSelectDay={handleSelectDay} />
           </div>
+          <DayList appts={selectedDay.appts} typeConfig={typeConfig} onSelectAppt={setSelectedAppt} allDays={week.days} selectedDay={selectedDay} isService={isService} />
+        </div>
 
-          {/* No-shows */}
-          <NoShowsSection allDays={week.days} />
-          </div>
-        </>
-      )}
+        {/* No-shows */}
+        <NoShowsSection allDays={week.days} />
+      </div>
 
       {selectedAppt && (
         <AppointmentDetailPanel
