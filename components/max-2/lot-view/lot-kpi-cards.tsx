@@ -1,6 +1,6 @@
 "use client"
 
-import { mockLotSummary, mockLotVehicles } from "@/lib/max-2-mocks"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import { cn } from "@/lib/utils"
 
 type Status = "good" | "watch" | "bad"
@@ -28,11 +28,11 @@ const valueColor: Record<Status, string> = {
 const fmt$ = (n: number) => `$${n.toLocaleString()}`
 
 export function LotKPICards() {
-  const s = mockLotSummary
-  const reconDelayed = mockLotVehicles.filter(
+  const { vehicles: lotVehicles, lotSummary: s } = useHoldingCostRateOptional()
+  const reconDelayed = lotVehicles.filter(
     (v) => v.lotStatus === "in-recon" && v.daysInStock > 2,
   )
-  const aged45 = mockLotVehicles.filter(
+  const aged45 = lotVehicles.filter(
     (v) => v.daysInStock >= 45 && v.lotStatus !== "sold-pending",
   ).length
   const frontlinePct = s.totalUnits > 0 ? s.frontlineReady / s.totalUnits : 0

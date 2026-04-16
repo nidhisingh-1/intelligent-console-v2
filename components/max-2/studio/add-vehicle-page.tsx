@@ -16,56 +16,9 @@ import {
   SpyneSegmentedControl,
 } from "@/components/max-2/spyne-toolbar-controls"
 import { SpyneChip } from "@/components/max-2/spyne-ui"
+import { demoVehicleHeroThumbnailOptions } from "@/lib/demo-vehicle-hero-images"
 
 const VIN_PLACEHOLDER = "00000000000000000"
-
-const DEMO_THUMBS: { src: string; alt: string; kind: "3d" | "2d" }[] = [
-  {
-    src: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=160&h=112&fit=crop",
-    alt: "Silver sports car",
-    kind: "3d",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=160&h=112&fit=crop",
-    alt: "Classic red car",
-    kind: "3d",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=160&h=112&fit=crop",
-    alt: "Yellow sports car",
-    kind: "3d",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=160&h=112&fit=crop",
-    alt: "White sedan",
-    kind: "2d",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=160&h=112&fit=crop",
-    alt: "Orange sports car",
-    kind: "2d",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=160&h=112&fit=crop",
-    alt: "Red sports car front",
-    kind: "2d",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=160&h=112&fit=crop",
-    alt: "Blue BMW",
-    kind: "2d",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=160&h=112&fit=crop",
-    alt: "Black BMW",
-    kind: "2d",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=160&h=112&fit=crop",
-    alt: "White SUV",
-    kind: "2d",
-  },
-]
 
 function formatVIN(value: string) {
   return value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, "").slice(0, 17)
@@ -337,7 +290,7 @@ export function AddVehiclePage() {
           </button>
         </p>
         <div className="-mx-1 flex gap-2 overflow-x-auto pb-1 pt-1 [scrollbar-width:thin]">
-          {DEMO_THUMBS.map((thumb) => (
+          {demoVehicleHeroThumbnailOptions.map((thumb) => (
             <button
               key={thumb.src}
               type="button"
@@ -364,7 +317,7 @@ export function AddVehiclePage() {
                 alt={thumb.alt}
                 width={112}
                 height={78}
-                className="h-[78px] w-[112px] object-cover"
+                className="h-[78px] w-[112px] object-contain object-center bg-muted"
               />
             </button>
           ))}

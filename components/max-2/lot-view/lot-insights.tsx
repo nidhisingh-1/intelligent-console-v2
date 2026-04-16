@@ -1,6 +1,7 @@
 "use client"
 
-import { mockLotSummary, mockLotVehicles } from "@/lib/max-2-mocks"
+import * as React from "react"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import {
   Card,
   CardHeader,
@@ -37,21 +38,6 @@ const STOCK_HISTORY = [
 const DELTAS = STOCK_HISTORY.slice(1).map((w, i) => w.count - STOCK_HISTORY[i].count)
 // → [−1, −2, −1, −2, 0]
 
-// ── Computed insight data ─────────────────────────────────────────────────
-const frontline    = mockLotVehicles.filter((v) => v.lotStatus === "frontline")
-const agedCars    = mockLotVehicles.filter((v) => v.daysInStock >= 45 && v.lotStatus === "frontline")
-const freshCars   = frontline.filter((v) => v.daysInStock <= 15)
-const premiumCars = frontline.filter((v) => v.listPrice >= 40000)
-const noLeadsCars = frontline.filter((v) => v.leads === 0 && v.daysInStock > 5)
-const s            = mockLotSummary
-
-const freshAvgDays   = freshCars.length > 0
-  ? freshCars.reduce((a, v) => a + v.daysInStock, 0) / freshCars.length
-  : 0
-const premiumAvgDays = premiumCars.length > 0
-  ? premiumCars.reduce((a, v) => a + v.daysInStock, 0) / premiumCars.length
-  : 0
-
 // ── Trend math ────────────────────────────────────────────────────────────
 const current       = STOCK_HISTORY[STOCK_HISTORY.length - 1].count
 const oldest        = STOCK_HISTORY[0].count
@@ -66,6 +52,39 @@ const weeksToDeplete = avgVelocity > 0 ? current / avgVelocity : null
 
 
 export function LotInsights() {
+  const { vehicles: lotVehicles, lotSummary: s } = useHoldingCostRateOptional()
+
+  const {
+    agedCars,
+    freshCars,
+    premiumCars,
+    noLeadsCars,
+    freshAvgDays,
+    premiumAvgDays,
+  } = React.useMemo(() => {
+    const frontline = lotVehicles.filter((v) => v.lotStatus === "frontline")
+    const agedCars = lotVehicles.filter((v) => v.daysInStock >= 45 && v.lotStatus === "frontline")
+    const freshCars = frontline.filter((v) => v.daysInStock <= 15)
+    const premiumCars = frontline.filter((v) => v.listPrice >= 40000)
+    const noLeadsCars = frontline.filter((v) => v.leads === 0 && v.daysInStock > 5)
+    const freshAvgDays =
+      freshCars.length > 0
+        ? freshCars.reduce((a, v) => a + v.daysInStock, 0) / freshCars.length
+        : 0
+    const premiumAvgDays =
+      premiumCars.length > 0
+        ? premiumCars.reduce((a, v) => a + v.daysInStock, 0) / premiumCars.length
+        : 0
+    return {
+      agedCars,
+      freshCars,
+      premiumCars,
+      noLeadsCars,
+      freshAvgDays,
+      premiumAvgDays,
+    }
+  }, [lotVehicles])
+
   const insights: { dot: string; text: string }[] = [
     {
       dot: "bg-spyne-success",

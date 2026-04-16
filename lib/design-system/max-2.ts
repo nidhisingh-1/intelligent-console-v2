@@ -209,7 +209,12 @@ export const max2Classes = {
    * Height follows the tab strip (no fixed `h-14`) so there is no empty band **below** the strip hairline inside the white block.
    */
   moduleSecondaryNavShell:
-    "sticky top-14 z-[40] lg:top-0 w-full min-w-0 shrink-0 bg-spyne-surface pt-4",
+    "flow-root sticky top-14 z-[40] lg:top-0 w-full min-w-0 shrink-0 bg-spyne-surface pt-4",
+  /**
+   * Full-width hairline under {@link moduleSecondaryNavShell} line tabs. Use with tab strip
+   * `!border-b-0` so the rule spans the module column edge-to-edge (not inset by `px-max2-page`).
+   */
+  studioInventoryTabHairline: "h-px w-full min-w-0 shrink-0 bg-spyne-border",
   /**
    * Main column under **Sales / Service** secondary nav: horizontal gutters, bottom padding, light top inset.
    * Sticky page headers still supply their own `pt-4`; this `pt-2` aligns with extra main-column top air.
@@ -218,7 +223,13 @@ export const max2Classes = {
   /**
    * **Studio AI** layout under secondary nav: top inset so page titles clear the hairline (matches extra main-column top air).
    */
-  moduleSecondaryNavPageBodyStudio: "px-max2-page pb-6 pt-6",
+  moduleSecondaryNavPageBodyStudio:
+    "px-max2-page pb-6 pt-[var(--max2-studio-module-body-padding-top)]",
+  /**
+   * Vehicle display: title + meta block inside {@link moduleSecondaryNavShell} when merged with
+   * `StudioInventoryLineTabs` on the VDP route (see `vehicle-display-page.tsx`).
+   */
+  vehicleDisplayPageStickyInner: "px-max2-page pt-4 pb-4",
   /**
    * **Overview panel shell** — plain `div` cards on Studio AI / Media Lot overview (Action Items, Inventory Analysis, age distribution, etc.).
    * Do **not** use shadcn `Card`; pair with `overviewPanelHeader`, `overviewPanelDescription`, and a body sibling `<div>`.
@@ -237,6 +248,33 @@ export const max2Classes = {
   overviewPanelFooter: "border-t border-spyne-border px-5 pt-4 pb-5",
   /** Single-row footer (e.g. “View all” link bar): **16px** vertical */
   overviewPanelFooterRow: "border-t border-spyne-border px-5 py-4",
+  /**
+   * Use with {@link overviewPanelShell} when a child paints outside the default clip (e.g. {@link overviewSuggestBannerPointer}).
+   */
+  overviewPanelShellAllowOverflow: "overflow-visible",
+  /**
+   * **Action Items** suggest slab under {@link Max2ActionTabStrip} (Lot Overview): `spyne-row-warn`, **8px** radius, border, copy + primary CTA row.
+   * @see design-system/max-2.md — Overview suggest banner (Lot)
+   */
+  overviewSuggestBanner:
+    "spyne-row-warn rounded-lg border border-spyne-border px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4",
+  /**
+   * Merchandising “instant media” pitch (Studio): layout matches {@link overviewSuggestBanner}.
+   * Surface is a **local CSS override** (bold gradient), see `.spyne-merch-pitch-banner--instant` in `app/globals.css`.
+   */
+  merchandisingInstantPitchBanner:
+    "spyne-merch-pitch-banner--instant rounded-lg border border-spyne-border px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4",
+  /** Icon + body copy row inside {@link overviewSuggestBanner}. */
+  overviewSuggestBannerContent: "flex min-w-0 flex-1 items-start gap-3",
+  /** Positioning root for the suggest banner and tab pointer; must wrap both. */
+  overviewSuggestBannerAnchor: "spyne-overview-suggest-banner__anchor",
+  /**
+   * Tooltip-style pointer toward the active action tab. Pair with `spyne-row-warn` for surface; set `left` inline.
+   */
+  overviewSuggestBannerPointer:
+    "spyne-overview-suggest-banner__pointer spyne-row-warn -translate-x-1/2",
+  /** Vertical gap before `VehicleMediaTable` after the suggest banner. */
+  overviewSuggestBannerTableGap: "pt-8",
 } as const
 
 /** Semantic badge/chip utilities (inside `.max2-spyne` only) */
@@ -253,7 +291,14 @@ export const spyneComponentClasses = {
   /** Alias of `badgeError` — legacy sales markup */
   badgeDanger: "spyne-badge-danger",
   badgeInfo: "spyne-badge-info",
+  /** Retail / orange emphasis — pairs with `--spyne-chip-orange` in `app/globals.css` */
+  badgeOrange: "spyne-badge-orange",
   badgeNeutral: "spyne-badge-neutral",
+  /**
+   * Layout shell for status pills: pair with {@link badgeSuccess}, {@link badgeInfo}, etc.
+   * CSS: `.spyne-badge-*` in `app/globals.css`.
+   */
+  badgePillInline: "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
   rowSelected: "spyne-row-selected",
   rowWarn: "spyne-row-warn",
   rowError: "spyne-row-error",
@@ -288,6 +333,8 @@ export const spyneComponentClasses = {
   cardTitle: "spyne-card-title",
   /** Segmented switcher (mutually exclusive options) — container */
   segmented: "spyne-segmented",
+  /** Use with {@link segmented} for a taller control with 15px labels (e.g. Studio table view toggle) */
+  segmentedLg: "spyne-segmented--lg",
   /** Segment button — use with `aria-pressed` for active state */
   segmentedBtn: "spyne-segmented__btn",
   /** Status dot before segment label (offline / muted) */
@@ -376,6 +423,48 @@ export const spyneComponentClasses = {
   inventoryQuickChipCount: "spyne-inventory-quick-chip__count",
   /** Cycling placeholder line inside inventory search */
   inventorySearchHint: "spyne-inventory-search-hint",
+  /**
+   * Studio inventory data tables (Active Inventory, Lot inventory routes, merchandising summary vehicle lists).
+   * Shared column titles, body typography (14px), row rules on `border-spyne-border`,
+   * vertical column dividers on `border-spyne-border/45` (lighter than row borders).
+   */
+  studioInventoryTable: "w-full min-w-[500px] border-collapse text-sm text-spyne-text",
+  /** Optional title row above the grid (matches panel section headers) */
+  studioInventoryTableTitle: "text-sm font-semibold text-spyne-text",
+  /** `<thead><tr>`: slightly darker strip + bottom rule (Active / Lot inventory tables) */
+  studioInventoryTableHeaderRow: "border-b border-spyne-border bg-muted/80",
+  /** Default `<th>` (left-aligned, vertically centered with checkbox column) */
+  studioInventoryTableHeadCell:
+    "border-r border-spyne-border/45 py-2 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wider text-spyne-text whitespace-nowrap last:border-r-0",
+  studioInventoryTableHeadCellRight: "text-right",
+  studioInventoryTableHeadCellCenter: "text-center",
+  /** Body `<tr>`: explicit row line + hover */
+  studioInventoryTableRow:
+    "border-b border-spyne-border bg-spyne-surface transition-colors duration-150 hover:bg-spyne-primary-soft/40",
+  /** Default `<td>` */
+  studioInventoryTableCell:
+    "border-r border-spyne-border/45 py-3 px-4 align-top text-sm text-spyne-text last:border-r-0",
+  /** Secondary line (dates, sub-labels) inside a cell */
+  studioInventoryTableCellMeta: "text-xs text-spyne-text-secondary tabular-nums leading-snug",
+  /**
+   * VIN + stock # under the vehicle title (copy-to-clip). Inter only (not `font-sans` / Geist); secondary grey.
+   * Use on `CopyOnClickIdentifier` in inventory tables.
+   */
+  studioInventoryVinStockIdentifier:
+    "font-[family-name:Inter,ui-sans-serif,system-ui,sans-serif] text-spyne-text-secondary",
+  /** Checkbox column header/cell — minimal gap before vehicle thumb (`VehicleMediaTable`) */
+  studioInventoryTableCheckboxTh: "w-9 border-r border-spyne-border/45 py-2 pl-3 pr-1.5 last:border-r-0",
+  studioInventoryTableCheckboxTd: "border-r border-spyne-border/45 py-2.5 pl-3 pr-1.5 align-top last:border-r-0",
+  /** Narrow last column for row kebab menu (`VehicleMediaTable`) — use with `studioInventoryTableHeadCell` / `studioInventoryTableCell` */
+  studioInventoryTableRowMenuTh: "w-10 !px-1 text-center",
+  studioInventoryTableRowMenuTd: "w-10 !px-1",
+  /** Vehicle column immediately after checkbox — left padding matches `VehicleMediaTable` tbody `py-2.5` so inset from column rule ≈ inset above thumb */
+  studioInventoryTableVehicleColAfterCheckbox: "!pl-2.5",
+  /** Thumb + title stack inside a vehicle cell */
+  studioInventoryTableVehicleMediaRow: "flex items-start gap-4",
+  /** Standalone thumb column + following vehicle column (merchandising summary lists, etc.) */
+  studioInventoryTableThumbCol: "!pl-3 !pr-4",
+  studioInventoryTableVehicleColAfterThumb: "!pl-3",
   /** Inventory filter drawer (checkbox accordions) */
   filterPanelRoot: "spyne-filter-panel-root",
   filterPanel: "spyne-filter-panel",
@@ -400,6 +489,12 @@ export const spyneComponentClasses = {
   sidebarRailChildLink: "spyne-sidebar-rail__child-link",
   sidebarRailChildLinkActive: "spyne-sidebar-rail__child-link--active",
 } as const
+
+/**
+ * Leading icon on `SpyneLineTab` rows (module secondary nav, 14px labels).
+ * Slightly larger than label size for optical balance; must be a supported `MaterialSymbol` size (14 | 16 | 20 | 24).
+ */
+export const spyneLineTabLeadingIconSize = 16 as const
 
 /**
  * Main column padding: 24px on all sides.

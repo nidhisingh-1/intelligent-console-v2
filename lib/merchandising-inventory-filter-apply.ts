@@ -115,7 +115,7 @@ export const MERCH_MEDIA_ISSUE_LABELS: Record<MerchMediaIssue, string> = {
   no360: "Missing 360 walk-around video",
   incomplete: "10–15 photos",
   under8: "Fewer than 8 exterior images",
-  hero: "Wrong hero angle",
+  hero: "Missing hero angle",
 }
 
 const validMediaIssues = new Set<MerchMediaIssue>(["glare", "no360", "incomplete", "under8", "hero"])
@@ -300,7 +300,7 @@ export function applyMerchandisingFilters(
     const mi = filters.mediaIssue
     result = result.filter((v) => {
       if (mi === "glare") return v.hasSunGlare
-      if (mi === "no360") return v.missingWalkaroundVideo
+      if (mi === "no360") return !v.has360
       if (mi === "incomplete") return v.photoCount >= 1 && v.photoCount <= 15
       if (mi === "hero") return v.wrongHeroAngle
       return v.photoCount > 0 && v.photoCount < 8

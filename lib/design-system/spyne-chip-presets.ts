@@ -27,7 +27,7 @@ export const spyneMediaStatusChipPreset: Record<MediaStatus, SpyneDomainChipPres
   "real-photos": { label: "Real", tone: "success" },
   "clone-photos": { label: "Clone", tone: "warning" },
   "stock-photos": { label: "Stock", tone: "error" },
-  "no-photos": { label: "None", tone: "neutral" },
+  "no-photos": { label: "Draft", tone: "neutral" },
 }
 
 export const spynePublishStatusChipPreset: Record<PublishStatus, SpyneDomainChipPreset> = {

@@ -4,6 +4,11 @@ import * as React from "react"
 import type { MerchandisingVehicle, MediaStatus, PublishStatus } from "@/services/max-2/max-2.types"
 import { cn } from "@/lib/utils"
 import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog"
+import { MaterialSymbol } from "@/components/max-2/material-symbol"
+import {
   SpyneFilterSheet,
   SpyneFilterFacetSection,
   type SpyneFilterFacetRow,
@@ -189,6 +194,7 @@ interface InventoryFilterBarProps {
   onFiltersChange: (filters: MerchandisingInventoryFilters) => void
   allVehicles: MerchandisingVehicle[]
   tabCounts: { all: number; new: number; used: number }
+  tableView?: "merchandising" | "lot-view"
 }
 
 export function InventoryFilterBar({
@@ -196,9 +202,11 @@ export function InventoryFilterBar({
   onFiltersChange,
   allVehicles,
   tabCounts,
+  tableView = "merchandising",
 }: InventoryFilterBarProps) {
   const [viewInput, setViewInput] = React.useState(false)
   const [filtersSheetOpen, setFiltersSheetOpen] = React.useState(false)
+  const [exportModalOpen, setExportModalOpen] = React.useState(false)
 
   const update = (partial: Partial<MerchandisingInventoryFilters>) => {
     onFiltersChange({ ...filters, ...partial })
@@ -299,47 +307,46 @@ export function InventoryFilterBar({
     [tabScoped]
   )
 
-  const certifiedCount = tabScoped.filter((v) => v.listingScore >= 80).length
+  // Quick filter counts — media issue cards
+  const noPhotosCount = tabScoped.filter((v) => v.mediaStatus === "no-photos").length
+  const cgiPhotosCount = tabScoped.filter((v) => v.mediaStatus === "clone-photos").length
+  const under8Count = tabScoped.filter((v) => v.photoCount > 0 && v.photoCount < 8).length
+  const wrongHeroCount = tabScoped.filter((v) => v.wrongHeroAngle).length
+  const no360Count = tabScoped.filter((v) => !v.has360).length
+  const incompleteCount = tabScoped.filter((v) => v.incompletePhotoSet).length
 
-  const chipCertified =
-    filters.scoreBuckets.includes("high") && filters.scoreBuckets.length === 1
+  const chipNoPhotos = filters.mediaStatuses.length === 1 && filters.mediaStatuses[0] === "no-photos"
+  const chipCgiPhotos = filters.mediaStatuses.length === 1 && filters.mediaStatuses[0] === "clone-photos"
+  const chipUnder8 = filters.mediaIssue === "under8"
+  const chipWrongHero = filters.mediaIssue === "hero"
+  const chipNo360 = filters.mediaIssue === "no360"
+  const chipIncomplete = filters.mediaIssue === "incomplete"
 
-  const inReviewCount = tabScoped.filter((v) => v.publishStatus === "pending").length
-  const failedCount = tabScoped.filter((v) => v.listingScore < 50).length
-  const ageOver30Count = tabScoped.filter((v) => v.daysInStock > 30).length
-  const odometerMissingCount = tabScoped.filter((v) => v.odometer <= 0).length
-  const priceMissingCount = tabScoped.filter((v) => v.price <= 0).length
+  const toggleNoPhotos = () => update({ mediaStatuses: chipNoPhotos ? [] : ["no-photos"], mediaIssue: null })
+  const toggleCgiPhotos = () => update({ mediaStatuses: chipCgiPhotos ? [] : ["clone-photos"], mediaIssue: null })
+  const toggleUnder8 = () => update({ mediaIssue: chipUnder8 ? null : "under8", mediaStatuses: [] })
+  const toggleWrongHero = () => update({ mediaIssue: chipWrongHero ? null : "hero", mediaStatuses: [] })
+  const toggleNo360 = () => update({ mediaIssue: chipNo360 ? null : "no360", mediaStatuses: [] })
+  const toggleIncomplete = () => update({ mediaIssue: chipIncomplete ? null : "incomplete", mediaStatuses: [] })
 
-  const chipInReview =
-    filters.publishStatuses.length === 1 && filters.publishStatuses[0] === "pending"
-  const chipFailed =
-    filters.scoreBuckets.length === 1 && filters.scoreBuckets[0] === "low"
-  const chipAge30 =
-    filters.ageBuckets.length === 0 &&
-    filters.ageMin === 31 &&
-    filters.ageMax === null
-  const chipOdometerMissing = filters.missingOdometerOnly
-  const chipPriceMissing = filters.missingPriceOnly
+  // Lot view quick filter counts (derived from MerchandisingVehicle fields)
+  const lotRepriceCount   = tabScoped.filter(v => v.daysInStock >= 31 && v.daysInStock <= 45).length
+  const lotLiquidateCount = tabScoped.filter(v => v.daysInStock >= 46 && v.daysInStock <= 60).length
+  const lotExitNowCount   = tabScoped.filter(v => v.daysInStock > 60).length
 
-  const toggleCertified = () => {
-    if (chipCertified) update({ scoreBuckets: [] })
-    else update({ scoreBuckets: ["high"], scoreMin: null })
-  }
+  const lotChipAged45    = filters.ageMin === 45 && filters.ageMax === null && filters.ageBuckets.length === 0
+  const lotChipSmartCam  = filters.ageMin === 10 && filters.publishStatuses.length === 1 && filters.publishStatuses[0] === "live"
+  const lotChipReprice   = filters.ageMin === 31 && filters.ageMax === 45
+  const lotChipLiquidate = filters.ageMin === 46 && filters.ageMax === 60
+  const lotChipExitNow   = filters.ageMin === 61 && filters.ageMax === null
+  const lotChipHighHold  = filters.ageMin === 34 && filters.ageMax === null && filters.ageBuckets.length === 0
 
-  const toggleInReview = () => {
-    if (chipInReview) update({ publishStatuses: [] })
-    else update({ publishStatuses: ["pending"] })
-  }
-
-  const toggleFailed = () => {
-    if (chipFailed) update({ scoreBuckets: [], scoreMin: null })
-    else update({ scoreBuckets: ["low"], scoreMin: null })
-  }
-
-  const toggleAge30 = () => {
-    if (chipAge30) update({ ageMin: null })
-    else update({ ageMin: 31, ageMax: null, ageBuckets: [] })
-  }
+  const toggleLotAged45    = () => update(lotChipAged45    ? { ageMin: null, ageMax: null }                              : { ageMin: 45, ageMax: null, ageBuckets: [], publishStatuses: [] })
+  const toggleLotSmartCam  = () => update(lotChipSmartCam  ? { ageMin: null, publishStatuses: [] }                      : { ageMin: 10, ageMax: null, ageBuckets: [], publishStatuses: ["live"] })
+  const toggleLotReprice   = () => update(lotChipReprice   ? { ageMin: null, ageMax: null }                              : { ageMin: 31, ageMax: 45,   ageBuckets: [], publishStatuses: [] })
+  const toggleLotLiquidate = () => update(lotChipLiquidate ? { ageMin: null, ageMax: null }                              : { ageMin: 46, ageMax: 60,   ageBuckets: [], publishStatuses: [] })
+  const toggleLotExitNow   = () => update(lotChipExitNow   ? { ageMin: null, ageMax: null }                              : { ageMin: 61, ageMax: null, ageBuckets: [], publishStatuses: [] })
+  const toggleLotHighHold  = () => update(lotChipHighHold  ? { ageMin: null, ageMax: null }                              : { ageMin: 34, ageMax: null, ageBuckets: [], publishStatuses: [] })
 
   const toggleOdometerMissing = () => {
     update({ missingOdometerOnly: !filters.missingOdometerOnly })
@@ -439,47 +446,63 @@ export function InventoryFilterBar({
         vehicleType={filters.vehicleType}
         onVehicleTypeChange={(t) => update({ vehicleType: t as InventoryVehicleType })}
         counts={tabCounts}
+        showSyncStatus
         searchPlaceholder="Search"
         searchHintRotation={MERCH_SEARCH_HINT_ROTATION}
         searchValue={filters.search}
         onSearchChange={(search) => update({ search })}
 
         onApplyFiltersClick={() => setFiltersSheetOpen(true)}
+        onExportClick={() => setExportModalOpen(true)}
         addVehicleHref="/max-2/studio/add"
         addVehicleLabel="Add vehicle(s)"
         soldInventoryHref="/max-2/studio/sold-inventory"
         quickChips={
-          <>
-            <SpyneMetricChip
-              className="shrink-0"
-              label="Certified"
-              count={certifiedCount}
-              active={chipCertified}
-              onClick={toggleCertified}
-            />
-            <SpyneMetricChip
-              className="shrink-0"
-              label="In Review"
-              count={inReviewCount}
-              active={chipInReview}
-              onClick={toggleInReview}
-            />
-            <SpyneMetricChip
-              className="shrink-0"
-              label="Failed"
-              count={failedCount}
-              active={chipFailed}
-              onClick={toggleFailed}
-            />
-            <SpyneMetricChip
-              className="shrink-0"
-              label="Age > 30 days"
-              count={ageOver30Count}
-              active={chipAge30}
-              onClick={toggleAge30}
-            />
-          </>
+          tableView === "lot-view" ? (
+            <>
+              <QuickFilterCard
+                icon="refresh"
+                label="Reprice"
+                count={lotRepriceCount}
+                active={lotChipReprice}
+                onClick={toggleLotReprice}
+                lotTone="watch"
+              />
+              <QuickFilterCard
+                icon="trending_down"
+                label="Liquidate"
+                count={lotLiquidateCount}
+                active={lotChipLiquidate}
+                onClick={toggleLotLiquidate}
+                lotTone="urgent"
+              />
+              <QuickFilterCard
+                icon="logout"
+                label="Exit Now"
+                count={lotExitNowCount}
+                active={lotChipExitNow}
+                onClick={toggleLotExitNow}
+                lotTone="critical"
+              />
+            </>
+          ) : (
+            <>
+              <QuickFilterCard icon="hide_image"   label="Add photos"           count={noPhotosCount}  active={chipNoPhotos}  onClick={toggleNoPhotos}  />
+              <QuickFilterCard icon="auto_awesome" label="Replace instant media" count={cgiPhotosCount} active={chipCgiPhotos} onClick={toggleCgiPhotos} />
+              <QuickFilterCard icon="photo_library" label="Add more photos"    count={under8Count}    active={chipUnder8}    onClick={toggleUnder8}    />
+              <QuickFilterCard icon="rotate_right"  label="Missing Hero Angle"  count={wrongHeroCount} active={chipWrongHero} onClick={toggleWrongHero} />
+              <QuickFilterCard icon="360"           label="No 360 Spin"       count={no360Count}     active={chipNo360}     onClick={toggleNo360}     />
+              <QuickFilterCard icon="burst_mode"    label="Incomplete PhotoSet" count={incompleteCount} active={chipIncomplete} onClick={toggleIncomplete} />
+            </>
+          )
         }
+      />
+
+      <ExportInventoryModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        vehicles={allVehicles}
+        selectedCount={0}
       />
 
       <SpyneFilterSheet
@@ -711,6 +734,270 @@ export function InventoryFilterBar({
   )
 }
 
+const ALL_EXPORT_COLUMNS = [
+  { id: "vin", label: "VIN" },
+  { id: "vehicleName", label: "Vehicle Name" },
+  { id: "stockId", label: "SKU ID" },
+  { id: "productName", label: "Product Name" },
+  { id: "price", label: "Price" },
+  { id: "regNum", label: "Reg Num" },
+  { id: "make", label: "Make" },
+  { id: "model", label: "Model" },
+  { id: "year", label: "Year" },
+  { id: "trim", label: "Trim" },
+  { id: "odometer", label: "Odometer" },
+  { id: "bodyStyle", label: "Body Style" },
+  { id: "fuelType", label: "Fuel Type" },
+  { id: "daysInStock", label: "Days in Stock" },
+  { id: "listingScore", label: "Media Score" },
+  { id: "publishStatus", label: "Publish Status" },
+]
+
+const DEFAULT_SELECTED_COLS = ["vin", "vehicleName", "stockId", "productName", "price", "regNum"]
+
+const EXPORT_FORMATS = [
+  { id: "csv", label: "CSV (.csv)" },
+  { id: "excel", label: "Excel (.xlsx)" },
+  { id: "pdf", label: "PDF (.pdf)" },
+]
+
+function buildCsvRow(v: MerchandisingVehicle, cols: string[]): string {
+  const stockNumber = v.stockNumber ?? `STK${v.vin.slice(-4)}`
+  const val = (id: string): string => {
+    switch (id) {
+      case "vin":         return v.vin
+      case "vehicleName": return `${v.year} ${v.make} ${v.model}${v.trim ? ` ${v.trim}` : ""}`
+      case "stockId":     return stockNumber
+      case "productName": return `${v.make} ${v.model}`
+      case "price":       return String(v.price)
+      case "regNum":      return ""
+      case "make":        return v.make
+      case "model":       return v.model
+      case "year":        return String(v.year)
+      case "trim":        return v.trim
+      case "odometer":    return String(v.odometer)
+      case "bodyStyle":   return v.bodyStyle ?? ""
+      case "fuelType":    return v.fuelType ?? ""
+      case "daysInStock": return String(v.daysInStock)
+      case "listingScore":   return String((v.listingScore / 10).toFixed(1))
+      case "publishStatus":  return v.publishStatus
+      default: return ""
+    }
+  }
+  return cols.map((c) => `"${val(c).replace(/"/g, '""')}"`).join(",")
+}
+
+function downloadCsv(vehicles: MerchandisingVehicle[], cols: string[], colDefs: typeof ALL_EXPORT_COLUMNS) {
+  const header = cols.map((id) => colDefs.find((c) => c.id === id)?.label ?? id).join(",")
+  const rows = vehicles.map((v) => buildCsvRow(v, cols))
+  const csv = [header, ...rows].join("\n")
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `inventory-export-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function ExportInventoryModal({
+  open,
+  onOpenChange,
+  vehicles,
+  selectedCount,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  vehicles: MerchandisingVehicle[]
+  selectedCount: number
+}) {
+  const [selectedCols, setSelectedCols] = React.useState<string[]>(DEFAULT_SELECTED_COLS)
+  const [dropdownOpen, setDropdownOpen] = React.useState(false)
+
+  const removeCol = (id: string) => setSelectedCols((prev) => prev.filter((c) => c !== id))
+  const addCol = (id: string) => {
+    if (!selectedCols.includes(id)) setSelectedCols((prev) => [...prev, id])
+    setDropdownOpen(false)
+  }
+
+  const exportCount = selectedCount > 0 ? selectedCount : vehicles.length
+  const availableToAdd = ALL_EXPORT_COLUMNS.filter((c) => !selectedCols.includes(c.id))
+  const selectedColDefs = selectedCols.map((id) => ALL_EXPORT_COLUMNS.find((c) => c.id === id)!).filter(Boolean)
+
+  const handleDownload = () => {
+    downloadCsv(vehicles, selectedCols, ALL_EXPORT_COLUMNS)
+    onOpenChange(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg p-0 overflow-hidden rounded-2xl [&>button]:hidden">
+        {/* Header */}
+        <div className="flex items-start gap-4 border-b border-spyne-border px-6 py-5">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-green-100">
+            <MaterialSymbol name="file_export" size={28} className="text-green-600" />
+          </div>
+          <div className="min-w-0 flex-1 pt-1">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Export Inventory ({exportCount})
+            </h2>
+            <p className="mt-0.5 text-sm text-gray-500">
+              {selectedCount > 0
+                ? `Exporting ${selectedCount} selected vehicles.`
+                : "Select the data to export from your inventory."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-muted hover:text-gray-600"
+            aria-label="Close"
+          >
+            <MaterialSymbol name="close" size={20} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-5">
+          {/* Column selector */}
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-gray-900">Select columns to export</p>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setDropdownOpen((v) => !v)}
+                className="flex w-full items-center justify-between rounded-lg border border-spyne-border bg-white px-4 py-2.5 text-sm text-gray-400 transition-colors hover:bg-muted/40"
+              >
+                <span>Select more columns from dropdown</span>
+                <MaterialSymbol name="keyboard_arrow_down" size={20} className={cn("transition-transform", dropdownOpen && "rotate-180")} />
+              </button>
+              {dropdownOpen && availableToAdd.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-spyne-border bg-white shadow-lg">
+                  {availableToAdd.map((col) => (
+                    <button
+                      key={col.id}
+                      type="button"
+                      onClick={() => addCol(col.id)}
+                      className="flex w-full items-center px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-muted/60 first:rounded-t-lg last:rounded-b-lg"
+                    >
+                      {col.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {selectedColDefs.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedColDefs.map((col) => (
+                  <span
+                    key={col.id}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-spyne-primary px-3 py-1 text-sm font-medium text-spyne-primary"
+                  >
+                    {col.label}
+                    <button
+                      type="button"
+                      onClick={() => removeCol(col.id)}
+                      aria-label={`Remove ${col.label}`}
+                      className="flex items-center text-spyne-primary/70 hover:text-spyne-primary"
+                    >
+                      <MaterialSymbol name="close" size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Format + Download */}
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-gray-900">Export as:</p>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <select
+                  defaultValue="csv"
+                  className="h-11 appearance-none rounded-lg border border-spyne-border bg-white pl-4 pr-9 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-spyne-primary/30"
+                >
+                  {EXPORT_FORMATS.map((f) => (
+                    <option key={f.id} value={f.id}>{f.label}</option>
+                  ))}
+                </select>
+                <MaterialSymbol name="keyboard_arrow_down" size={18} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              </div>
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="flex-1 rounded-lg bg-spyne-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--spyne-primary-hover)]"
+              >
+                Start download
+              </button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/** Matches `Max2ActionTab` lot bucket accents (aging strip on the left). */
+const LOT_QUICK_TONE_CLASS = {
+  watch: "shadow-[inset_3px_0_0_0_var(--spyne-warning)]",
+  urgent: "shadow-[inset_4px_0_0_0_var(--spyne-warning)]",
+  critical: "shadow-[inset_4px_0_0_0_var(--spyne-error)]",
+} as const
+
+export function QuickFilterCard({
+  icon,
+  label,
+  count,
+  active,
+  onClick,
+  lotTone,
+}: {
+  icon: string
+  label: string
+  count: number
+  active: boolean
+  onClick: () => void
+  /** Lot inventory buckets: same card shell as merchandising, color-coded strip + count line. */
+  lotTone?: keyof typeof LOT_QUICK_TONE_CLASS
+}) {
+  const countLineClass =
+    lotTone === "watch" || lotTone === "urgent"
+      ? cn(
+          "text-[12px] font-medium text-spyne-warning-ink",
+          lotTone === "urgent" && "font-semibold",
+        )
+      : lotTone === "critical"
+        ? "text-[12px] font-medium text-spyne-error"
+        : "text-[12px] font-medium text-spyne-error"
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex min-w-[140px] flex-col gap-2 rounded-xl border bg-white px-4 py-3 text-left transition-colors hover:bg-muted/40 shrink-0",
+        active ? "border-spyne-primary border-2" : "border-spyne-border",
+        lotTone != null && LOT_QUICK_TONE_CLASS[lotTone],
+      )}
+    >
+      <MaterialSymbol
+        name={icon}
+        size={20}
+        className={cn(active ? "text-spyne-primary" : "text-gray-400")}
+      />
+      <span className={cn("text-[13px] font-semibold leading-tight", active ? "text-spyne-primary" : "text-gray-800")}>
+        {label}
+      </span>
+      <span className={countLineClass}>
+        {count} vehicles →
+      </span>
+    </button>
+  )
+}
+
 function RemovableChip({
   label,
   onRemove,
@@ -718,5 +1005,5 @@ function RemovableChip({
   label: string
   onRemove: () => void
 }) {
-  return <SpyneRemovableFilterChip label={label} onRemove={onRemove} />
+  return <SpyneRemovableFilterChip compact={false} label={label} onRemove={onRemove} />
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { mockLotVehicles } from "@/lib/max-2-mocks"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import type { LotVehicle } from "@/services/max-2/max-2.types"
 import { max2Classes, spyneComponentClasses } from "@/lib/design-system/max-2"
 import { cn } from "@/lib/utils"
@@ -89,10 +89,11 @@ export function LotAgeDistributionPanel({
   vehicles?: LotVehicle[]
 }) {
   const router = useRouter()
+  const { vehicles: lotVehicles } = useHoldingCostRateOptional()
 
   const active =
     vehiclesProp ??
-    mockLotVehicles.filter(
+    lotVehicles.filter(
       (v) => v.lotStatus !== "arriving" && v.lotStatus !== "in-recon",
     )
   const total = active.length
@@ -151,7 +152,7 @@ export function LotAgeDistributionPanel({
                 <th
                   key={`${h}-${i}`}
                   className={cn(
-                    "py-3 px-4 text-xs font-medium uppercase tracking-wider text-spyne-text-secondary whitespace-nowrap",
+                    "py-3 px-4 text-xs font-medium uppercase tracking-wider text-spyne-text whitespace-nowrap",
                     i === 2 && "text-right",
                     i === 3 && "text-right",
                     i === 4 && "text-right",

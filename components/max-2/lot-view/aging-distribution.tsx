@@ -1,6 +1,6 @@
 "use client"
 
-import { mockLotVehicles } from "@/lib/max-2-mocks"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import {
   Card,
   CardHeader,
@@ -81,7 +81,8 @@ const buckets: Bucket[] = [
 ]
 
 export function AgingDistribution() {
-  const activeLot = mockLotVehicles.filter(
+  const { vehicles: lotVehicles } = useHoldingCostRateOptional()
+  const activeLot = lotVehicles.filter(
     (v) => v.lotStatus !== "sold-pending" && v.lotStatus !== "arriving",
   )
   const total = activeLot.length

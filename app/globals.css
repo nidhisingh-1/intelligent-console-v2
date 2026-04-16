@@ -89,6 +89,8 @@
   /* Max 2 main column inset — horizontal + bottom; top is slightly larger for air below shell chrome */
   --max2-page-padding: 24px;
   --max2-page-padding-top: 32px;
+  /** Studio module column body inset below secondary nav (`moduleSecondaryNavPageBodyStudio`) */
+  --max2-studio-module-body-padding-top: 1.5rem;
   /** Gap from page title cluster to first major block (tighter than `--spyne-sales-stack-gap`) */
   --max2-page-header-after-gap: 16px;
   --max2-shell-bg: #f4f5f8;
@@ -675,6 +677,7 @@
   .max2-spyne .spyne-dark-tooltip-radix-content,
   .spyne-dark-tooltip-radix-content {
     z-index: 100;
+    width: max-content;
     max-width: min(100vw - 2rem, 320px);
     border: 0;
     background: transparent;
@@ -684,7 +687,9 @@
 
   .max2-spyne .spyne-dark-tooltip-panel,
   .spyne-dark-tooltip-panel {
-    width: min(100vw - 2rem, 320px);
+    display: inline-block;
+    box-sizing: border-box;
+    max-width: min(100vw - 2rem, 320px);
     border-radius: 1rem;
     background: var(--spyne-tooltip-dark-shell-bg);
     padding: 1.25rem;
@@ -720,6 +725,13 @@
     font-size: 13px;
     color: var(--spyne-on-dark-text);
     text-align: left;
+    min-width: 0;
+  }
+
+  .max2-spyne .spyne-dark-tooltip-item > span:last-child,
+  .spyne-dark-tooltip-item > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .max2-spyne .spyne-dark-tooltip-bullet,
@@ -802,6 +814,14 @@
     outline: 2px solid var(--spyne-primary);
     outline-offset: 2px;
     z-index: 1;
+  }
+
+  /** Taller segments + room for leading icons (Studio Merchandising / Lot View toggle). */
+  .max2-spyne .spyne-segmented.spyne-segmented--lg .spyne-segmented__btn {
+    gap: 8px;
+    padding: 0 16px;
+    min-height: 44px;
+    font-size: 15px;
   }
 
   .max2-spyne .spyne-segmented__dot {
@@ -1279,7 +1299,8 @@
 
   /** Flush to following padded panel (margin handled inside panel) */
   .max2-spyne .spyne-line-tab-strip--embedded {
-    margin-bottom: 0;
+    /* Important: base strip uses `--spyne-sales-stack-gap`; utilities must not win over this */
+    margin-bottom: 0 !important;
   }
 
   /** Bleed to card padding (e.g. `p-4` cards): align hairline with card edges */
@@ -1714,6 +1735,12 @@
     border-color: color-mix(in srgb, var(--spyne-info) 35%, var(--spyne-border));
   }
 
+  .max2-spyne .spyne-badge-orange {
+    background: color-mix(in srgb, var(--spyne-chip-orange) 14%, white);
+    color: var(--spyne-chip-orange);
+    border-color: color-mix(in srgb, var(--spyne-chip-orange) 35%, var(--spyne-border));
+  }
+
   .max2-spyne .spyne-badge-neutral {
     background: #f3f4f6;
     color: var(--spyne-text-secondary);
@@ -1728,12 +1755,49 @@
     background: color-mix(in srgb, var(--spyne-warning) 18%, white);
   }
 
+  /**
+   * Studio Merchandising: instant-media pitch — blue → purple → green at 30% opacity over surface.
+   * Intentional local override (not the default soft row-warn treatment).
+   */
+  .max2-spyne .spyne-merch-pitch-banner--instant {
+    background:
+      linear-gradient(
+        118deg,
+        rgb(125 211 252 / 0.3) 0%,
+        rgb(196 181 253 / 0.3) 42%,
+        rgb(110 231 183 / 0.3) 100%
+      ),
+      var(--spyne-surface);
+    border-color: rgb(70 0 242 / 0.14);
+    box-shadow:
+      0 0 0 1px rgb(70 0 242 / 0.08),
+      0 6px 20px rgb(59 130 246 / 0.08);
+  }
+
   .max2-spyne .spyne-row-error {
     background: color-mix(in srgb, var(--spyne-error) 10%, white);
   }
 
   .max2-spyne .spyne-row-positive {
     background: color-mix(in srgb, var(--spyne-success) 10%, white);
+  }
+
+  /**
+   * Lot Action Items suggest banner — anchor + tab pointer (Media Lot overview).
+   * `max2Classes.overviewSuggestBannerAnchor`, `overviewSuggestBannerPointer` in `lib/design-system/max-2.ts`.
+   */
+  .max2-spyne .spyne-overview-suggest-banner__anchor {
+    position: relative;
+  }
+
+  .max2-spyne .spyne-overview-suggest-banner__pointer {
+    pointer-events: none;
+    position: absolute;
+    z-index: 2;
+    height: 9px;
+    width: 18px;
+    top: -8px;
+    clip-path: polygon(50% 0, 0 100%, 100% 100%);
   }
 
   .max2-spyne .spyne-kpi-icon {

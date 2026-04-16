@@ -36,19 +36,19 @@ export function ServiceTopIntentsTable({
         <table className="w-full min-w-[520px] border-collapse text-left">
           <thead>
             <tr className="border-b border-spyne-border">
-              <th className="spyne-caption pb-2 pr-3 font-semibold uppercase tracking-wide text-spyne-text-secondary">
+              <th className="spyne-caption pb-2 pr-3 font-semibold uppercase tracking-wide text-spyne-text">
                 Intent
               </th>
-              <th className="spyne-caption pb-2 pr-3 text-center font-semibold uppercase tracking-wide text-spyne-text-secondary">
+              <th className="spyne-caption pb-2 pr-3 text-center font-semibold uppercase tracking-wide text-spyne-text">
                 Calls
               </th>
-              <th className="spyne-caption pb-2 pr-3 text-center font-semibold uppercase tracking-wide text-spyne-text-secondary">
+              <th className="spyne-caption pb-2 pr-3 text-center font-semibold uppercase tracking-wide text-spyne-text">
                 Resolved
               </th>
-              <th className="spyne-caption pb-2 pr-3 text-center font-semibold uppercase tracking-wide text-spyne-text-secondary">
+              <th className="spyne-caption pb-2 pr-3 text-center font-semibold uppercase tracking-wide text-spyne-text">
                 Appts
               </th>
-              <th className="spyne-caption pb-2 text-right font-semibold uppercase tracking-wide text-spyne-text-secondary">
+              <th className="spyne-caption pb-2 text-right font-semibold uppercase tracking-wide text-spyne-text">
                 Resolution rate
               </th>
             </tr>

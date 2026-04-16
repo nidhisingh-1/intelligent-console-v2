@@ -24,6 +24,7 @@ Shell chrome (sidebar, mobile bar, page gutters) uses the same Spyne tokens on *
 | Page section block (title + optional description + children) | `components/max-2/max2-page-section.tsx` (`Max2PageSection`) |
 | Action tab cards | `components/max-2/max2-action-tab.tsx` |
 | Overview panel shell (Studio / Media Lot plain `div` cards) | `max2Classes.overviewPanelShell` and related in `lib/design-system/max-2.ts`; § **Overview panel shell** below |
+| Lot Action Items suggest banner (warning slab + tab pointer) | `max2Classes.overviewSuggestBanner*` in `lib/design-system/max-2.ts`; `.spyne-overview-suggest-banner__*` in `app/globals.css`; § **Overview panel shell** below |
 | Material Symbols helper | `components/max-2/material-symbol.tsx` |
 | Inventory filter drawer | `components/max-2/inventory-filter-panel.tsx` |
 | Checkbox (shadcn + Spyne chrome) | `components/ui/checkbox.tsx` + `.max2-spyne [data-slot="checkbox"]` in `app/globals.css`; `spyneCheckboxTokens` in `lib/design-system/max-2.ts` |
@@ -166,8 +167,9 @@ Use this for **plain `div`** overview blocks that mirror **Action Items** and **
 | **`spyne-action-tab-strip`** under this shell | **`!pt-0 !px-5`** (and bottom override such as `!pb-2` when embedded). Aligns strip horizontal inset with the heading block. |
 | **Footer / secondary slab** (insights, dual callouts) | `max2Classes.overviewPanelFooter` — **`border-t border-spyne-border px-5 pt-4 pb-5`**. |
 | **Single-row footer** (“View all” link bar) | `max2Classes.overviewPanelFooterRow` — **`border-t border-spyne-border px-5 py-4`**. |
+| **Suggest banner** (Action Items, under tabs) | `max2Classes.overviewSuggestBanner` on the warning slab (copy + CTA). Icon + text: `overviewSuggestBannerContent`. Wrap banner + pointer in `overviewSuggestBannerAnchor`; pointer element uses `overviewSuggestBannerPointer` with inline **`left`** (tab center). If the pointer must paint outside the shell clip, add `overviewPanelShellAllowOverflow` next to `overviewPanelShell`. Gap before the table: `overviewSuggestBannerTableGap`. |
 
-**TypeScript:** `max2Classes.overviewPanelShell`, `overviewPanelHeader`, `overviewPanelDescription`, `overviewPanelFooter`, `overviewPanelFooterRow` in `lib/design-system/max-2.ts`.
+**TypeScript:** `max2Classes.overviewPanelShell`, `overviewPanelHeader`, `overviewPanelDescription`, `overviewPanelFooter`, `overviewPanelFooterRow`, `overviewPanelShellAllowOverflow`, `overviewSuggestBanner`, `overviewSuggestBannerContent`, `overviewSuggestBannerAnchor`, `overviewSuggestBannerPointer`, `overviewSuggestBannerTableGap` in `lib/design-system/max-2.ts`.
 
 ### Insight rows (Studio & modals)
 

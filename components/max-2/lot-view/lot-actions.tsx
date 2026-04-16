@@ -1,7 +1,8 @@
 "use client"
 
+import * as React from "react"
 import { useRouter } from "next/navigation"
-import { mockLotVehicles } from "@/lib/max-2-mocks"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import {
   Card,
   CardHeader,
@@ -35,54 +36,64 @@ const MAX_VEHICLES = 2
 
 const ON_LOT = ["frontline", "wholesale-candidate", "sold-pending"]
 
-const aged45Cars   = mockLotVehicles.filter((v) => ON_LOT.includes(v.lotStatus) && v.daysInStock >= 45 && v.lotStatus !== "sold-pending")
-const noLeadsCars  = mockLotVehicles.filter((v) => v.leads === 0 && v.daysInStock > 5 && v.lotStatus === "frontline")
-const lowEngagementCars = mockLotVehicles.filter((v) => v.lotStatus === "frontline" && v.leads === 0 && v.daysInStock >= 10)
-
-const ALL_ACTIONS = ([
-  {
-    id: "aged",
-    priority: "critical" as Priority,
-    title: "Reprice or Liquidate",
-    icon: <AlertTriangle className="h-4 w-4" />,
-    vehicles: aged45Cars
-      .sort((a, b) => b.daysInStock - a.daysInStock)
-      .slice(0, MAX_VEHICLES)
-      .map((v) => ({ name: `${v.year} ${v.make} ${v.model}`, days: v.daysInStock, stock: v.stockNumber })),
-    impact: `$${(aged45Cars.reduce((s, v) => s + v.holdingCostPerDay, 0) * 7).toLocaleString()} more lost in 7 days if no action`,
-    count: aged45Cars.length,
-    filterParams: { focus: "aged-45" },
-  },
-  {
-    id: "leads",
-    priority: "critical" as Priority,
-    title: "Fix Pricing or Visibility",
-    icon: <EyeOff className="h-4 w-4" />,
-    vehicles: noLeadsCars
-      .sort((a, b) => b.daysInStock - a.daysInStock)
-      .slice(0, MAX_VEHICLES)
-      .map((v) => ({ name: `${v.year} ${v.make} ${v.model}`, days: v.daysInStock, stock: v.stockNumber })),
-    impact: `${noLeadsCars.length} frontline cars generating zero lead revenue`,
-    count: noLeadsCars.length,
-    filterParams: { focus: "no-leads" },
-  },
-  {
-    id: "campaigns",
-    priority: "high" as Priority,
-    title: "Run Smart Campaigns",
-    icon: <Megaphone className="h-4 w-4" />,
-    vehicles: lowEngagementCars
-      .sort((a, b) => b.daysInStock - a.daysInStock)
-      .slice(0, MAX_VEHICLES)
-      .map((v) => ({ name: `${v.year} ${v.make} ${v.model}`, days: v.daysInStock, stock: v.stockNumber })),
-    impact: "Targeted ads can boost VDP views by up to 4× on stale units",
-    count: lowEngagementCars.length,
-    filterParams: { focus: "smart-campaign" },
-  },
-] as ActionItem[]).filter((a) => a.count > 0)
-
 export function LotActions() {
   const router = useRouter()
+  const { vehicles: lotVehicles } = useHoldingCostRateOptional()
+
+  const ALL_ACTIONS = React.useMemo(() => {
+    const aged45Cars = lotVehicles.filter(
+      (v) => ON_LOT.includes(v.lotStatus) && v.daysInStock >= 45 && v.lotStatus !== "sold-pending",
+    )
+    const noLeadsCars = lotVehicles.filter(
+      (v) => v.leads === 0 && v.daysInStock > 5 && v.lotStatus === "frontline",
+    )
+    const lowEngagementCars = lotVehicles.filter(
+      (v) => v.lotStatus === "frontline" && v.leads === 0 && v.daysInStock >= 10,
+    )
+    return (
+      [
+        {
+          id: "aged",
+          priority: "critical" as Priority,
+          title: "Reprice or Liquidate",
+          icon: <AlertTriangle className="h-4 w-4" />,
+          vehicles: aged45Cars
+            .sort((a, b) => b.daysInStock - a.daysInStock)
+            .slice(0, MAX_VEHICLES)
+            .map((v) => ({ name: `${v.year} ${v.make} ${v.model}`, days: v.daysInStock, stock: v.stockNumber })),
+          impact: `$${(aged45Cars.reduce((s, v) => s + v.holdingCostPerDay, 0) * 7).toLocaleString()} more lost in 7 days if no action`,
+          count: aged45Cars.length,
+          filterParams: { focus: "aged-45" },
+        },
+        {
+          id: "leads",
+          priority: "critical" as Priority,
+          title: "Fix Pricing or Visibility",
+          icon: <EyeOff className="h-4 w-4" />,
+          vehicles: noLeadsCars
+            .sort((a, b) => b.daysInStock - a.daysInStock)
+            .slice(0, MAX_VEHICLES)
+            .map((v) => ({ name: `${v.year} ${v.make} ${v.model}`, days: v.daysInStock, stock: v.stockNumber })),
+          impact: `${noLeadsCars.length} frontline cars generating zero lead revenue`,
+          count: noLeadsCars.length,
+          filterParams: { focus: "no-leads" },
+        },
+        {
+          id: "campaigns",
+          priority: "high" as Priority,
+          title: "Run Smart Campaigns",
+          icon: <Megaphone className="h-4 w-4" />,
+          vehicles: lowEngagementCars
+            .sort((a, b) => b.daysInStock - a.daysInStock)
+            .slice(0, MAX_VEHICLES)
+            .map((v) => ({ name: `${v.year} ${v.make} ${v.model}`, days: v.daysInStock, stock: v.stockNumber })),
+          impact: "Targeted ads can boost VDP views by up to 4× on stale units",
+          count: lowEngagementCars.length,
+          filterParams: { focus: "smart-campaign" },
+        },
+      ] as ActionItem[]
+    ).filter((a) => a.count > 0)
+  }, [lotVehicles])
 
   const handleActionClick = (action: ActionItem) => {
     const params = new URLSearchParams(action.filterParams)

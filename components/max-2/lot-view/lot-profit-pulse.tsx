@@ -1,40 +1,20 @@
 "use client"
 
-import { mockLotSummary, mockLotVehicles } from "@/lib/max-2-mocks"
+import * as React from "react"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { SpyneChip } from "@/components/max-2/spyne-chip"
+import type { LotVehicle } from "@/services/max-2/max-2.types"
 
 const fmt$ = (n: number) => `$${n.toLocaleString()}`
 
-// Cohort ROI: total gross ÷ total days on lot
-const frontline = mockLotVehicles.filter(
-  (v) => v.lotStatus === "frontline" && v.daysInStock > 0,
-)
-const freshCohort = frontline.filter((v) => v.daysInStock <= 30)
-const agedCohort = frontline.filter((v) => v.daysInStock > 30)
-
-function cohortROI(vehicles: typeof frontline) {
+function cohortROI(vehicles: LotVehicle[]) {
   if (vehicles.length === 0) return 0
   const totalGross = vehicles.reduce((s, v) => s + v.estimatedFrontGross, 0)
   const totalDays = vehicles.reduce((s, v) => s + v.daysInStock, 0)
   return Math.round(totalGross / totalDays)
 }
-
-const overallROI = cohortROI(frontline)
-const freshROI = cohortROI(freshCohort)
-const agedROI = cohortROI(agedCohort)
-
-const reconDelayCars = mockLotVehicles.filter(
-  (v) => v.lotStatus === "in-recon" && v.daysInStock > 2,
-)
-const reconInProgress = mockLotVehicles.filter((v) => v.lotStatus === "in-recon")
-
-const avgReconDays =
-  reconInProgress.length > 0
-    ? reconInProgress.reduce((s, v) => s + v.daysInStock, 0) /
-      reconInProgress.length
-    : 0
 
 type RoiTier = "good" | "average" | "poor"
 
@@ -63,7 +43,37 @@ const tierLabel: Record<RoiTier, string> = {
 }
 
 export function LotProfitPulse() {
-  const s = mockLotSummary
+  const { vehicles: lotVehicles, lotSummary: s, dailyRate } = useHoldingCostRateOptional()
+  const rate = dailyRate ?? 46
+
+  const { freshCohort, agedCohort, overallROI, freshROI, agedROI, reconDelayCars, reconInProgress, avgReconDays } =
+    React.useMemo(() => {
+      const frontline = lotVehicles.filter(
+        (v) => v.lotStatus === "frontline" && v.daysInStock > 0,
+      )
+      const freshCohort = frontline.filter((v) => v.daysInStock <= 30)
+      const agedCohort = frontline.filter((v) => v.daysInStock > 30)
+      const reconDelayCars = lotVehicles.filter(
+        (v) => v.lotStatus === "in-recon" && v.daysInStock > 2,
+      )
+      const reconInProgress = lotVehicles.filter((v) => v.lotStatus === "in-recon")
+      const avgReconDays =
+        reconInProgress.length > 0
+          ? reconInProgress.reduce((s, v) => s + v.daysInStock, 0) /
+            reconInProgress.length
+          : 0
+      return {
+        freshCohort,
+        agedCohort,
+        overallROI: cohortROI(frontline),
+        freshROI: cohortROI(freshCohort),
+        agedROI: cohortROI(agedCohort),
+        reconDelayCars,
+        reconInProgress,
+        avgReconDays,
+      }
+    }, [lotVehicles])
+
   const daily = s.totalHoldingCostToday
   const agedDailyCost = agedCohort.reduce(
     (sum, v) => sum + v.holdingCostPerDay,
@@ -304,7 +314,7 @@ export function LotProfitPulse() {
             )}
           >
             {daysOverTarget > 0
-              ? `${daysOverTarget.toFixed(1)} days slower than ideal - losing ~${fmt$(Math.round(daysOverTarget * 46 * reconDelayCars.length))} per delayed car`
+              ? `${daysOverTarget.toFixed(1)} days slower than ideal - losing ~${fmt$(Math.round(daysOverTarget * rate * reconDelayCars.length))} per delayed car`
               : "Recon is on track. Keep units moving to frontline within 3 days."}
           </div>
         </CardContent>

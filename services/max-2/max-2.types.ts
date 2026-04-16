@@ -132,6 +132,20 @@ export interface TradeInOpportunity {
 export type MediaStatus = "real-photos" | "clone-photos" | "stock-photos" | "no-photos"
 export type PublishStatus = "live" | "pending" | "not-published"
 
+/**
+ * Studio processing stage for Images, 360°, or Video in the inventory Media column.
+ * Draft, Review, and Processing while work is in flight; Ready when that asset type is cleared for the listing.
+ */
+export type StudioMediaAssetStage = "draft" | "review" | "processing" | "ready"
+
+/** Optional per–asset-type overrides; omitted keys are derived from listing flags when absent. */
+export interface MerchandisingVehicleMediaPipeline {
+  images?: StudioMediaAssetStage
+  /** 360° spin */
+  spin360?: StudioMediaAssetStage
+  video?: StudioMediaAssetStage
+}
+
 export interface MerchandisingVehicle {
   vin: string
   year: number
@@ -173,6 +187,8 @@ export interface MerchandisingVehicle {
   incompletePhotoSet: boolean
   hasSunGlare: boolean
   missingWalkaroundVideo: boolean
+  /** Per–asset-type processing stage for the Media column. Omit to derive from listing flags. */
+  mediaPipeline?: MerchandisingVehicleMediaPipeline
 }
 
 export interface MerchandisingSummary {
@@ -453,6 +469,8 @@ export interface LotVehicle {
   lotStatus: LotStatus
   photoCount: number
   hasRealPhotos: boolean
+  /** When false, merchandising CTAs may show Generate 360. Omit when unknown (treated as true in demos). */
+  hasSpin360?: boolean
   vdpViews: number
   leads: number
   lastLeadDate: string | null

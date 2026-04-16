@@ -793,9 +793,17 @@ function DayList({ appts, typeConfig = TYPE_CONFIG, onSelectAppt, allDays = [], 
                 {appt.vehicle}
               </div>
               {(appt.stock || appt.vin) && (
-                <div style={{ fontSize: 11, color: 'var(--spyne-text-muted)', marginTop: 3, fontFamily: 'monospace', opacity: 0.75 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    marginTop: 3,
+                    color: 'var(--spyne-text-secondary)',
+                    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
                   {appt.stock && <span>{appt.stock}</span>}
-                  {appt.stock && appt.vin && <span style={{ margin: '0 5px', opacity: 0.5 }}>·</span>}
+                  {appt.stock && appt.vin && <span style={{ margin: '0 5px', color: 'var(--spyne-text-secondary)', opacity: 0.6 }}>·</span>}
                   {appt.vin && <span>···{appt.vin.slice(-8)}</span>}
                 </div>
               )}
@@ -987,12 +995,33 @@ function AppointmentDetailPanel({ appt, onClose, typeConfig = TYPE_CONFIG, isSer
               <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
                 {appt.stock && (
                   <span style={{ fontSize: 12, color: 'var(--spyne-text-muted)' }}>
-                    Stock <span style={{ fontWeight: 600, color: 'var(--spyne-text-primary)', fontFamily: 'monospace' }}>#{appt.stock}</span>
+                    Stock{' '}
+                    <span
+                      style={{
+                        fontWeight: 500,
+                        color: 'var(--spyne-text-secondary)',
+                        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      #{appt.stock}
+                    </span>
                   </span>
                 )}
                 {appt.vin && (
                   <span style={{ fontSize: 12, color: 'var(--spyne-text-muted)' }}>
-                    VIN <span style={{ fontWeight: 600, color: 'var(--spyne-text-primary)', fontFamily: 'monospace', fontSize: 11 }}>{appt.vin}</span>
+                    VIN{' '}
+                    <span
+                      style={{
+                        fontWeight: 500,
+                        color: 'var(--spyne-text-secondary)',
+                        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                        fontVariantNumeric: 'tabular-nums',
+                        fontSize: 11,
+                      }}
+                    >
+                      {appt.vin}
+                    </span>
                   </span>
                 )}
               </div>
