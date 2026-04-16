@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useCallback, type ElementType, type ReactNode } from "react"
+import { useState, useCallback, useMemo, type ElementType, type ReactNode } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { mockMerchandisingSummary, mockMerchandisingVehicles } from "@/lib/max-2-mocks"
+import { demoVehicleThumbnailByKey } from "@/lib/demo-vehicle-hero-images"
 import { cn } from "@/lib/utils"
 import { max2Classes, spyneComponentClasses, spyneConsoleTokens } from "@/lib/design-system/max-2"
 import {
   SpyneChip,
-  SpyneMediaStatusChip,
   SpynePublishStatusChip,
   SpyneSeverityChip,
 } from "@/components/max-2/spyne-ui"
@@ -25,7 +25,14 @@ import {
   ChevronRight, ChevronDown, Crown, Megaphone, BookOpen, Copy, Check,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { VehicleMediaTable } from "@/components/max-2/studio/vehicle-media-table"
+import { StudioInventoryVehicleThumb, VehicleMediaTable } from "@/components/max-2/studio/vehicle-media-table"
+import { AiInsightsShell, InsightCard } from "@/components/max-2/studio/ai-insight-card"
+import { DaysToFrontlineModal } from "@/components/max-2/studio/days-to-frontline-modal"
+import {
+  MerchandisingActionPitchBanners,
+  PerfectVinExampleModal,
+  type MerchandisingActionTabKey,
+} from "@/components/max-2/studio/merchandising-action-pitch-banners"
 import {
   Dialog,
   DialogContent,
@@ -34,9 +41,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import type { MerchandisingVehicle, MediaStatus, PublishStatus } from "@/services/max-2/max-2.types"
-import { RotateCw, Video as VideoIcon } from "lucide-react"
+import { MerchandisingMediaPipelineCell } from "@/components/max-2/studio/merchandising-media-pipeline-cell"
+import { StudioInventorySortIcon } from "@/components/max-2/studio/studio-inventory-sort-icon"
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
+
+/** Merchandising KPI strip: compact “How to improve” control (all three metrics). */
+const merchandisingKpiHowToImproveClass =
+  "inline-flex items-center gap-0.5 shrink-0 self-start text-[10px] sm:text-[11px] font-medium leading-none text-spyne-primary hover:underline pt-0.5"
+
+const merchandisingKpiValueSizeClass = "text-2xl"
+const merchandisingKpiSubSizeClass = "text-[10px] leading-snug"
 
 type InsightTone = "success" | "warning" | "critical"
 
@@ -141,102 +156,175 @@ function HighlightNums({ text }: { text: string }) {
   )
 }
 
+type SummaryVehicleSortField = "age" | "score" | "views" | "price"
+
+const DEFAULT_SUMMARY_SORT_FIELD: SummaryVehicleSortField = "age"
+const DEFAULT_SUMMARY_SORT_DIR: "asc" | "desc" = "desc"
+
 function VehicleTable({ vehicles, issueBadge }: { vehicles: MerchandisingVehicle[]; issueBadge?: (v: MerchandisingVehicle) => ReactNode }) {
+  const [sortField, setSortField] = useState<SummaryVehicleSortField>(DEFAULT_SUMMARY_SORT_FIELD)
+  /** `null` = default (age, descending). */
+  const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null)
+
+  const toggleSummarySort = (f: SummaryVehicleSortField) => {
+    if (sortDir !== null && sortField === f) {
+      if (sortDir === "asc") setSortDir("desc")
+      else {
+        setSortField(DEFAULT_SUMMARY_SORT_FIELD)
+        setSortDir(null)
+      }
+    } else {
+      setSortField(f)
+      setSortDir("asc")
+    }
+  }
+
+  const sortedVehicles = useMemo(() => {
+    const rows = [...vehicles]
+    const effField = sortDir === null ? DEFAULT_SUMMARY_SORT_FIELD : sortField
+    const effDir = sortDir === null ? DEFAULT_SUMMARY_SORT_DIR : sortDir
+    rows.sort((a, b) => {
+      let c = 0
+      switch (effField) {
+        case "age":
+          c = a.daysInStock - b.daysInStock
+          break
+        case "score":
+          c = a.listingScore - b.listingScore
+          break
+        case "views":
+          c = a.vdpViews - b.vdpViews
+          break
+        case "price":
+          c = a.price - b.price
+          break
+        default:
+          break
+      }
+      return effDir === "asc" ? c : -c
+    })
+    return rows
+  }, [vehicles, sortField, sortDir])
+
   if (vehicles.length === 0) {
     return <p className="py-8 text-center text-sm text-muted-foreground">No vehicles in this category.</p>
   }
-  const TH = ({ children, right, center }: { children: ReactNode; right?: boolean; center?: boolean }) => (
+  const TH = ({
+    children,
+    right,
+    center,
+    className,
+    onClick,
+  }: {
+    children: ReactNode
+    right?: boolean
+    center?: boolean
+    className?: string
+    onClick?: () => void
+  }) => (
     <th
       className={cn(
-        "border-0 border-t border-solid border-spyne-border py-3 px-4 text-left text-xs font-medium uppercase tracking-wider text-spyne-text-secondary whitespace-nowrap bg-muted",
-        right && "text-right",
-        center && "text-center",
+        spyneComponentClasses.studioInventoryTableHeadCell,
+        right && spyneComponentClasses.studioInventoryTableHeadCellRight,
+        center && spyneComponentClasses.studioInventoryTableHeadCellCenter,
+        onClick && "cursor-pointer select-none",
+        className,
       )}
+      onClick={onClick}
     >
       {children}
     </th>
   )
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm border-collapse">
+      <table className={spyneComponentClasses.studioInventoryTable}>
         <thead>
-          <tr className="border-b border-spyne-border">
-            <TH><span className="sr-only">Thumb</span></TH>
-            <TH>Vehicle</TH>
-            <TH center>Media</TH>
+          <tr className={spyneComponentClasses.studioInventoryTableHeaderRow}>
+            <TH className={spyneComponentClasses.studioInventoryTableThumbCol}>
+              <span className="sr-only">Thumb</span>
+            </TH>
+            <TH className={spyneComponentClasses.studioInventoryTableVehicleColAfterThumb}>Vehicle</TH>
+            <TH>Media</TH>
             <TH center>Status</TH>
-            <TH center>Score</TH>
-            <TH center>Age</TH>
-            <TH center>
-              <span className="inline-flex items-center justify-center gap-1">
-                Views
-                <span
-                  className="inline-flex leading-none text-spyne-text-secondary"
-                  title="Vehicle Detail Page views"
-                >
-                  <MaterialSymbol name="info" size={16} />
+            <TH center onClick={() => toggleSummarySort("score")}>
+              <span className="inline-flex w-full items-center justify-center gap-1.5">
+                <span>Score</span>
+                <StudioInventorySortIcon active={sortDir !== null && sortField === "score"} direction={sortDir ?? "asc"} />
+              </span>
+            </TH>
+            <TH center onClick={() => toggleSummarySort("age")}>
+              <span className="inline-flex w-full items-center justify-center gap-1.5">
+                <span>Age</span>
+                <StudioInventorySortIcon active={sortDir !== null && sortField === "age"} direction={sortDir ?? "asc"} />
+              </span>
+            </TH>
+            <TH center onClick={() => toggleSummarySort("views")}>
+              <span className="inline-flex w-full min-w-0 items-center justify-center gap-1.5">
+                <span className="inline-flex items-center gap-1">
+                  <span>Views</span>
+                  <span
+                    className="inline-flex leading-none text-spyne-text-secondary"
+                    title="Vehicle Detail Page views"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MaterialSymbol name="info" size={16} />
+                  </span>
                 </span>
+                <StudioInventorySortIcon active={sortDir !== null && sortField === "views"} direction={sortDir ?? "asc"} />
               </span>
             </TH>
             {issueBadge && <TH center>Issue</TH>}
-            <TH center>Price</TH>
+            <TH center onClick={() => toggleSummarySort("price")}>
+              <span className="inline-flex w-full items-center justify-center gap-1.5">
+                <span>Price</span>
+                <StudioInventorySortIcon active={sortDir !== null && sortField === "price"} direction={sortDir ?? "asc"} />
+              </span>
+            </TH>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">
-          {vehicles.map((v) => (
-              <tr key={v.vin} className="transition-colors hover:bg-muted">
-                <td className="py-3 px-4 w-16">
-                  <div className="w-13 aspect-[4/3] shrink-0 overflow-hidden rounded">
-                    {v.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={v.thumbnailUrl} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src="/max-2/vehicle-thumbnail-empty.png"
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                  </div>
+        <tbody>
+          {sortedVehicles.map((v) => (
+              <tr key={v.vin} className={spyneComponentClasses.studioInventoryTableRow}>
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "w-28 shrink-0", spyneComponentClasses.studioInventoryTableThumbCol)}>
+                  <StudioInventoryVehicleThumb
+                    v={v}
+                    roundedClassName="rounded-md"
+                    surfaceClassName="bg-muted"
+                  />
                 </td>
                 {/* Vehicle */}
-                <td className="py-3 px-4 min-w-[160px]">
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "min-w-[160px]", spyneComponentClasses.studioInventoryTableVehicleColAfterThumb)}>
                   <div className="flex items-center gap-1.5">
                     <span className="font-medium">{v.year} {v.make} {v.model}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">{v.trim}</p>
                 </td>
                 {/* Media */}
-                <td className="py-3 px-4 whitespace-nowrap text-center">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <SpyneMediaStatusChip mediaStatus={v.mediaStatus} compact className="shrink-0" />
-                    {v.has360 && <RotateCw className="h-3 w-3 text-spyne-info shrink-0" />}
-                    {v.hasVideo && <VideoIcon className="h-3 w-3 text-primary shrink-0" />}
-                  </div>
+                <td className={spyneComponentClasses.studioInventoryTableCell}>
+                  <MerchandisingMediaPipelineCell vehicle={v} />
                 </td>
                 {/* Status */}
-                <td className="py-3 px-4 text-center">
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-center")}>
                   <SpynePublishStatusChip publishStatus={v.publishStatus} compact />
                 </td>
                 {/* Score */}
-                <td className="py-3 px-4 text-center">
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-center")}>
                   <span className={cn("text-sm font-semibold tabular-nums", v.listingScore >= 75 ? "text-spyne-success" : v.listingScore >= 50 ? "text-spyne-text" : "text-spyne-error")}>
                     {v.listingScore}
                   </span>
                 </td>
                 {/* Age */}
-                <td className="py-3 px-4 text-center whitespace-nowrap">
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-center whitespace-nowrap")}>
                   <span className={cn("text-sm tabular-nums", v.daysInStock >= 45 ? "text-spyne-error font-semibold" : v.daysInStock >= 30 ? "text-spyne-text font-semibold" : "")}>
                     {v.daysInStock}d
                   </span>
                 </td>
                 {/* Views */}
-                <td className="py-3 px-4 text-center text-sm tabular-nums text-muted-foreground">{v.vdpViews}</td>
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-center text-sm tabular-nums text-muted-foreground")}>{v.vdpViews}</td>
                 {/* Issue */}
-                {issueBadge && <td className="py-3 px-4 text-center whitespace-nowrap">{issueBadge(v)}</td>}
+                {issueBadge && <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-center whitespace-nowrap")}>{issueBadge(v)}</td>}
                 {/* Price */}
-                <td className="py-3 px-4 text-center text-sm font-medium tabular-nums whitespace-nowrap">{fmtPrice(v.price)}</td>
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-center text-sm font-medium tabular-nums whitespace-nowrap")}>{fmtPrice(v.price)}</td>
               </tr>
           ))}
         </tbody>
@@ -373,105 +461,6 @@ function PhotographerTrainingModal({
   )
 }
 
-function DaysToFrontlineModal({
-  open,
-  onClose,
-  value,
-  actions,
-}: {
-  open: boolean
-  onClose: () => void
-  value: number
-  actions: { count: number; label: string; severity: "critical" | "warning"; icon: ElementType; href: string }[]
-}) {
-  const isOnTarget = value <= 4
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Clock className="h-4 w-4 text-primary" />
-            Days to Frontline
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-3">
-          {/* Status pill + definition */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Arrival → fully listed online with real photos &amp; description.
-            </p>
-            <SpyneChip
-              variant="outline"
-              tone={isOnTarget ? "success" : "warning"}
-              compact
-              className="ml-3 shrink-0"
-            >
-              {isOnTarget ? "On target" : `${(value - 4).toFixed(1)}d over`}
-            </SpyneChip>
-          </div>
-
-          {/* Benchmarks row */}
-          <div className="grid grid-cols-3 gap-2 text-center">
-            {[
-              { label: "Current", val: `${value}d`, color: isOnTarget ? "text-spyne-success" : "text-spyne-text" },
-              { label: "Target", val: "4d", color: "text-foreground" },
-              { label: "Industry avg", val: "5–7d", color: "text-muted-foreground" },
-            ].map((b) => (
-              <div key={b.label} className="rounded-lg bg-muted/50 py-2 px-1">
-                <p className={cn("text-lg font-bold tabular-nums", b.color)}>{b.val}</p>
-                <p className="text-[11px] text-muted-foreground">{b.label}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Actions */}
-          {actions.length > 0 && (
-            <>
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-1">Actions required</p>
-              <div className="space-y-1.5">
-                {actions.map((action) => {
-                  const Icon = action.icon
-                  const isCritical = action.severity === "critical"
-                  return (
-                    <Link
-                      key={action.label}
-                      href={action.href}
-                      onClick={onClose}
-                      className={cn(
-                        spyneComponentClasses.insightRow,
-                        spyneComponentClasses.insightRowCompact,
-                        "group"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          spyneComponentClasses.insightRowIconWell,
-                          spyneComponentClasses.insightRowIconWellCompact,
-                          isCritical
-                            ? spyneComponentClasses.insightRowIconWellCritical
-                            : spyneComponentClasses.insightRowIconWellWarning
-                        )}
-                      >
-                        <Icon className="shrink-0" />
-                      </span>
-                      <span className={cn("text-sm font-bold tabular-nums w-5 shrink-0", isCritical ? "text-spyne-error" : "text-spyne-text")}>
-                        {action.count}
-                      </span>
-                      <span className="text-sm text-muted-foreground flex-1 truncate">{action.label}</span>
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
-                    </Link>
-                  )
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
 
 /** Recharts donut: score out of 10 (full ring = 10). */
 function WebsiteScoreDonutCharts({
@@ -591,10 +580,10 @@ function WebsiteScoreModal({
   ]
 
   const actionItems = [
-    { label: "No Photos",    count: vehicles.filter(v => v.mediaStatus === "no-photos").length,   href: "/max-2/studio/inventory?media=no-photos",  Icon: ImageOff },
-    { label: "CGI Photos",   count: vehicles.filter(v => v.mediaStatus === "clone-photos").length, href: "/max-2/studio/inventory?media=cgi",          Icon: Images   },
-    { label: "< 8 Photos",   count: vehicles.filter(v => v.photoCount > 0 && v.photoCount < 8).length, href: "/max-2/studio/inventory?photos=low",    Icon: Camera   },
-    { label: "Wrong Angle",  count: vehicles.filter(v => v.wrongHeroAngle).length,                 href: "/max-2/studio/inventory?issue=hero",         Icon: AlertTriangle },
+    { label: "Add photos",           count: vehicles.filter(v => v.mediaStatus === "no-photos").length,        href: "/max-2/studio/inventory?media=no-photos", icon: "hide_image"    },
+    { label: "Replace instant media", count: vehicles.filter(v => v.mediaStatus === "clone-photos").length,     href: "/max-2/studio/inventory?media=cgi",       icon: "auto_awesome"  },
+    { label: "Add more photos",      count: vehicles.filter(v => v.photoCount > 0 && v.photoCount < 8).length, href: "/max-2/studio/inventory?photos=low",      icon: "photo_library" },
+    { label: "Add hero shot",        count: vehicles.filter(v => v.wrongHeroAngle).length,                 href: "/max-2/studio/inventory?issue=hero",      icon: "rotate_right"  },
   ]
 
   const barColor = (val: number) =>
@@ -602,9 +591,9 @@ function WebsiteScoreModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[500px] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold">Improve your website score</DialogTitle>
+          <DialogTitle className="text-sm font-semibold">Improve your media score</DialogTitle>
           <DialogDescription className="sr-only">
             How the score is measured, your current and potential score, insights, suggestions, and links to fix
             listing issues.
@@ -621,7 +610,7 @@ function WebsiteScoreModal({
 
           {/* ── How the score is measured (trimmed) ── */}
           <div className="rounded-lg border border-spyne-border bg-muted/20 p-4 text-left">
-            <p className="mb-2 text-xs font-semibold text-foreground">How we measure website score</p>
+            <p className="mb-2 text-xs font-semibold text-foreground">How we measure media score</p>
             <p className="text-sm text-muted-foreground">
               A <span className="font-medium text-foreground">0 to 10</span> composite of how complete and consistent
               your inventory looks on your site.
@@ -650,7 +639,7 @@ function WebsiteScoreModal({
               </div>
               <span className="text-[11px] text-muted-foreground">Last synced 12 hours ago ↻</span>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {subScores.map((item) => (
                 <div key={item.label} className="rounded-lg border p-3.5 flex flex-col gap-2.5">
                   <div>
@@ -693,26 +682,23 @@ function WebsiteScoreModal({
               <p className="text-[10px] font-semibold uppercase tracking-widest text-spyne-error">Actions Required</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {actionItems.map((item) => {
-                const Icon = item.Icon
-                return (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    onClick={onClose}
-                    className="flex items-center justify-between rounded-lg border px-4 py-3 hover:bg-muted/30 transition-colors group"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-sm font-semibold text-spyne-error tabular-nums">{item.count}</span>
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
-                    </div>
-                  </Link>
-                )
-              })}
+              {actionItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={onClose}
+                  className="flex items-center justify-between rounded-lg border px-4 py-3 hover:bg-muted/30 transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <MaterialSymbol name={item.icon} size={18} className="text-muted-foreground shrink-0" />
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-sm font-semibold text-spyne-error tabular-nums">{item.count}</span>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
 
@@ -742,6 +728,7 @@ export function MerchandisingSummary() {
 
   const [frontlineModalOpen, setFrontlineModalOpen] = useState(false)
   const [websiteScoreModalOpen, setWebsiteScoreModalOpen] = useState(false)
+  const [perfectVinExampleOpen, setPerfectVinExampleOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
   const [opportunityListModal, setOpportunityListModal] = useState<null | { title: string; description: string; vehicles: MerchandisingVehicle[]; href: string }>(null)
   const [trainingModal, setTrainingModal] = useState<null | {
@@ -858,68 +845,98 @@ export function MerchandisingSummary() {
               : "text-spyne-error"
 
           return (
-            <div className="flex min-w-0 w-full items-stretch">
+            <div className="grid min-w-0 w-full grid-cols-1 sm:grid-cols-2">
               {/* Left: metric */}
-              <div className="flex flex-col justify-between px-5 py-4 flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className={spyneComponentClasses.roiKpiMetricLabel}>Days to Frontline</p>
-                  <span className="text-muted-foreground/40 text-[11px]">|</span>
-                  <TooltipPrimitive.Provider delayDuration={300}>
-                    <TooltipPrimitive.Root>
-                      <TooltipPrimitive.Trigger asChild>
-                        <button type="button" className="text-[11px] font-medium text-spyne-primary hover:underline outline-none whitespace-nowrap">
-                          See how it's calculated
-                        </button>
-                      </TooltipPrimitive.Trigger>
-                      <TooltipPrimitive.Portal>
-                        <TooltipPrimitive.Content
-                          side="top"
-                          sideOffset={8}
-                          className={spyneComponentClasses.darkTooltipRadixContent}
-                        >
-                          <div className={spyneComponentClasses.darkTooltipPanel}>
-                            <p className="mb-3 text-[13px] font-semibold text-[var(--spyne-on-dark-text)]">How it's calculated</p>
-                            <div className="flex flex-col gap-2">
-                              {[
-                                { icon: "local_shipping", label: "Arrived on lot" },
-                                { icon: "photo_camera",   label: "Photos added" },
-                                { icon: "auto_awesome",   label: "AI processed" },
-                                { icon: "check_circle",   label: "Published to frontline" },
-                              ].map((step, i, arr) => (
-                                <div key={step.label}>
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10">
-                                      <MaterialSymbol name={step.icon} size={13} className="text-[var(--spyne-on-dark-text)]" />
+              <div className="flex min-w-0 flex-col justify-between px-5 py-4">
+                <div
+                  className={cn(
+                    spyneComponentClasses.roiKpiMetricLabelRow,
+                    "w-full gap-2",
+                  )}
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <p className={spyneComponentClasses.roiKpiMetricLabel}>Days to Frontline</p>
+                    <TooltipPrimitive.Provider delayDuration={300}>
+                      <TooltipPrimitive.Root>
+                        <TooltipPrimitive.Trigger asChild>
+                          <button
+                            type="button"
+                            className="text-muted-foreground/40 hover:text-muted-foreground transition-colors outline-none"
+                            aria-label="How it's calculated"
+                          >
+                            <MaterialSymbol name="info" size={14} />
+                          </button>
+                        </TooltipPrimitive.Trigger>
+                        <TooltipPrimitive.Portal>
+                          <TooltipPrimitive.Content
+                            side="top"
+                            sideOffset={8}
+                            className={spyneComponentClasses.darkTooltipRadixContent}
+                          >
+                            <div className={spyneComponentClasses.darkTooltipPanel}>
+                              <p className="mb-3 text-[13px] font-semibold text-[var(--spyne-on-dark-text)]">How it's calculated</p>
+                              <div className="flex flex-col gap-2">
+                                {[
+                                  { icon: "local_shipping", label: "Arrived on lot" },
+                                  { icon: "photo_camera",   label: "Photos added" },
+                                  { icon: "auto_awesome",   label: "AI processed" },
+                                  { icon: "check_circle",   label: "Published to frontline" },
+                                ].map((step, i, arr) => (
+                                  <div key={step.label}>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10">
+                                        <MaterialSymbol name={step.icon} size={13} className="text-[var(--spyne-on-dark-text)]" />
+                                      </div>
+                                      <span className={cn("text-[12px]", i === arr.length - 1 ? "font-semibold text-[var(--spyne-on-dark-text)]" : "text-[var(--spyne-on-dark-text-muted)]")}>
+                                        {step.label}
+                                      </span>
                                     </div>
-                                    <span className={cn("text-[12px]", i === arr.length - 1 ? "font-semibold text-[var(--spyne-on-dark-text)]" : "text-[var(--spyne-on-dark-text-muted)]")}>
-                                      {step.label}
-                                    </span>
+                                    {i < arr.length - 1 && (
+                                      <div className="ml-[11px] h-3 w-px bg-white/15" />
+                                    )}
                                   </div>
-                                  {i < arr.length - 1 && (
-                                    <div className="ml-[11px] h-3 w-px bg-white/15" />
-                                  )}
-                                </div>
-                              ))}
+                                ))}
+                              </div>
+                              <p className="mt-3 text-[11px] text-[var(--spyne-on-dark-text-muted)]">Avg time from step 1 → 4 across all units</p>
                             </div>
-                            <p className="mt-3 text-[11px] text-[var(--spyne-on-dark-text-muted)]">Avg time from step 1 → 4 across all units</p>
-                          </div>
-                          <TooltipPrimitive.Arrow className={spyneComponentClasses.darkTooltipArrow} width={14} height={7} />
-                        </TooltipPrimitive.Content>
-                      </TooltipPrimitive.Portal>
-                    </TooltipPrimitive.Root>
-                  </TooltipPrimitive.Provider>
+                            <TooltipPrimitive.Arrow className={spyneComponentClasses.darkTooltipArrow} width={14} height={7} />
+                          </TooltipPrimitive.Content>
+                        </TooltipPrimitive.Portal>
+                      </TooltipPrimitive.Root>
+                    </TooltipPrimitive.Provider>
+                  </div>
                 </div>
                 <div>
-                  <p className={cn(spyneComponentClasses.roiKpiMetricValue, valueColor)}>
+                  <p
+                    className={cn(
+                      "font-bold tracking-tight mb-1.5 text-foreground",
+                      merchandisingKpiValueSizeClass,
+                      valueColor,
+                    )}
+                  >
                     {s.avgDaysToFrontline}d
                   </p>
-                  <p className={spyneComponentClasses.roiKpiMetricSub}>{frontlineSub}</p>
+                  <p className={cn(spyneComponentClasses.roiKpiMetricSub, merchandisingKpiSubSizeClass)}>
+                    {frontlineSub}
+                  </p>
                 </div>
               </div>
 
-              {/* Right: mini bar chart — same box, no separator */}
-              <div className="flex flex-col justify-center gap-2 px-5 py-4 w-[160px] shrink-0">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Distribution</p>
+              <div className="flex min-w-0 flex-col justify-center gap-2 px-5 py-4">
+                <div className="mb-1 flex items-start justify-between gap-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Distribution
+                  </p>
+                  <button
+                    type="button"
+                    className={cn(merchandisingKpiHowToImproveClass, "shrink-0 whitespace-nowrap pt-0")}
+                    aria-haspopup="dialog"
+                    onClick={() => setFrontlineModalOpen(true)}
+                  >
+                    How to improve
+                    <ChevronRight className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+                  </button>
+                </div>
                 {dtfData.map((d) => (
                   <div key={d.label} className="flex items-center gap-2">
                     <span className="w-8 shrink-0 text-[10px] tabular-nums text-muted-foreground">{d.label}</span>
@@ -939,7 +956,7 @@ export function MerchandisingSummary() {
         <SpyneRoiKpiMetricCell
           label={
             <span className="flex items-center gap-1.5">
-              Website Score
+              Media Score
               <TooltipPrimitive.Provider delayDuration={300}>
                 <TooltipPrimitive.Root>
                   <TooltipPrimitive.Trigger asChild>
@@ -954,7 +971,7 @@ export function MerchandisingSummary() {
                       className={spyneComponentClasses.darkTooltipRadixContent}
                     >
                       <div className={spyneComponentClasses.darkTooltipPanel}>
-                        <p className="mb-2 text-[13px] font-semibold text-[var(--spyne-on-dark-text)]">Website Score</p>
+                        <p className="mb-2 text-[13px] font-semibold text-[var(--spyne-on-dark-text)]">Media Score</p>
                         <div className="space-y-1.5 text-[12px] text-[var(--spyne-on-dark-text-muted)]">
                           <p>A 0–10 score measuring the quality of your live VDP listings.</p>
                           <p>Factors include: photos, description copy, pricing vs market, and publish status.</p>
@@ -975,21 +992,24 @@ export function MerchandisingSummary() {
               : websiteScoreComparison
           }
           status={s.websiteScore >= 7.5 ? "good" : s.websiteScore >= 5 ? "watch" : "bad"}
-          valueClassName={
+          valueClassName={cn(
+            merchandisingKpiValueSizeClass,
             s.websiteScore >= 7.5
               ? "text-spyne-success"
               : s.websiteScore >= 5
               ? "text-spyne-warning-ink"
-              : "text-spyne-error"
-          }
+              : "text-spyne-error",
+          )}
+          subClassName={merchandisingKpiSubSizeClass}
           labelAccessory={
             <button
               type="button"
-              className="text-xs font-medium text-spyne-primary hover:underline sm:text-sm"
+              className={merchandisingKpiHowToImproveClass}
               aria-haspopup="dialog"
               onClick={() => setWebsiteScoreModalOpen(true)}
             >
-              View more
+              How to improve
+              <ChevronRight className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
             </button>
           }
         />
@@ -1000,53 +1020,55 @@ export function MerchandisingSummary() {
         const tabDefs: {
           key: string
           label: string
+          tooltip: string
           icon: ReactNode
           filter: (v: (typeof vehicles)[0]) => boolean
           href: string
         }[] = [
           {
             key: "no-photos",
-            label: "No Photos",
-            icon: (
-              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="1" y="3" width="14" height="10" rx="1.5" />
-                <line x1="1" y1="3" x2="15" y2="13" strokeLinecap="round" />
-              </svg>
-            ),
+            label: "Add photos",
+            tooltip: "No real photos yet. Listings without photos can't be fully published — schedule a shoot to move these forward.",
+            icon: <MaterialSymbol name="hide_image" size={24} />,
             filter: (v) => v.mediaStatus === "no-photos",
             href: "/max-2/studio/inventory?media=no-photos",
           },
           {
             key: "cgi",
-            label: "CGI Photos",
+            label: "Replace instant media",
+            tooltip: "Using AI-generated placeholder images. Replacing with real photos significantly improves buyer trust and your listing quality score.",
             icon: <MaterialSymbol name="auto_awesome" size={24} />,
             filter: (v) => v.mediaStatus === "clone-photos",
             href: "/max-2/studio/inventory?media=cgi",
           },
           {
             key: "less8",
-            label: "Less <8 Photos",
-            icon: <MaterialSymbol name="photo_size_select_small" size={24} />,
+            label: "Add more photos",
+            tooltip: "Fewer than 8 photos. Industry standard is 25+ images per vehicle — more angles mean higher buyer engagement and more leads.",
+            icon: <MaterialSymbol name="photo_library" size={24} />,
             filter: (v) => v.photoCount > 0 && v.photoCount < 8,
             href: "/max-2/studio/inventory?photos=low",
           },
           {
             key: "hero",
-            label: "Wrong Hero Angle",
-            icon: <MaterialSymbol name="crop_rotate" size={24} />,
+            label: "Add hero shot",
+            tooltip: "The hero image is the first photo buyers see on VDPs. A correct front-left 3/4 angle improves click-through rate.",
+            icon: <MaterialSymbol name="rotate_right" size={24} />,
             filter: (v) => v.wrongHeroAngle,
             href: "/max-2/studio/inventory?issue=hero",
           },
           {
             key: "no360",
-            label: "No 360 Spin",
-            icon: <MaterialSymbol name="3d_rotation" size={24} />,
+            label: "Add 360 spin",
+            tooltip: "No 360° exterior spin. Listings with spins increase time-on-page and buyer confidence, generating more inbound leads.",
+            icon: <MaterialSymbol name="360" size={24} />,
             filter: (v) => !v.has360,
             href: "/max-2/studio/inventory?issue=no360",
           },
           {
             key: "incomplete",
-            label: "Incomplete PhotoSet",
+            label: "Complete photo set",
+            tooltip: "Missing key angles — exterior walk, interior, or feature shots. Incomplete sets lower your listing quality score.",
             icon: <MaterialSymbol name="burst_mode" size={24} />,
             filter: (v) => v.incompletePhotoSet,
             href: "/max-2/studio/inventory?issue=incomplete",
@@ -1079,7 +1101,9 @@ export function MerchandisingSummary() {
                     key={t.key}
                     icon={t.icon}
                     title={t.label}
+                    tooltip={t.tooltip}
                     count={count}
+                    vehicleCountStyle="plain-error"
                     selected={activeTab === i}
                     onClick={() => setActiveTab(i)}
                   />
@@ -1087,17 +1111,20 @@ export function MerchandisingSummary() {
               })}
             </Max2ActionTabStrip>
 
-            <div
-              className={cn(
-                "min-w-0",
-                !hasMore && "border-t border-spyne-border",
-              )}
-            >
+            <div className="px-5 pt-4 pb-4">
+              <MerchandisingActionPitchBanners
+                tabKey={tab.key as MerchandisingActionTabKey}
+                vehicles={vehicles}
+                onOpenPerfectVinExample={() => setPerfectVinExampleOpen(true)}
+              />
+            </div>
+
+            <div className="min-w-0">
               {hasMore && (
                 <div
                   className={cn(
                     max2Classes.overviewPanelFooterRow,
-                    "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2",
+                    "!border-t-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2",
                   )}
                 >
                   <p className="text-xs text-muted-foreground tabular-nums">
@@ -1105,14 +1132,28 @@ export function MerchandisingSummary() {
                   </p>
                   <Link
                     href={tab.href}
-                    className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline sm:ml-auto"
+                    className={cn(
+                      merchandisingKpiHowToImproveClass,
+                      "sm:ml-auto text-primary",
+                    )}
                   >
-                    View more
-                    <ArrowRight className="h-3.5 w-3.5" />
+                    View all vehicles
+                    <ChevronRight className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
                   </Link>
                 </div>
               )}
-              <VehicleMediaTable vehicles={shown} showCheckboxes={false} embedded />
+              <VehicleMediaTable
+                vehicles={shown}
+                showCheckboxes={false}
+                embedded
+                merchandisingIssueContext={
+                  tab.key === "incomplete"
+                    ? "incomplete-photo-set"
+                    : tab.key === "no360"
+                      ? "no-360"
+                      : "default"
+                }
+              />
             </div>
           </div>
         )
@@ -1318,9 +1359,124 @@ export function MerchandisingSummary() {
           },
         ]
 
+        const aiInsightCards = [
+          {
+            id: "photo-delay-cost",
+            variant: "delay" as const,
+            contextChip: "Holding Cost Risk",
+            insightMeta: "opportunity" as const,
+            title: "Delayed photos are increasing holding cost",
+            description: "30% of your inventory went live late due to missing photos.",
+            recommendation:
+              "AI suggests using existing media to reduce go-live delays by up to 40%.",
+            ctaLabel: "Go live instantly",
+            ctaHref: "/max-2/studio/inventory?publishStatus=not-published",
+            metricChip: "30% of inventory",
+          },
+          {
+            id: "richer-media",
+            variant: "engagement" as const,
+            contextChip: "Pro Plan",
+            insightMeta: "high-impact" as const,
+            title: "Go beyond photos with Pro",
+            description: "Buyers spend 2× longer on listings with 360° spins and video — upgrade once and let AI handle the rest.",
+            recommendation:
+              "AI recommends adding 360 spins and video to lift engagement where photos alone plateau.",
+            ctaLabel: "Unlock Pro Plan",
+            onCtaClick: () => setProPlanModalOpen(true),
+            metricChip: "High impact",
+          },
+        ]
+
+        const instantMediaThumbs = (() => {
+          const t = vehicles.map((v) => v.thumbnailUrl).filter(Boolean).slice(0, 4) as string[]
+          let pad = 0
+          while (t.length < 4) {
+            t.push(demoVehicleThumbnailByKey(`instant-media-pad-${pad++}`))
+          }
+          return t
+        })()
+
         return (
+          <div className="flex w-full min-w-0 flex-col gap-4">
+            <AiInsightsShell
+              title="AI Insights"
+              subtitle="Smart recommendations to improve your inventory performance"
+              lastSynced="Last synced 12 hours ago"
+            >
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+                {/* Figma 5592:54613 — instant media library card */}
+                <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white">
+                  {/* Yellow insight banner — full width, flush top */}
+                  <div className="flex items-start gap-3 bg-[#FFF8E1] px-5 py-3">
+                    <MaterialSymbol name="smart_toy" size={18} className="mt-0.5 shrink-0 text-[#B45309]" />
+                    <p className="text-[12px] font-medium leading-5 text-[#78350F]">
+                      <span className="font-semibold">30%</span> of your inventory has been slow-moving because photos took an average of{" "}
+                      <span className="font-semibold">32 days</span> to arrive or had bad quality
+                    </p>
+                  </div>
+
+                  {/* Card body — content left (full height), image right (bottom-aligned) */}
+                  <div className="flex flex-1 items-stretch gap-10 px-6 pb-6 pt-5">
+                    <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-start gap-1">
+                          <p className="text-[16px] font-semibold leading-6 text-[#402387]">
+                            Go live Instantly with your media library!
+                          </p>
+                          <span
+                            className="mt-0.5 inline-flex shrink-0 items-center gap-0.5 rounded-full py-0.5 pl-1 pr-2 text-[10px] font-semibold text-white"
+                            style={{ background: "linear-gradient(to left, #2190ff, #9328ff)" }}
+                          >
+                            <MaterialSymbol name="auto_awesome" size={14} className="opacity-90" />
+                            New
+                          </span>
+                        </div>
+                        <p className="text-[12px] leading-5 text-[#8F8F8F]">
+                          Capture media once and automatically reuse it for vehicles with matching make, model, year, trim, and color.
+                        </p>
+                      </div>
+                      <Link
+                        href="/max-2/studio/inventory?media=clone-photos"
+                        className={cn(spyneComponentClasses.btnPrimaryMd, "inline-flex no-underline !w-fit !px-5 !py-1.5 !text-[12px]")}
+                      >
+                        Go live instantly
+                      </Link>
+                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/max-2/instant-media-reuse.png"
+                      alt="Capture media once, reuse across matching vehicles"
+                      className="w-[190px] shrink-0 self-end object-contain"
+                    />
+                  </div>
+                </div>
+                <InsightCard
+                  variant={aiInsightCards[1].variant}
+                  title={aiInsightCards[1].title}
+                  description={aiInsightCards[1].description}
+                  recommendation={aiInsightCards[1].recommendation}
+                  ctaLabel={aiInsightCards[1].ctaLabel}
+                  ctaHref={aiInsightCards[1].ctaHref}
+                  onCtaClick={aiInsightCards[1].onCtaClick}
+                  contextChip={aiInsightCards[1].contextChip}
+                  metricChip={aiInsightCards[1].metricChip}
+                  insightMeta={aiInsightCards[1].insightMeta}
+                  trendLine="Cars with 360° spins and video earn 2× more time on page — but 73% of your listings have photos only."
+                  decorativeIconRight="rocket_launch"
+                  featureBadges={[
+                    { icon: "360", label: "360 Spin" },
+                    { icon: "videocam", label: "Video Tour" },
+                    { icon: "view_in_ar", label: "3D Showcase" },
+                  ]}
+                  ctaClassName="!w-fit !px-5 !py-1.5 !text-[12px]"
+                  ctaStyle={{ background: "linear-gradient(90deg, #ED8939 0%, #E83E54 25%, #B651D7 50%, #7F6AF2 72%, #5BBFF6 100%)" }}
+                />
+              </div>
+            </AiInsightsShell>
+
+            {/*
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Insights */}
             <Card className="gap-0 pt-px pb-5 shadow-none">
               <CardHeader className="px-5 pb-4 pt-5">
                 <CardTitle>Insights</CardTitle>
@@ -1335,7 +1491,6 @@ export function MerchandisingSummary() {
               </CardContent>
             </Card>
 
-            {/* Opportunities */}
             <Card className="gap-4 pt-px pb-5 shadow-none overflow-hidden">
               <CardHeader className="px-5 pb-0">
                 <CardTitle>Opportunities</CardTitle>
@@ -1415,6 +1570,8 @@ export function MerchandisingSummary() {
               </CardContent>
             </Card>
           </div>
+            */}
+          </div>
         )
       })()}
 
@@ -1478,10 +1635,9 @@ export function MerchandisingSummary() {
 
       {/* Modals */}
       <DaysToFrontlineModal
-        open={frontlineModalOpen}
+        isOpen={frontlineModalOpen}
         onClose={() => setFrontlineModalOpen(false)}
-        value={s.avgDaysToFrontline}
-        actions={actions}
+        variant="upsell"
       />
       <WebsiteScoreModal
         open={websiteScoreModalOpen}
@@ -1489,6 +1645,11 @@ export function MerchandisingSummary() {
         score={s.websiteScore}
         vehicles={vehicles}
         summary={s}
+      />
+      <PerfectVinExampleModal
+        open={perfectVinExampleOpen}
+        onClose={() => setPerfectVinExampleOpen(false)}
+        vehicles={vehicles}
       />
     </div>
   )

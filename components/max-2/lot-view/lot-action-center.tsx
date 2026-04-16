@@ -1,6 +1,6 @@
 "use client"
 
-import { mockLotSummary, mockLotVehicles } from "@/lib/max-2-mocks"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import { cn } from "@/lib/utils"
 import { AlertTriangle, EyeOff, ImageOff, Wrench, ArrowRight } from "lucide-react"
 
@@ -20,8 +20,9 @@ export function LotActionCenter({
 }: {
   onFilter?: (filterId: string) => void
 }) {
-  const s = mockLotSummary
-  const reconDelayCars = mockLotVehicles.filter(
+  const { vehicles: lotVehicles, lotSummary: s, dailyRate } = useHoldingCostRateOptional()
+  const rate = dailyRate ?? 46
+  const reconDelayCars = lotVehicles.filter(
     (v) => v.lotStatus === "in-recon" && v.daysInStock > 2,
   )
 
@@ -32,7 +33,7 @@ export function LotActionCenter({
       title: "Aged 45+ Days",
       count: s.aged45Plus,
       lossLabel: "est. daily loss",
-      lossValue: `$${(s.aged45Plus * 69).toLocaleString()}`,
+      lossValue: `$${(s.aged45Plus * rate).toLocaleString()}`,
       action: "Reprice or Liquidate",
       severity: "critical" as const,
     },
@@ -42,7 +43,7 @@ export function LotActionCenter({
       title: "No Leads (5+ days)",
       count: s.noLeads5Days,
       lossLabel: "holding cost/day",
-      lossValue: `$${(s.noLeads5Days * 46).toLocaleString()}`,
+      lossValue: `$${(s.noLeads5Days * rate).toLocaleString()}`,
       action: "Fix Pricing or Visibility",
       severity: "critical" as const,
     },

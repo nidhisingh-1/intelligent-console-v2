@@ -6,7 +6,7 @@ import {
   LotAgeDistributionPanel,
   formatHoldingVsGrossPctValue,
 } from "./lot-age-analysis"
-import { mockLotVehicles } from "@/lib/max-2-mocks"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import { max2Classes, spyneComponentClasses } from "@/lib/design-system/max-2"
 import {
   SpyneSegmentedButton,
@@ -72,10 +72,11 @@ const PRICE_STYLE = [
 
 export function LotBodyAnalysis() {
   const router = useRouter()
+  const { vehicles: lotVehicles } = useHoldingCostRateOptional()
   const [analysisTab, setAnalysisTab] =
     React.useState<AnalysisTabId>("ageing-distribution")
 
-  const active = mockLotVehicles.filter(
+  const active = lotVehicles.filter(
     (v) => v.lotStatus !== "arriving" && v.lotStatus !== "in-recon",
   )
 
@@ -209,7 +210,7 @@ export function LotBodyAnalysis() {
                         <th
                           key={h}
                           className={cn(
-                            "py-3 px-4 text-xs font-medium uppercase tracking-wider text-spyne-text-secondary whitespace-nowrap",
+                            "py-3 px-4 text-xs font-medium uppercase tracking-wider text-spyne-text whitespace-nowrap",
                             i === 2 && "text-right",
                             i === 3 && "text-right",
                             i === 4 && "text-right",
@@ -347,7 +348,7 @@ export function LotBodyAnalysis() {
                         <th
                           key={h}
                           className={cn(
-                            "py-3 px-4 text-xs font-medium uppercase tracking-wider text-spyne-text-secondary whitespace-nowrap",
+                            "py-3 px-4 text-xs font-medium uppercase tracking-wider text-spyne-text whitespace-nowrap",
                             i === 2 && "text-right",
                             i === 3 && "text-right",
                             i === 4 && "text-right",

@@ -115,10 +115,18 @@ export function SpyneRemovableFilterChip({
         spyneDsChipFilterRowClass,
         compact && spyneDsChipCompactClass,
         "inline-flex max-w-full items-center gap-0.5 pr-0.5",
+        !compact && "!py-1 !px-2.5 gap-0.5 pr-0.5 leading-tight",
         className
       )}
     >
-      <span className="min-w-0 truncate pl-1 font-medium">{label}</span>
+      <span
+        className={cn(
+          "min-w-0 truncate pl-1 font-medium",
+          !compact && "text-xs leading-tight",
+        )}
+      >
+        {label}
+      </span>
       <button
         type="button"
         className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-current hover:bg-black/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"

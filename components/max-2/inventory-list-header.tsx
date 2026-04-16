@@ -35,6 +35,7 @@ export interface Max2InventoryListHeaderProps {
   onSearchChange: (value: string) => void
   viewInput?: { checked: boolean; onCheckedChange: (v: boolean) => void }
   onApplyFiltersClick?: () => void
+  onExportClick?: () => void
   addVehicleHref?: string
   addVehicleLabel?: string
   /** Outlined link styled like external navigation (e.g. sold inventory). */
@@ -76,6 +77,7 @@ export function Max2InventoryListHeader({
   onSearchChange,
   viewInput,
   onApplyFiltersClick,
+  onExportClick,
   addVehicleHref,
   addVehicleLabel = "Add vehicle(s)",
   soldInventoryHref,
@@ -156,7 +158,7 @@ export function Max2InventoryListHeader({
           })}
         </SpyneLineTabStrip>
         {showSyncStatus ? (
-          <div className="flex items-center gap-2 text-xs font-medium text-spyne-success shrink-0 pb-2.5">
+          <div className="flex items-center gap-2 text-xs font-medium text-spyne-success shrink-0 pb-0">
             <MaterialSymbol name="cloud_done" size={20} className="shrink-0 text-spyne-success" />
             <span>{sync}</span>
           </div>
@@ -164,7 +166,7 @@ export function Max2InventoryListHeader({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="relative min-w-[min(100%,200px)] w-full max-w-[min(100%,360px)] sm:shrink-0">
+        <div className="relative min-w-[min(100%,160px)] w-full max-w-[220px] sm:shrink-0">
           <MaterialSymbol
             name="search"
             size={16}
@@ -213,6 +215,17 @@ export function Max2InventoryListHeader({
             >
               <MaterialSymbol name="filter_list" size={20} />
               Apply Filters
+            </button>
+          )}
+
+          {onExportClick && (
+            <button
+              type="button"
+              onClick={onExportClick}
+              className={cn(spyneComponentClasses.btnSecondaryMd, "whitespace-nowrap")}
+            >
+              <MaterialSymbol name="file_export" size={20} />
+              Export
             </button>
           )}
 
@@ -265,7 +278,7 @@ export function Max2InventoryListHeader({
       </div>
 
       {quickChips ? (
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex items-stretch gap-3 overflow-x-auto pb-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {quickChips}
         </div>
       ) : null}

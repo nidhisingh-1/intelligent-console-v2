@@ -23,7 +23,7 @@ export type Max2SidebarRailChildLinkProps = {
   className?: string
 }
 
-/** Sub-item under a parent with `children` (e.g. Studio AI, Lot View) — tokens in `spyne-sidebar-rail__child-*`. */
+/** Sub-item under a parent with `children` (e.g. Inventory, Lot View) — tokens in `spyne-sidebar-rail__child-*`. */
 export function Max2SidebarRailChildLink({
   href,
   label,

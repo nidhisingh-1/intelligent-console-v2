@@ -1,24 +1,26 @@
 "use client"
 
-import { mockLotSummary, mockLotVehicles } from "@/lib/max-2-mocks"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 const fmt$ = (n: number) => `$${n.toLocaleString()}`
 
-const willCross45 = mockLotVehicles.filter((v) => {
-  const daysUntilCross = 45 - v.daysInStock
-  return (
-    daysUntilCross > 0 &&
-    daysUntilCross <= 7 &&
-    v.lotStatus !== "sold-pending"
-  )
-})
-
 export function LotPredictive() {
-  const s = mockLotSummary
+  const { vehicles: lotVehicles, lotSummary: s, dailyRate } = useHoldingCostRateOptional()
+  const rate = dailyRate ?? 46
+
+  const willCross45 = lotVehicles.filter((v) => {
+    const daysUntilCross = 45 - v.daysInStock
+    return (
+      daysUntilCross > 0 &&
+      daysUntilCross <= 7 &&
+      v.lotStatus !== "sold-pending"
+    )
+  })
+
   const sevenDayLoss = s.totalHoldingCostToday * 7
-  const aged45WeeklyCost = s.aged45Plus * 46 * 7
+  const aged45WeeklyCost = s.aged45Plus * rate * 7
   const recoveryLow = Math.round(sevenDayLoss * 0.4)
   const recoveryHigh = Math.round(sevenDayLoss * 0.6)
 

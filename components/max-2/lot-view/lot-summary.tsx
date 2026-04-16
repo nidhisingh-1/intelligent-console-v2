@@ -1,6 +1,6 @@
 "use client"
 
-import { mockLotSummary } from "@/lib/max-2-mocks"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { spyneComponentClasses } from "@/lib/design-system/max-2"
@@ -20,7 +20,7 @@ interface StatItem {
 const fmt$ = (n: number) => `$${n.toLocaleString()}`
 
 export function LotSummary() {
-  const s = mockLotSummary
+  const { lotSummary: s } = useHoldingCostRateOptional()
 
   const stats: StatItem[] = [
     { label: "Total Units", value: String(s.totalUnits), icon: <Car className="h-4 w-4" /> },

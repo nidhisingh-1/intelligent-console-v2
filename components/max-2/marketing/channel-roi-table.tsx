@@ -45,7 +45,7 @@ export function ChannelROITable() {
   }) => (
     <th
       className={cn(
-        "bg-muted py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider text-spyne-text-secondary whitespace-nowrap",
+        "bg-muted py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider text-spyne-text whitespace-nowrap",
         right && "text-right",
         className,
       )}

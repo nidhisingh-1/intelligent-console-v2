@@ -3,6 +3,7 @@
 import * as React from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
+import { HoldingCostRateProvider } from "@/components/max-2/holding-cost-rate-context"
 import { Max2UiProvider } from "@/components/max-2/max-2-ui-context"
 import { Max2SpyneScope } from "@/components/max-2/max2-spyne-scope"
 import {
@@ -40,14 +41,14 @@ const navItems: NavItem[] = [
   { href: "/max-2", label: "Home", icon: "home", exact: true },
   {
     href: "/max-2/studio",
-    label: "Studio AI",
-    icon: "photo_camera",
+    label: "Inventory",
+    icon: "inventory_2",
     dividerBefore: true,
     children: [
-      { href: "/max-2/studio", label: "Overview" },
+      { href: "/max-2/studio", label: "Merchandising" },
       { href: "/max-2/studio/add", label: "Add Media" },
       { href: "/max-2/studio/inventory", label: "Active Inventory" },
-      { href: "/max-2/studio/media-lot", label: "Lot Services", exact: true },
+      { href: "/max-2/studio/media-lot", label: "Lot Overview", exact: true },
     ],
   },
   { href: "/max-2/marketing", label: "Marketing", icon: "campaign" },
@@ -82,7 +83,7 @@ const navItems: NavItem[] = [
 
 export default function Max2Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  /** Sales + Service + Studio: same chrome (full-width sticky tab strip, body padding inside experience). */
+  /** Sales + Service + Inventory (studio routes): same chrome (full-width sticky tab strip, body padding inside experience). */
   const isConsoleTabRoute =
     pathname.startsWith("/max-2/sales") ||
     pathname.startsWith("/max-2/service") ||
@@ -220,7 +221,7 @@ export default function Max2Layout({ children }: { children: React.ReactNode }) 
                 isConsoleTabRoute ? "pb-max2-page pt-0" : max2Layout.pagePadding
               )}
             >
-              {children}
+              <HoldingCostRateProvider>{children}</HoldingCostRateProvider>
             </div>
           </div>
         </Max2SpyneScope>

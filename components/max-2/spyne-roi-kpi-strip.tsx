@@ -285,8 +285,9 @@ export function SpyneRoiKpiMetricCell({
     )
   }
 
-  const inner = (
-    <>
+  /** Label row + value/sub as a column; `justify-between` pins the headline number to the bottom when the strip row is taller (matches Lot / Studio multi-column KPI rows). */
+  const stripBody = (
+    <div className="flex h-full min-h-0 w-full flex-col justify-between">
       <div
         className={cn(
           spyneComponentClasses.roiKpiMetricLabelRow,
@@ -303,16 +304,24 @@ export function SpyneRoiKpiMetricCell({
         </p>
         {labelAccessory != null ? <div className="shrink-0 self-start pt-0.5">{labelAccessory}</div> : null}
       </div>
-      <p className={cn(spyneComponentClasses.roiKpiMetricValue, valueClassName)}>{value}</p>
-      <p className={cn(spyneComponentClasses.roiKpiMetricSub, subClassName)}>{sub}</p>
-    </>
+      <div className="min-w-0">
+        <p className={cn(spyneComponentClasses.roiKpiMetricValue, valueClassName)}>{value}</p>
+        <p className={cn(spyneComponentClasses.roiKpiMetricSub, subClassName)}>{sub}</p>
+      </div>
+    </div>
   )
 
   if (footer != null) {
     return (
-      <div className={cn(spyneComponentClasses.roiKpiMetricCell, cellClassName, "min-w-0 w-full")}>
-        {inner}
-        <div className="mt-3">{footer}</div>
+      <div
+        className={cn(
+          spyneComponentClasses.roiKpiMetricCell,
+          cellClassName,
+          "flex h-full min-h-0 w-full flex-col",
+        )}
+      >
+        <div className="flex min-h-0 flex-1 flex-col">{stripBody}</div>
+        <div className="mt-3 shrink-0">{footer}</div>
       </div>
     )
   }
@@ -325,17 +334,25 @@ export function SpyneRoiKpiMetricCell({
         className={cn(
           spyneComponentClasses.roiKpiMetricCell,
           cellClassName,
-          "min-w-0 w-full text-left transition-colors hover:bg-muted/30",
+          "flex h-full min-h-0 w-full flex-col text-left transition-colors hover:bg-muted/30",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/25 focus-visible:ring-offset-2",
         )}
       >
-        {inner}
+        {stripBody}
       </button>
     )
   }
 
   return (
-    <div className={cn(spyneComponentClasses.roiKpiMetricCell, cellClassName, "min-w-0 w-full")}>{inner}</div>
+    <div
+      className={cn(
+        spyneComponentClasses.roiKpiMetricCell,
+        cellClassName,
+        "flex h-full min-h-0 w-full flex-col",
+      )}
+    >
+      {stripBody}
+    </div>
   )
 }
 
@@ -349,16 +366,16 @@ export function SpyneRoiKpiDispositionPanel({ vehicles }: { vehicles: LotVehicle
     {
       label: "Retail",
       count: retail,
-      bar: "bg-spyne-success",
-      dot: "bg-spyne-success",
-      val: "text-spyne-success",
+      bar: "bg-[var(--spyne-chip-orange)]",
+      dot: "bg-[var(--spyne-chip-orange)]",
+      val: "text-[var(--spyne-chip-orange)]",
     },
     {
       label: "Wholesale",
       count: wholesale,
-      bar: "bg-spyne-error",
-      dot: "bg-spyne-error",
-      val: "text-spyne-error",
+      bar: "bg-spyne-info",
+      dot: "bg-spyne-info",
+      val: "text-spyne-info",
     },
   ]
 

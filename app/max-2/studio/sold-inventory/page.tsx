@@ -2,11 +2,16 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { CopyOnClickIdentifier } from "@/components/max-2/copy-on-click-identifier"
+import { formatVinForDisplay } from "@/lib/inventory-vin"
 import { mockMerchandisingVehicles } from "@/lib/max-2-mocks"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { soldVehiclesStore } from "@/lib/sold-vehicles-store"
 import { MaterialSymbol } from "@/components/max-2/material-symbol"
+import { StudioInventorySortIcon } from "@/components/max-2/studio/studio-inventory-sort-icon"
+import { StudioInventoryVehicleThumb } from "@/components/max-2/studio/vehicle-media-table"
 import { cn } from "@/lib/utils"
-import { max2Classes, max2Layout } from "@/lib/design-system/max-2"
+import { max2Classes, max2Layout, spyneComponentClasses } from "@/lib/design-system/max-2"
 
 function formatSoldAt(date: Date): { date: string; time: string } {
   const d = new Intl.DateTimeFormat("en-GB", {
@@ -44,10 +49,45 @@ function SoldInventoryContent() {
     clearTimeout(toastTimer.current)
   }
 
-  const soldVehicles = mockMerchandisingVehicles
-    .filter((v) => soldMap.has(v.vin))
-    .map((v) => ({ ...v, soldEntry: soldMap.get(v.vin)! }))
-    .sort((a, b) => b.soldEntry.soldAt.getTime() - a.soldEntry.soldAt.getTime())
+  type SoldSortKey = "vehicle" | "soldAt"
+  const DEFAULT_SOLD_SORT_KEY: SoldSortKey = "soldAt"
+  const DEFAULT_SOLD_SORT_DIR: "asc" | "desc" = "desc"
+
+  const [soldSortKey, setSoldSortKey] = React.useState<SoldSortKey>(DEFAULT_SOLD_SORT_KEY)
+  /** `null` = default (sold date, descending). */
+  const [soldSortDir, setSoldSortDir] = React.useState<"asc" | "desc" | null>(null)
+
+  const toggleSoldSort = (key: SoldSortKey) => {
+    if (soldSortDir !== null && soldSortKey === key) {
+      if (soldSortDir === "asc") setSoldSortDir("desc")
+      else {
+        setSoldSortKey(DEFAULT_SOLD_SORT_KEY)
+        setSoldSortDir(null)
+      }
+    } else {
+      setSoldSortKey(key)
+      setSoldSortDir("asc")
+    }
+  }
+
+  const soldVehicles = React.useMemo(() => {
+    const rows = mockMerchandisingVehicles
+      .filter((v) => soldMap.has(v.vin))
+      .map((v) => ({ ...v, soldEntry: soldMap.get(v.vin)! }))
+    const effKey = soldSortDir === null ? DEFAULT_SOLD_SORT_KEY : soldSortKey
+    const effDir = soldSortDir === null ? DEFAULT_SOLD_SORT_DIR : soldSortDir
+    rows.sort((a, b) => {
+      if (effKey === "soldAt") {
+        const c = a.soldEntry.soldAt.getTime() - b.soldEntry.soldAt.getTime()
+        return effDir === "asc" ? c : -c
+      }
+      const as = `${a.year} ${a.make} ${a.model} ${a.trim ?? ""}`
+      const bs = `${b.year} ${b.make} ${b.model} ${b.trim ?? ""}`
+      const c = as.localeCompare(bs)
+      return effDir === "asc" ? c : -c
+    })
+    return rows
+  }, [soldMap, soldSortKey, soldSortDir])
 
   // Find the vehicle name for the undo toast
   const undoVehicle = toastVin
@@ -89,23 +129,44 @@ function SoldInventoryContent() {
             </div>
           </div>
         ) : (
+          <TooltipProvider delayDuration={200}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-spyne-border bg-muted">
-                  <th className="py-3 pl-5 pr-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Vehicle
+                  <th className="border-r border-spyne-border/45 py-3 pl-4 pr-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-spyne-text last:border-r-0">
+                    <button
+                      type="button"
+                      className="inline-flex w-full items-center gap-1.5 text-left hover:text-spyne-text"
+                      onClick={() => toggleSoldSort("vehicle")}
+                    >
+                      <span>Vehicle</span>
+                      <StudioInventorySortIcon
+                        active={soldSortDir !== null && soldSortKey === "vehicle"}
+                        direction={soldSortDir ?? "asc"}
+                      />
+                    </button>
                   </th>
-                  <th className="py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                    VIN / Stock
+                  <th className="border-r border-spyne-border/45 py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-spyne-text whitespace-nowrap last:border-r-0">
+                    Identifiers
                   </th>
-                  <th className="py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                    Sold Date
+                  <th className="border-r border-spyne-border/45 py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-spyne-text whitespace-nowrap last:border-r-0">
+                    <button
+                      type="button"
+                      className="inline-flex w-full items-center gap-1.5 text-left hover:text-spyne-text"
+                      onClick={() => toggleSoldSort("soldAt")}
+                    >
+                      <span>Sold Date</span>
+                      <StudioInventorySortIcon
+                        active={soldSortDir !== null && soldSortKey === "soldAt"}
+                        direction={soldSortDir ?? "asc"}
+                      />
+                    </button>
                   </th>
-                  <th className="py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                  <th className="border-r border-spyne-border/45 py-3 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-spyne-text whitespace-nowrap last:border-r-0">
                     Sold Time
                   </th>
-                  <th className="py-3 pl-4 pr-5 text-right align-middle text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <th className="border-r border-spyne-border/45 py-3 pl-4 pr-5 text-right align-middle text-xs font-medium uppercase tracking-wider text-spyne-text last:border-r-0">
                     Action
                   </th>
                 </tr>
@@ -119,18 +180,15 @@ function SoldInventoryContent() {
                   return (
                     <tr key={v.vin} className="bg-white transition-colors hover:bg-muted">
                       {/* Vehicle */}
-                      <td className="py-3.5 pl-5 pr-4 align-middle">
-                        <div className="flex items-center gap-3">
-                          <div className="relative aspect-[4/3] w-12 shrink-0 overflow-hidden rounded bg-muted">
-                            {v.thumbnailUrl ? (
-                              <img src={v.thumbnailUrl} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <MaterialSymbol name="photo_camera" size={18} className="text-muted-foreground" />
-                              </div>
-                            )}
-                            {/* Sold overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center rounded bg-black/40">
+                      <td className="border-r border-spyne-border/45 py-3.5 pl-4 pr-4 align-middle last:border-r-0">
+                        <div className="flex items-center gap-4">
+                          <div className="relative h-14 w-28 shrink-0">
+                            <StudioInventoryVehicleThumb
+                              v={v}
+                              roundedClassName="rounded-md"
+                              surfaceClassName="bg-muted"
+                            />
+                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md bg-black/40">
                               <span className="text-[9px] font-bold uppercase tracking-wide text-white">Sold</span>
                             </div>
                           </div>
@@ -146,24 +204,34 @@ function SoldInventoryContent() {
                         </div>
                       </td>
 
-                      {/* VIN / Stock */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <p className="font-mono text-xs text-spyne-text">VIN{v.vin}</p>
-                        <p className="mt-0.5 font-mono text-xs text-muted-foreground">{stockNum}</p>
+                      {/* VIN · Stock (click to copy) */}
+                      <td className="border-r border-spyne-border/45 py-3.5 px-4 align-middle last:border-r-0">
+                        <p
+                          className={cn(
+                            "flex min-w-0 flex-wrap items-baseline gap-x-1",
+                            spyneComponentClasses.studioInventoryTableCellMeta,
+                          )}
+                        >
+                          <CopyOnClickIdentifier value={formatVinForDisplay(v.vin)} />
+                          <span className="shrink-0 text-spyne-text-secondary" aria-hidden>
+                            ·
+                          </span>
+                          <CopyOnClickIdentifier value={stockNum} />
+                        </p>
                       </td>
 
                       {/* Sold Date */}
-                      <td className="py-3.5 px-4 align-middle">
+                      <td className="border-r border-spyne-border/45 py-3.5 px-4 align-middle last:border-r-0">
                         <span className="text-sm font-medium text-gray-800">{date}</span>
                       </td>
 
                       {/* Sold Time */}
-                      <td className="py-3.5 px-4 align-middle">
+                      <td className="border-r border-spyne-border/45 py-3.5 px-4 align-middle last:border-r-0">
                         <span className="text-sm text-muted-foreground">{time}</span>
                       </td>
 
                       {/* Action */}
-                      <td className="py-3.5 pl-4 pr-5 align-middle text-right">
+                      <td className="border-r border-spyne-border/45 py-3.5 pl-4 pr-5 align-middle text-right last:border-r-0">
                         <button
                           type="button"
                           onClick={() => unmarkSold(v.vin)}
@@ -179,6 +247,7 @@ function SoldInventoryContent() {
               </tbody>
             </table>
           </div>
+          </TooltipProvider>
         )}
       </div>
 

@@ -1,12 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { mockLotVehicles } from "@/lib/max-2-mocks"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import type { LotStatus, LotVehicle, PricingPosition } from "@/services/max-2/max-2.types"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { RotateCcw } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import {
   max2Classes,
@@ -23,6 +23,7 @@ import {
   SpyneMetricChip,
 } from "@/components/max-2/spyne-ui"
 import { Max2InventoryListHeader, type InventoryVehicleType } from "@/components/max-2/inventory-list-header"
+import { StudioInventorySortIcon } from "@/components/max-2/studio/studio-inventory-sort-icon"
 import {
   SpyneFilterSheet,
   SpyneFilterFacetSection,
@@ -38,6 +39,9 @@ import {
   type LotInventoryFilters,
   type LotAgeBucket,
 } from "@/lib/lot-inventory-filter-apply"
+import { issueLabelForLotVehicle } from "@/lib/inventory-issue-label"
+import { lotVehicleToMerchandising } from "@/lib/lot-vehicle-to-merchandising"
+import { MerchandisingInventoryActionCta } from "@/components/max-2/studio/merchandising-inventory-action-cta"
 
 const MODEL_TO_BODY: Record<string, string> = {
   "F-150": "Truck", "Silverado": "Truck",
@@ -51,6 +55,9 @@ const fmt$ = (n: number) => `$${n.toLocaleString()}`
 
 type SortField = "daysInStock" | "listPrice"
 type SortDir = "asc" | "desc"
+
+const DEFAULT_SORT_FIELD: SortField = "daysInStock"
+const DEFAULT_SORT_DIR: SortDir = "desc"
 
 const priceRangeDefs: { id: string; label: string }[] = [
   { id: "under-15k", label: "Under $15K" },
@@ -91,6 +98,7 @@ function facetRows(
 }
 
 function LotInventoryContent() {
+  const { vehicles: lotVehicles } = useHoldingCostRateOptional()
   const searchParams = useSearchParams()
   const currentYear = new Date().getFullYear()
 
@@ -109,21 +117,22 @@ function LotInventoryContent() {
     return base
   })
 
-  const [sortField, setSortField] = React.useState<SortField>("daysInStock")
-  const [sortDir, setSortDir] = React.useState<SortDir>("desc")
+  const [sortField, setSortField] = React.useState<SortField>(DEFAULT_SORT_FIELD)
+  /** `null` = table default (days in stock, descending). */
+  const [sortDir, setSortDir] = React.useState<SortDir | null>(null)
 
   const tabCounts = React.useMemo(() => {
-    const all = mockLotVehicles.length
-    const nNew = mockLotVehicles.filter((v) => isNewLotVehicle(v, currentYear)).length
+    const all = lotVehicles.length
+    const nNew = lotVehicles.filter((v) => isNewLotVehicle(v, currentYear)).length
     return { all, new: nNew, used: all - nNew }
-  }, [currentYear])
+  }, [currentYear, lotVehicles])
 
   const tabScoped = React.useMemo(() => {
-    let v = [...mockLotVehicles]
+    let v = [...lotVehicles]
     if (vehicleTypeTab === "new") v = v.filter((x) => isNewLotVehicle(x, currentYear))
     if (vehicleTypeTab === "used") v = v.filter((x) => !isNewLotVehicle(x, currentYear))
     return v
-  }, [vehicleTypeTab, currentYear])
+  }, [vehicleTypeTab, currentYear, lotVehicles])
 
   const chipCounts = React.useMemo(
     () => ({
@@ -164,18 +173,22 @@ function LotInventoryContent() {
   }
 
   const toggleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    if (sortDir !== null && sortField === field) {
+      if (sortDir === "asc") setSortDir("desc")
+      else {
+        setSortField(DEFAULT_SORT_FIELD)
+        setSortDir(null)
+      }
     } else {
       setSortField(field)
-      setSortDir("desc")
+      setSortDir("asc")
     }
   }
 
   const filtered = React.useMemo(() => {
     const q = search.toLowerCase()
     let rows = applyLotInventoryFilters(
-      mockLotVehicles,
+      lotVehicles,
       lotFilters,
       MODEL_TO_BODY,
       vehicleTypeTab,
@@ -188,12 +201,14 @@ function LotInventoryContent() {
         )
       )
     }
+    const effField = sortDir === null ? DEFAULT_SORT_FIELD : sortField
+    const effDir = sortDir === null ? DEFAULT_SORT_DIR : sortDir
     return [...rows].sort((a, b) => {
-      const aVal = a[sortField]
-      const bVal = b[sortField]
-      return sortDir === "asc" ? aVal - bVal : bVal - aVal
+      const aVal = a[effField] as number
+      const bVal = b[effField] as number
+      return effDir === "asc" ? aVal - bVal : bVal - aVal
     })
-  }, [search, lotFilters, sortField, sortDir, vehicleTypeTab, currentYear])
+  }, [search, lotFilters, sortField, sortDir, vehicleTypeTab, currentYear, lotVehicles])
 
   const makeRows = React.useMemo(
     () => facetRows(tabScoped, (v) => v.make),
@@ -407,13 +422,6 @@ function LotInventoryContent() {
     })
   }
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />
-    return sortDir === "asc"
-      ? <ArrowUp className="h-3 w-3 ml-1 text-spyne-primary" />
-      : <ArrowDown className="h-3 w-3 ml-1 text-spyne-primary" />
-  }
-
   const chipWholesale =
     lotFilters.lotStatuses.length === 1 &&
     lotFilters.lotStatuses[0] === "wholesale-candidate"
@@ -567,7 +575,7 @@ function LotInventoryContent() {
             <div>
               <CardTitle>All Vehicles</CardTitle>
               <CardDescription>
-                {filtered.length} of {mockLotVehicles.length} vehicles
+                {filtered.length} of {lotVehicles.length} vehicles
               </CardDescription>
             </div>
             {hasActiveFilters && (
@@ -727,54 +735,94 @@ function LotInventoryContent() {
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className={spyneComponentClasses.studioInventoryTable}>
               <thead>
-                <tr className="border-b text-left">
-                  <th className="pb-3 pr-4 text-xs font-semibold text-muted-foreground whitespace-nowrap">Stock #</th>
-                  <th className="pb-3 pr-4 text-xs font-semibold text-muted-foreground">Vehicle</th>
-                  <th className="pb-3 pr-4 text-xs font-semibold text-muted-foreground">Color</th>
-                  <th className="pb-3 pr-4 text-xs font-semibold text-muted-foreground cursor-pointer select-none text-right whitespace-nowrap" onClick={() => toggleSort("listPrice")}>
-                    <span className="inline-flex items-center">List Price<SortIcon field="listPrice" /></span>
+                <tr className={spyneComponentClasses.studioInventoryTableHeaderRow}>
+                  <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Stock #</th>
+                  <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Vehicle</th>
+                  <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Color</th>
+                  <th
+                    className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellRight, "cursor-pointer select-none")}
+                    onClick={() => toggleSort("listPrice")}
+                  >
+                    <span className="inline-flex w-full items-center justify-end gap-1.5">
+                      <span>List Price</span>
+                      <StudioInventorySortIcon
+                        active={sortDir !== null && sortField === "listPrice"}
+                        direction={sortDir ?? "asc"}
+                      />
+                    </span>
                   </th>
-                  <th className="pb-3 pr-4 text-xs font-semibold text-muted-foreground cursor-pointer select-none text-right" onClick={() => toggleSort("daysInStock")}>
-                    <span className="inline-flex items-center">Days<SortIcon field="daysInStock" /></span>
+                  <th
+                    className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellRight, "cursor-pointer select-none")}
+                    onClick={() => toggleSort("daysInStock")}
+                  >
+                    <span className="inline-flex w-full items-center justify-end gap-1.5">
+                      <span>Days</span>
+                      <StudioInventorySortIcon
+                        active={sortDir !== null && sortField === "daysInStock"}
+                        direction={sortDir ?? "asc"}
+                      />
+                    </span>
                   </th>
-                  <th className="pb-3 pr-4 text-xs font-semibold text-muted-foreground">Status</th>
+                  <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Issue</th>
+                  <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Status</th>
+                  <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((v) => {
                   const isAged = v.daysInStock >= 45
+                  const issue = issueLabelForLotVehicle(v)
+                  const issueAccent = issue.tone === "warning" || issue.tone === "danger"
 
                   return (
-                    <tr
-                      key={v.vin}
-                      className="border-b last:border-0 border-spyne-border transition-colors hover:bg-muted/30"
-                    >
+                    <tr key={v.vin} className={spyneComponentClasses.studioInventoryTableRow}>
                       <td
                         className={cn(
-                          "py-3.5 pr-4 text-xs text-muted-foreground tabular-nums",
+                          spyneComponentClasses.studioInventoryTableCell,
+                          "text-sm text-muted-foreground tabular-nums",
+                          (isAged || issueAccent) && spyneComponentClasses.overviewIssueRowAccent,
                         )}
                       >
                         {v.stockNumber}
                       </td>
-                      <td className="py-3.5 pr-4 font-medium whitespace-nowrap">
+                      <td className={cn(spyneComponentClasses.studioInventoryTableCell, "font-medium whitespace-nowrap")}>
                         {v.year} {v.make} {v.model} {v.trim}
                       </td>
-                      <td className="py-3.5 pr-4 text-muted-foreground whitespace-nowrap">{v.color}</td>
-                      <td className="py-3.5 pr-4 text-right tabular-nums">{fmt$(v.listPrice)}</td>
-                      <td className={cn("py-3.5 pr-4 text-right tabular-nums font-semibold", isAged && "text-spyne-error")}>
+                      <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-muted-foreground whitespace-nowrap")}>{v.color}</td>
+                      <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-right tabular-nums")}>{fmt$(v.listPrice)}</td>
+                      <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-right tabular-nums font-semibold", isAged && "text-spyne-error")}>
                         {v.daysInStock}
                       </td>
-                      <td className="py-3.5 pr-4">
+                      <td className={spyneComponentClasses.studioInventoryTableCell}>
+                        <span
+                          className={cn(
+                            "text-sm font-medium",
+                            issue.tone === "danger" && "text-spyne-error",
+                            issue.tone === "warning" && "text-spyne-warning-ink",
+                            issue.tone === "neutral" && "text-muted-foreground",
+                          )}
+                        >
+                          {issue.label}
+                        </span>
+                      </td>
+                      <td className={spyneComponentClasses.studioInventoryTableCell}>
                         <SpyneLotStatusChip status={v.lotStatus} compact />
+                      </td>
+                      <td className={spyneComponentClasses.studioInventoryTableCell}>
+                        <MerchandisingInventoryActionCta
+                          v={lotVehicleToMerchandising(v)}
+                          size="md"
+                          ui="shadcn-outline"
+                        />
                       </td>
                     </tr>
                   )
                 })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="py-8 text-center text-muted-foreground">
                       No vehicles match your filters.
                     </td>
                   </tr>

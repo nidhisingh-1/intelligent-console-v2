@@ -4,10 +4,11 @@ import type {
   MerchandisingVehicle,
   PublishStatus,
 } from "@/services/max-2/max-2.types"
+import { demoVehicleThumbnailByKey } from "@/lib/demo-vehicle-hero-images"
 
 /**
  * Builds a {@link MerchandisingVehicle} row from lot mock data so embedded
- * {@link VehicleMediaTable} matches the Studio inventory listing columns.
+ * {@link VehicleMediaTable} matches the Studio inventory listing columns (including Issue).
  */
 export function lotVehicleToMerchandising(lv: LotVehicle): MerchandisingVehicle {
   const mediaStatus: MediaStatus =
@@ -34,10 +35,10 @@ export function lotVehicleToMerchandising(lv: LotVehicle): MerchandisingVehicle 
     model: lv.model,
     trim: lv.trim,
     stockNumber: lv.stockNumber,
-    thumbnailUrl: "",
+    thumbnailUrl: demoVehicleThumbnailByKey(lv.vin),
     mediaStatus,
     photoCount: lv.photoCount,
-    has360: false,
+    has360: lv.hasSpin360 !== false,
     hasVideo: false,
     publishStatus,
     lastPublishedAt: undefined,

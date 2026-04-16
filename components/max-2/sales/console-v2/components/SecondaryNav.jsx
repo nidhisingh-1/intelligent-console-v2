@@ -2,7 +2,7 @@
 
 import { MaterialSymbol } from '@/components/max-2/material-symbol'
 import { SpyneLineTab, SpyneLineTabBadge, SpyneLineTabStrip } from '@/components/max-2/spyne-line-tabs'
-import { max2Classes } from '@/lib/design-system/max-2'
+import { max2Classes, spyneLineTabLeadingIconSize } from '@/lib/design-system/max-2'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -33,7 +33,7 @@ export default function SecondaryNav({ activePage, onPageChange, navLeftPx = 220
                   onClick={() => onPageChange(item.id)}
                   aria-current={active ? 'page' : undefined}
                 >
-                  <MaterialSymbol name={item.symbol} size={14} className="text-current" />
+                  <MaterialSymbol name={item.symbol} size={spyneLineTabLeadingIconSize} className="text-current" />
                   {item.label}
                   {item.badge != null ? <SpyneLineTabBadge>{item.badge}</SpyneLineTabBadge> : null}
                 </SpyneLineTab>
@@ -64,7 +64,7 @@ export default function SecondaryNav({ activePage, onPageChange, navLeftPx = 220
                 onClick={() => onPageChange(item.id)}
                 aria-current={active ? 'page' : undefined}
               >
-                <MaterialSymbol name={item.symbol} size={14} className="text-current" />
+                <MaterialSymbol name={item.symbol} size={spyneLineTabLeadingIconSize} className="text-current" />
                 {item.label}
                 {item.badge != null ? <SpyneLineTabBadge>{item.badge}</SpyneLineTabBadge> : null}
               </SpyneLineTab>

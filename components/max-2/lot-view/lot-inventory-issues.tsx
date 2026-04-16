@@ -1,6 +1,7 @@
 "use client"
 
-import { mockLotVehicles } from "@/lib/max-2-mocks"
+import * as React from "react"
+import { useHoldingCostRateOptional } from "@/components/max-2/holding-cost-rate-context"
 import {
   Card,
   CardContent,
@@ -21,32 +22,6 @@ import {
 
 const fmt$ = (n: number) => `$${n.toLocaleString()}`
 
-const noLeadsCars = mockLotVehicles.filter(
-  (v) => v.leads === 0 && v.daysInStock > 5 && v.lotStatus === "frontline",
-)
-const noRealPhotoCars = mockLotVehicles.filter(
-  (v) => !v.hasRealPhotos && v.lotStatus === "frontline",
-)
-const reconDelayCars = mockLotVehicles.filter(
-  (v) => v.lotStatus === "in-recon" && v.daysInStock > 2,
-)
-const overpricedCars = mockLotVehicles.filter(
-  (v) => v.pricingPosition === "above-market" && v.lotStatus === "frontline",
-)
-const belowMarketCars = mockLotVehicles.filter(
-  (v) => v.pricingPosition === "below-market" && v.lotStatus === "frontline",
-)
-const atMarketCars = mockLotVehicles.filter(
-  (v) => v.pricingPosition === "at-market" && v.lotStatus === "frontline",
-)
-
-const ranked = [...mockLotVehicles]
-  .filter((v) => v.lotStatus === "frontline")
-  .sort((a, b) => b.vdpViews - a.vdpViews)
-
-const top5Cars = ranked.slice(0, 5)
-const belowRank10Cars = ranked.slice(10)
-
 interface IssueItem {
   id: string
   icon: React.ReactNode
@@ -57,37 +32,84 @@ interface IssueItem {
   severity: "high" | "medium"
 }
 
-const issues: IssueItem[] = [
-  {
-    id: "no-leads",
-    icon: <EyeOff className="h-4 w-4" />,
-    title: "No Leads in 5+ Days",
-    count: noLeadsCars.length,
-    impact: `${fmt$(noLeadsCars.length * 46)}/day in holding cost with zero buyer activity`,
-    suggestion: "Review pricing position and marketplace listing quality",
-    severity: "high" as const,
-  },
-  {
-    id: "no-photos",
-    icon: <ImageOff className="h-4 w-4" />,
-    title: "No Real Photos (Frontline)",
-    count: noRealPhotoCars.length,
-    impact: "Stock photos generate 60% fewer VDP views than real photography",
-    suggestion: "Schedule a photo shoot — real photos can 3× lead volume",
-    severity: "high" as const,
-  },
-  {
-    id: "recon-stuck",
-    icon: <Wrench className="h-4 w-4" />,
-    title: "Stuck in Recon (2+ days)",
-    count: reconDelayCars.length,
-    impact: `${fmt$(reconDelayCars.reduce((s, v) => s + v.estimatedFrontGross, 0))} in expected gross sitting idle`,
-    suggestion: "Escalate to service manager — every extra day costs margin",
-    severity: "medium" as const,
-  },
-].filter((i) => i.count > 0)
-
 export function LotInventoryIssues() {
+  const { vehicles: lotVehicles, dailyRate } = useHoldingCostRateOptional()
+  const rate = dailyRate ?? 46
+
+  const {
+    issues,
+    top5Cars,
+    belowRank10Cars,
+    overpricedCars,
+    belowMarketCars,
+    atMarketCars,
+  } = React.useMemo(() => {
+    const noLeadsCars = lotVehicles.filter(
+      (v) => v.leads === 0 && v.daysInStock > 5 && v.lotStatus === "frontline",
+    )
+    const noRealPhotoCars = lotVehicles.filter(
+      (v) => !v.hasRealPhotos && v.lotStatus === "frontline",
+    )
+    const reconDelayCars = lotVehicles.filter(
+      (v) => v.lotStatus === "in-recon" && v.daysInStock > 2,
+    )
+    const overpricedCars = lotVehicles.filter(
+      (v) => v.pricingPosition === "above-market" && v.lotStatus === "frontline",
+    )
+    const belowMarketCars = lotVehicles.filter(
+      (v) => v.pricingPosition === "below-market" && v.lotStatus === "frontline",
+    )
+    const atMarketCars = lotVehicles.filter(
+      (v) => v.pricingPosition === "at-market" && v.lotStatus === "frontline",
+    )
+
+    const ranked = [...lotVehicles]
+      .filter((v) => v.lotStatus === "frontline")
+      .sort((a, b) => b.vdpViews - a.vdpViews)
+
+    const top5Cars = ranked.slice(0, 5)
+    const belowRank10Cars = ranked.slice(10)
+
+    const issues: IssueItem[] = [
+      {
+        id: "no-leads",
+        icon: <EyeOff className="h-4 w-4" />,
+        title: "No Leads in 5+ Days",
+        count: noLeadsCars.length,
+        impact: `${fmt$(noLeadsCars.length * rate)}/day in holding cost with zero buyer activity`,
+        suggestion: "Review pricing position and marketplace listing quality",
+        severity: "high" as const,
+      },
+      {
+        id: "no-photos",
+        icon: <ImageOff className="h-4 w-4" />,
+        title: "No Real Photos (Frontline)",
+        count: noRealPhotoCars.length,
+        impact: "Stock photos generate 60% fewer VDP views than real photography",
+        suggestion: "Schedule a photo shoot — real photos can 3× lead volume",
+        severity: "high" as const,
+      },
+      {
+        id: "recon-stuck",
+        icon: <Wrench className="h-4 w-4" />,
+        title: "Stuck in Recon (2+ days)",
+        count: reconDelayCars.length,
+        impact: `${fmt$(reconDelayCars.reduce((s, v) => s + v.estimatedFrontGross, 0))} in expected gross sitting idle`,
+        suggestion: "Escalate to service manager — every extra day costs margin",
+        severity: "medium" as const,
+      },
+    ].filter((i) => i.count > 0)
+
+    return {
+      issues,
+      top5Cars,
+      belowRank10Cars,
+      overpricedCars,
+      belowMarketCars,
+      atMarketCars,
+    }
+  }, [lotVehicles, rate])
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* ── Inventory Issues ── */}
