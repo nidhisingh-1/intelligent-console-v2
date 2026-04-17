@@ -13,7 +13,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
-import { isMax2PreviewToolsEnabled } from "@/lib/max-2-preview-tools"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -298,12 +297,11 @@ function DevVariantToggle({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function DaysToFrontlineModal({ isOpen, onClose, variant }: DaysToFrontlineModalProps) {
-  const previewTools = isMax2PreviewToolsEnabled()
   const [devVariant, setDevVariant] = React.useState<DaysToFrontlineVariant>(variant)
 
   React.useEffect(() => { setDevVariant(variant) }, [variant])
 
-  const activeVariant = previewTools ? devVariant : variant
+  const activeVariant = devVariant
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -326,9 +324,7 @@ export function DaysToFrontlineModal({ isOpen, onClose, variant }: DaysToFrontli
               </div>
             </div>
 
-            {previewTools && (
-              <DevVariantToggle active={devVariant} onChange={setDevVariant} />
-            )}
+            <DevVariantToggle active={devVariant} onChange={setDevVariant} />
           </div>
         </DialogHeader>
 
