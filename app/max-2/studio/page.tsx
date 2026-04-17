@@ -7,7 +7,6 @@ import { MaterialSymbol } from "@/components/max-2/material-symbol"
 import { LotHoldingCostWidget } from "@/components/max-2/lot-view/lot-holding-cost-widget"
 import { HoldingCostSetupModals } from "@/components/max-2/lot-view/holding-cost-setup-modals"
 import { readPersistedHoldingStateBrowser } from "@/lib/holding-cost-config"
-import { isMax2HoldingCostPreviewButtonEnabled } from "@/lib/max-2-preview-tools"
 import { max2Classes, max2Layout, spyneComponentClasses } from "@/lib/design-system/max-2"
 import { cn } from "@/lib/utils"
 
@@ -60,8 +59,6 @@ export default function StudioPage() {
     setHoldingCostFteOpen(false)
   }, [])
 
-  const showHoldingCostDevButton = isMax2HoldingCostPreviewButtonEnabled()
-
   return (
     <div className={cn(max2Layout.pageStack)}>
       <HoldingCostSetupModals
@@ -100,24 +97,22 @@ export default function StudioPage() {
 
       <MerchandisingSummary />
 
-      {showHoldingCostDevButton ? (
-        <button
-          type="button"
-          onClick={() => setHoldingCostFteOpen(true)}
-          className={cn(
-            "fixed bottom-4 right-4 z-40 max-w-[min(100vw-2rem,280px)] rounded-lg border border-dashed border-spyne-border",
-            "bg-spyne-surface px-3 py-2 text-left text-xs font-medium text-spyne-text-secondary shadow-sm",
-            "hover:bg-muted/50 hover:text-spyne-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/30",
-          )}
-        >
-          <span className="flex items-center gap-2">
-            <MaterialSymbol name="science" size={16} className="shrink-0 text-spyne-primary" />
-            <span>
-              Dev: open holding cost modal
-            </span>
+      <button
+        type="button"
+        onClick={() => setHoldingCostFteOpen(true)}
+        className={cn(
+          "fixed bottom-4 right-4 z-40 max-w-[min(100vw-2rem,280px)] rounded-lg border border-dashed border-spyne-border",
+          "bg-spyne-surface px-3 py-2 text-left text-xs font-medium text-spyne-text-secondary shadow-sm",
+          "hover:bg-muted/50 hover:text-spyne-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/30",
+        )}
+      >
+        <span className="flex items-center gap-2">
+          <MaterialSymbol name="science" size={16} className="shrink-0 text-spyne-primary" />
+          <span>
+            Dev: open holding cost modal
           </span>
-        </button>
-      ) : null}
+        </span>
+      </button>
     </div>
   )
 }
