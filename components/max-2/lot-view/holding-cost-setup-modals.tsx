@@ -7,8 +7,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { HoldingCostCalculator } from "@/components/max-2/lot-view/holding-cost-calculator"
 import { writePersistedHoldingState } from "@/lib/holding-cost-config"
+import { HoldingCostChatCalculator } from "@/components/max-2/lot-view/holding-cost-chat-calculator"
 import { MaterialSymbol } from "@/components/max-2/material-symbol"
 import { holdingCostFigma as HC } from "@/lib/holding-cost-figma-tokens"
 import { cn } from "@/lib/utils"
@@ -77,7 +77,7 @@ export function HoldingCostSetupModals(
   },
 ) {
   const { open, onOpenChange, onSave } = props
-  const [calcModalOpen, setCalcModalOpen] = React.useState(false)
+  const [showChat, setShowChat] = React.useState(false)
   const [directRate, setDirectRate] = React.useState("")
   const inputRef = React.useRef<HTMLInputElement>(null)
 
@@ -99,7 +99,10 @@ export function HoldingCostSetupModals(
             inputRef.current?.focus()
           }}
           className={cn(
-            "flex max-h-[min(92vh,800px)] w-full max-w-[min(665px,calc(100%-2rem))] flex-col gap-0 overflow-hidden rounded-2xl border p-0 shadow-2xl sm:max-w-[665px]",
+            "flex w-full max-w-[min(665px,calc(100%-2rem))] flex-col gap-0 overflow-hidden rounded-2xl border p-0 shadow-2xl sm:max-w-[665px]",
+            showChat
+              ? "h-[min(92vh,680px)]"   /* fixed height → flex-1 scroll area works */
+              : "max-h-[min(92vh,800px)]", /* form: natural height, capped */
           )}
           style={{ backgroundColor: HC.surface, borderColor: HC.border }}
         >
@@ -110,157 +113,159 @@ export function HoldingCostSetupModals(
             aria-hidden
           />
 
-          <div className="relative min-h-0 flex-1 overflow-y-auto px-8 pb-8 pt-8">
-            {/* Figma 5585:54498 — soft spectrum glow that fades out downward */}
-            <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-[180px]"
-              aria-hidden
-              style={{
-                background:
-                  "radial-gradient(ellipse 100% 100% at 50% -10%, rgba(237,137,57,0.10) 0%, rgba(232,62,84,0.07) 30%, rgba(182,81,215,0.05) 55%, rgba(91,191,246,0.03) 75%, transparent 100%)",
-              }}
-            />
-
-            {/* Figma 5585:54600 — faded savings icon, upper-right, horizontally flipped */}
-            <span
-              className="material-symbols-outlined pointer-events-none absolute right-6 top-6 select-none"
-              aria-hidden
-              style={{
-                fontSize: "140px",
-                backgroundImage:
-                  "linear-gradient(135deg, #ED8939 0%, #E83E54 28%, #B651D7 52%, #7F6AF2 72%, #5BBFF6 100%)",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
-                opacity: 0.18,
-                transform: "scaleX(-1)",
-                lineHeight: 1,
-              }}
-            >
-              savings
-            </span>
-
-            {/* Eyebrow */}
-            <p
-              className="relative inline-block bg-clip-text text-lg font-semibold leading-7 text-transparent [-webkit-background-clip:text] [background-clip:text]"
-              style={{
-                backgroundImage: HC.titleGradient,
-                fontFamily: "Inter, system-ui, sans-serif",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Let&apos;s set up your holding cost
-            </p>
-
-            {/* Title + subtitle — gap-[14px] from eyebrow, gap-[8px] between each */}
-            <div className="mt-3.5 space-y-2">
-              <DialogTitle
-                className="max-w-[410px] text-[31.5px] font-semibold leading-[42px] tracking-[-0.02em] text-black"
-                style={{ fontFamily: "Inter, system-ui, sans-serif" }}
-              >
-                How much does each car cost you per day?
-              </DialogTitle>
-              <DialogDescription
-                className="text-sm font-medium leading-5 text-black/40"
-                style={{ fontFamily: "Inter, system-ui, sans-serif" }}
-              >
-                Every extra day in stock = money lost
-              </DialogDescription>
+          {showChat ? (
+            /* ── Chat view — replaces the form entirely ── */
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+              <HoldingCostChatCalculator
+                onSave={(dailyRate) => {
+                  if (!Number.isFinite(dailyRate) || dailyRate <= 0) return
+                  persistAndClose(dailyRate)
+                }}
+                onBack={() => setShowChat(false)}
+              />
             </div>
+          ) : (
+            /* ── Form view (default) ── */
+            <div className="relative min-h-0 flex-1 overflow-y-auto px-8 pb-8 pt-8">
+              {/* soft spectrum glow */}
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-[180px]"
+                aria-hidden
+                style={{
+                  background:
+                    "radial-gradient(ellipse 100% 100% at 50% -10%, rgba(237,137,57,0.10) 0%, rgba(232,62,84,0.07) 30%, rgba(182,81,215,0.05) 55%, rgba(91,191,246,0.03) 75%, transparent 100%)",
+                }}
+              />
 
-            {/* Form — left-aligned, max-w-[418px], gap-[24px] from header */}
-            <div className="mt-6 w-full max-w-[418px] space-y-4">
-              <div>
-                <label
-                  htmlFor="holding-cost-daily-rate"
-                  className="mb-2 block text-sm font-medium leading-5 tracking-[-0.02em] text-black"
+              {/* faded savings icon */}
+              <span
+                className="material-symbols-outlined pointer-events-none absolute right-6 top-6 select-none"
+                aria-hidden
+                style={{
+                  fontSize: "140px",
+                  backgroundImage:
+                    "linear-gradient(135deg, #ED8939 0%, #E83E54 28%, #B651D7 52%, #7F6AF2 72%, #5BBFF6 100%)",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  color: "transparent",
+                  opacity: 0.18,
+                  transform: "scaleX(-1)",
+                  lineHeight: 1,
+                }}
+              >
+                savings
+              </span>
+
+              {/* Eyebrow */}
+              <p
+                className="relative inline-block bg-clip-text text-lg font-semibold leading-7 text-transparent [-webkit-background-clip:text] [background-clip:text]"
+                style={{
+                  backgroundImage: HC.titleGradient,
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                Let&apos;s set up your holding cost
+              </p>
+
+              <div className="mt-3.5 space-y-2">
+                <DialogTitle
+                  className="max-w-[410px] text-[31.5px] font-semibold leading-[42px] tracking-[-0.02em] text-black"
                   style={{ fontFamily: "Inter, system-ui, sans-serif" }}
                 >
-                  Holding cost ($ / car / day)
-                </label>
-                <div
-                  className="flex h-14 items-center overflow-hidden rounded-xl border-2 bg-[#FAFAFA] pl-4 pr-3 transition-shadow focus-within:ring-2 focus-within:ring-[#4600F2]/20"
-                  style={{ borderColor: HC.primary }}
+                  How much does each car cost you per day?
+                </DialogTitle>
+                <DialogDescription
+                  className="text-sm font-medium leading-5 text-black/40"
+                  style={{ fontFamily: "Inter, system-ui, sans-serif" }}
                 >
-                  <span
-                    className="select-none text-2xl font-semibold leading-10 text-black/30"
-                    style={{ fontFamily: "Inter, system-ui, sans-serif" }}
-                  >
-                    $
-                  </span>
-                  <input
-                    id="holding-cost-daily-rate"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={directRate}
-                    onChange={(e) => setDirectRate(e.target.value)}
-                    placeholder=""
-                    className="min-w-0 flex-1 border-0 bg-transparent pl-2 text-2xl font-semibold leading-10 text-black outline-none [appearance:textfield] placeholder:text-black/30 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    ref={inputRef}
-                    style={{ fontFamily: "Inter, system-ui, sans-serif" }}
-                  />
-                </div>
+                  Every extra day in stock = money lost
+                </DialogDescription>
               </div>
 
-              <div
-                className="flex h-8 items-center justify-between gap-3 rounded-lg px-3"
-                style={{ backgroundColor: HC.purpleMutedFill }}
-              >
-                <span
-                  className="text-xs font-semibold leading-5 text-black"
-                  style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+              <div className="mt-6 w-full max-w-[418px] space-y-4">
+                <div>
+                  <label
+                    htmlFor="holding-cost-daily-rate"
+                    className="mb-2 block text-sm font-medium leading-5 tracking-[-0.02em] text-black"
+                    style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+                  >
+                    Holding cost ($ / car / day)
+                  </label>
+                  <div
+                    className="flex h-14 items-center overflow-hidden rounded-xl border-2 bg-[#FAFAFA] pl-4 pr-3 transition-shadow focus-within:ring-2 focus-within:ring-[#4600F2]/20"
+                    style={{ borderColor: HC.primary }}
+                  >
+                    <span
+                      className="select-none text-2xl font-semibold leading-10 text-black/30"
+                      style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+                    >
+                      $
+                    </span>
+                    <input
+                      id="holding-cost-daily-rate"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={directRate}
+                      onChange={(e) => setDirectRate(e.target.value)}
+                      placeholder=""
+                      className="min-w-0 flex-1 border-0 bg-transparent pl-2 text-2xl font-semibold leading-10 text-black outline-none [appearance:textfield] placeholder:text-black/30 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      ref={inputRef}
+                      style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  className="flex h-8 items-center justify-between gap-3 rounded-lg px-3"
+                  style={{ backgroundColor: HC.purpleMutedFill }}
                 >
-                  Not sure? We&apos;ll calculate it for you
-                </span>
+                  <span
+                    className="text-xs font-semibold leading-5 text-black"
+                    style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+                  >
+                    Not sure? We&apos;ll calculate it for you
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowChat(true)}
+                    className="shrink-0 text-xs font-semibold leading-5"
+                    style={{ color: HC.primary, fontFamily: "Inter, system-ui, sans-serif" }}
+                  >
+                    Let&apos;s calculate →
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => setCalcModalOpen(true)}
-                  className="shrink-0 text-xs font-semibold leading-5"
-                  style={{ color: HC.primary, fontFamily: "Inter, system-ui, sans-serif" }}
+                  disabled={!directRate || parseFloat(directRate) <= 0}
+                  onClick={() => {
+                    const n = parseFloat(directRate)
+                    if (!Number.isFinite(n) || n <= 0) return
+                    persistAndClose(n)
+                  }}
+                  className={cn(
+                    "flex h-12 w-full items-center justify-center gap-3 rounded-xl text-base font-semibold text-white transition-[filter]",
+                    "hover:enabled:brightness-110 disabled:cursor-not-allowed disabled:opacity-50",
+                  )}
+                  style={{
+                    backgroundColor: HC.primary,
+                    fontFamily: "Inter, system-ui, sans-serif",
+                  }}
                 >
-                  Let&apos;s calculate →
+                  Calculate impact
+                  <MaterialSymbol name="arrow_forward" size={20} />
                 </button>
               </div>
 
-              <button
-                type="button"
-                disabled={!directRate || parseFloat(directRate) <= 0}
-                onClick={() => {
-                  const n = parseFloat(directRate)
-                  if (!Number.isFinite(n) || n <= 0) return
-                  persistAndClose(n)
-                }}
-                className={cn(
-                  "flex h-12 w-full items-center justify-center gap-3 rounded-xl text-base font-semibold text-white transition-[filter]",
-                  "hover:enabled:brightness-110 disabled:cursor-not-allowed disabled:opacity-50",
-                )}
-                style={{
-                  backgroundColor: HC.primary,
-                  fontFamily: "Inter, system-ui, sans-serif",
-                }}
-              >
-                Calculate impact
-                <MaterialSymbol name="arrow_forward" size={20} />
-              </button>
+              <div className="mt-8">
+                <WhyThisMattersCard />
+              </div>
             </div>
-
-            {/* Why card — full width, gap-[32px] from form per Figma outer gap */}
-            <div className="mt-8">
-              <WhyThisMattersCard />
-            </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
-
-      <HoldingCostCalculator
-        open={calcModalOpen}
-        onOpenChange={setCalcModalOpen}
-        onSave={(dailyRate) => {
-          if (!Number.isFinite(dailyRate) || dailyRate <= 0) return
-          persistAndClose(dailyRate)
-        }}
-      />
     </>
   )
 }

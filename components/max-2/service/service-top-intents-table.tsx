@@ -35,41 +35,41 @@ export function ServiceTopIntentsTable({
       <div className="min-h-0 flex-1 overflow-x-auto">
         <table className="w-full min-w-[520px] border-collapse text-left">
           <thead>
-            <tr className="border-b border-spyne-border">
-              <th className="spyne-caption pb-2 pr-3 font-semibold uppercase tracking-wide text-spyne-text">
+            <tr className={spyneComponentClasses.studioInventoryTableHeaderRow}>
+              <th className={spyneComponentClasses.studioInventoryTableHeadCell}>
                 Intent
               </th>
-              <th className="spyne-caption pb-2 pr-3 text-center font-semibold uppercase tracking-wide text-spyne-text">
+              <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellCenter)}>
                 Calls
               </th>
-              <th className="spyne-caption pb-2 pr-3 text-center font-semibold uppercase tracking-wide text-spyne-text">
+              <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellCenter)}>
                 Resolved
               </th>
-              <th className="spyne-caption pb-2 pr-3 text-center font-semibold uppercase tracking-wide text-spyne-text">
+              <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellCenter)}>
                 Appts
               </th>
-              <th className="spyne-caption pb-2 text-right font-semibold uppercase tracking-wide text-spyne-text">
+              <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellRight)}>
                 Resolution rate
               </th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, i) => (
+            {rows.map((row) => (
               <tr
                 key={row.intent}
-                className={cn("border-b border-spyne-border last:border-b-0", i % 2 === 1 ? "bg-muted/20" : "")}
+                className={spyneComponentClasses.studioInventoryTableRow}
               >
-                <td className="spyne-body py-3 pr-3 font-medium text-spyne-text-primary">{row.intent}</td>
-                <td className="spyne-body py-3 pr-3 text-center tabular-nums text-spyne-text-primary">
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "font-medium")}>{row.intent}</td>
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-center tabular-nums")}>
                   {row.calls}
                 </td>
-                <td className="spyne-body py-3 pr-3 text-center tabular-nums text-spyne-text-primary">
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-center tabular-nums")}>
                   {row.resolved}
                 </td>
-                <td className="spyne-body py-3 pr-3 text-center tabular-nums text-spyne-text-primary">
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-center tabular-nums")}>
                   {row.appts}
                 </td>
-                <td className={cn("spyne-body py-3 text-right tabular-nums", rateToneClass[row.tone])}>
+                <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-right tabular-nums", rateToneClass[row.tone])}>
                   {row.ratePct}%
                 </td>
               </tr>

@@ -14,14 +14,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { spyneComponentClasses } from "@/lib/design-system/max-2"
 import { Search, ExternalLink } from "lucide-react"
@@ -132,22 +124,22 @@ export function CustomerTable() {
 
         {/* Table */}
         <div className="rounded-md border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[140px]">Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Salesperson</TableHead>
-                <TableHead className="min-w-[140px]">Vehicle Interest</TableHead>
-                <TableHead>Last Contact</TableHead>
-                <TableHead className="text-center">Touches</TableHead>
-                <TableHead className="text-center">Journey</TableHead>
-                <TableHead className="min-w-[180px]">Notes</TableHead>
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <table className={spyneComponentClasses.studioInventoryTable}>
+            <thead>
+              <tr className={spyneComponentClasses.studioInventoryTableHeaderRow}>
+                <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, "min-w-[140px]")}>Name</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Status</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Source</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Salesperson</th>
+                <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, "min-w-[140px]")}>Vehicle Interest</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Last Contact</th>
+                <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellCenter)}>Touches</th>
+                <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellCenter)}>Journey</th>
+                <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, "min-w-[180px]")}>Notes</th>
+                <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, "w-10 !px-1")} />
+              </tr>
+            </thead>
+            <tbody>
               {filtered.map((c) => {
                 const sb = statusBadge[c.status]
                 const srcb = sourceBadge[c.source]
@@ -155,29 +147,30 @@ export function CustomerTable() {
                 const isNewLead = c.status === "active-lead" && c.totalTouchpoints === 1
 
                 return (
-                  <TableRow
+                  <tr
                     key={c.id}
                     className={cn(
+                      spyneComponentClasses.studioInventoryTableRow,
                       isBeBack && spyneComponentClasses.rowWarn,
                       isNewLead && "bg-spyne-primary-soft",
                     )}
                   >
-                    <TableCell>
-                      <div className="font-medium text-sm">{c.name}</div>
-                      <div className="text-[11px] text-muted-foreground">{c.phone}</div>
-                    </TableCell>
-                    <TableCell>
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
+                      <div className="font-semibold">{c.name}</div>
+                      <div className={spyneComponentClasses.studioInventoryTableCellMeta}>{c.phone}</div>
+                    </td>
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
                       <Badge variant="outline" className={cn("text-[11px]", sb.className)}>
                         {sb.label}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
                       <Badge variant="outline" className={cn("text-[11px]", srcb.className)}>
                         {srcb.label}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{c.assignedSalesperson}</TableCell>
-                    <TableCell>
+                    </td>
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>{c.assignedSalesperson}</td>
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
                       <div className="flex flex-col gap-0.5">
                         {c.vehicleInterests.length > 0
                           ? c.vehicleInterests.map((v) => (
@@ -187,42 +180,42 @@ export function CustomerTable() {
                             ))
                           : <span className="text-xs text-muted-foreground">—</span>}
                       </div>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    </td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "!text-xs text-muted-foreground")}>
                       {c.lastContactDate}
-                    </TableCell>
-                    <TableCell className="text-center text-sm font-medium">
+                    </td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-center font-medium")}>
                       {c.totalTouchpoints}
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
                       <div className="flex items-center justify-center gap-1.5">
                         <JourneyDot done={c.appointmentSet} label="Apt" />
                         <JourneyDot done={c.testDriveCompleted} label="TD" />
                         <JourneyDot done={c.creditAppSubmitted} label="CA" />
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
                       <p className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]">
                         {c.notes}
                       </p>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "!px-1")}>
                       <Button variant="ghost" size="icon" className="h-7 w-7">
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Button>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 )
               })}
               {filtered.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-8">
+                <tr>
+                  <td colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
                     No customers match your filters.
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               )}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
       </CardContent>
     </Card>

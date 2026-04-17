@@ -127,11 +127,25 @@ export function LotIssueBuckets() {
 
   return (
     <div className={cn(max2Classes.overviewPanelShell, max2Classes.overviewPanelShellAllowOverflow)}>
-      <div className={max2Classes.overviewPanelHeader}>
-        <p className={spyneComponentClasses.cardTitle}>Action Items</p>
-        <p className={max2Classes.overviewPanelDescription}>
-          Vehicles grouped by lot issue. Click a tab to review.
-        </p>
+      <div
+        className={cn(
+          max2Classes.overviewPanelHeader,
+          "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between",
+        )}
+      >
+        <div className="min-w-0 flex-1">
+          <p className={spyneComponentClasses.cardTitle}>Action Items</p>
+          <p className={max2Classes.overviewPanelDescription}>
+            Vehicles grouped by lot issue. Click a tab to review.
+          </p>
+        </div>
+        <Link
+          href={tab.href}
+          className="inline-flex shrink-0 items-center gap-1.5 self-start text-sm font-semibold text-spyne-primary no-underline hover:underline sm:self-auto"
+        >
+          View all vehicles
+          <MaterialSymbol name="arrow_forward" size={16} className="shrink-0 opacity-90" aria-hidden />
+        </Link>
       </div>
 
       <div>
@@ -213,13 +227,21 @@ export function LotIssueBuckets() {
           )}
 
           {hasMore && (
-            <div className={cn(max2Classes.overviewPanelFooterRow, "!border-t-0 flex justify-end")}>
+            <div
+              className={cn(
+                max2Classes.overviewPanelFooterRow,
+                "!border-t-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
+              )}
+            >
+              <p className="text-sm font-medium tabular-nums text-muted-foreground">
+                Showing {shown.length} of {matched.length} vehicles
+              </p>
               <Link
                 href={tab.href}
-                className="flex items-center gap-1.5 text-sm font-medium text-spyne-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-base font-semibold text-spyne-primary hover:underline sm:ml-auto"
               >
                 View all vehicles
-                <MaterialSymbol name="arrow_forward" size={14} />
+                <MaterialSymbol name="arrow_forward" size={18} className="shrink-0 opacity-90" aria-hidden />
               </Link>
             </div>
           )}
