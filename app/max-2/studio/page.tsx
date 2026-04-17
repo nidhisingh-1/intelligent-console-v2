@@ -7,6 +7,7 @@ import { MaterialSymbol } from "@/components/max-2/material-symbol"
 import { LotHoldingCostWidget } from "@/components/max-2/lot-view/lot-holding-cost-widget"
 import { HoldingCostSetupModals } from "@/components/max-2/lot-view/holding-cost-setup-modals"
 import { readPersistedHoldingStateBrowser } from "@/lib/holding-cost-config"
+import { isMax2HoldingCostPreviewButtonEnabled } from "@/lib/max-2-preview-tools"
 import { max2Classes, max2Layout, spyneComponentClasses } from "@/lib/design-system/max-2"
 import { cn } from "@/lib/utils"
 
@@ -59,9 +60,7 @@ export default function StudioPage() {
     setHoldingCostFteOpen(false)
   }, [])
 
-  const showHoldingCostDevButton =
-    process.env.NODE_ENV === "development" ||
-    process.env.NEXT_PUBLIC_SHOW_HOLDING_COST_DEV_BUTTON === "true"
+  const showHoldingCostDevButton = isMax2HoldingCostPreviewButtonEnabled()
 
   return (
     <div className={cn(max2Layout.pageStack)}>

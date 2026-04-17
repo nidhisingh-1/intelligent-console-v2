@@ -1087,11 +1087,25 @@ export function MerchandisingSummary() {
               "mt-0 grid grid-cols-1 gap-x-0 gap-y-0",
             )}
           >
-            <div className={max2Classes.overviewPanelHeader}>
-              <p className={spyneComponentClasses.cardTitle}>Action Items</p>
-              <p className={max2Classes.overviewPanelDescription}>
-                Vehicles grouped by media issue. Click a tab to review and fix.
-              </p>
+            <div
+              className={cn(
+                max2Classes.overviewPanelHeader,
+                "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between",
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                <p className={spyneComponentClasses.cardTitle}>Action Items</p>
+                <p className={max2Classes.overviewPanelDescription}>
+                  Vehicles grouped by media issue. Click a tab to review and fix.
+                </p>
+              </div>
+              <Link
+                href={tab.href}
+                className="inline-flex shrink-0 items-center gap-1.5 self-start text-sm font-semibold text-spyne-primary no-underline hover:underline sm:self-auto"
+              >
+                View all vehicles
+                <MaterialSymbol name="arrow_forward" size={16} className="shrink-0 opacity-90" aria-hidden />
+              </Link>
             </div>
             <Max2ActionTabStrip className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 !pt-0 !px-5 !pb-2">
               {tabDefs.map((t, i) => {
@@ -1120,28 +1134,6 @@ export function MerchandisingSummary() {
             </div>
 
             <div className="min-w-0">
-              {hasMore && (
-                <div
-                  className={cn(
-                    max2Classes.overviewPanelFooterRow,
-                    "!border-t-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2",
-                  )}
-                >
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    Showing 5 of {matched.length} vehicles
-                  </p>
-                  <Link
-                    href={tab.href}
-                    className={cn(
-                      merchandisingKpiHowToImproveClass,
-                      "sm:ml-auto text-primary",
-                    )}
-                  >
-                    View all vehicles
-                    <ChevronRight className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
-                  </Link>
-                </div>
-              )}
               <VehicleMediaTable
                 vehicles={shown}
                 showCheckboxes={false}
@@ -1154,6 +1146,25 @@ export function MerchandisingSummary() {
                       : "default"
                 }
               />
+              {hasMore && (
+                <div
+                  className={cn(
+                    max2Classes.overviewPanelFooterRow,
+                    "!border-t-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
+                  )}
+                >
+                  <p className="text-sm font-medium tabular-nums text-muted-foreground">
+                    Showing {shown.length} of {matched.length} vehicles
+                  </p>
+                  <Link
+                    href={tab.href}
+                    className="inline-flex items-center gap-1.5 text-base font-semibold text-spyne-primary hover:underline sm:ml-auto"
+                  >
+                    View all vehicles
+                    <MaterialSymbol name="arrow_forward" size={18} className="shrink-0 opacity-90" aria-hidden />
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         )

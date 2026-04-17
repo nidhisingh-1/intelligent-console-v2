@@ -4,9 +4,6 @@ import { mockRepairOrders } from "@/lib/max-2-mocks"
 import type { ROStatus } from "@/services/max-2/max-2.types"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { spyneComponentClasses } from "@/lib/design-system/max-2"
 import { AlertCircle, Clock } from "lucide-react"
@@ -46,59 +43,63 @@ export function RepairOrdersTable() {
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>RO #</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Vehicle</TableHead>
-              <TableHead>Advisor</TableHead>
-              <TableHead>Tech</TableHead>
-              <TableHead>Bay</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Promised</TableHead>
-              <TableHead className="text-right">Estimate</TableHead>
-              <TableHead>Complaints</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockRepairOrders.map((ro) => {
-              const status = statusConfig[ro.status]
-              return (
-                <TableRow key={ro.id} className={cn(ro.hasConcern && spyneComponentClasses.rowError)}>
-                  <TableCell className="font-mono text-xs font-semibold">
-                    <div className="flex items-center gap-1.5">
-                      {ro.roNumber}
-                      {ro.isWaiter && (
-                        <Clock className="h-3 w-3 text-spyne-warning" />
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium text-sm">{ro.customerName}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">
-                    {ro.vehicle}
-                  </TableCell>
-                  <TableCell className="text-xs">{ro.advisor}</TableCell>
-                  <TableCell className="text-xs">{ro.technician}</TableCell>
-                  <TableCell className="text-xs">{ro.bay ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={cn("text-xs", status.className)}>
-                      {ro.hasConcern && <AlertCircle className="h-3 w-3 mr-1" />}
-                      {status.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{ro.promisedTime}</TableCell>
-                  <TableCell className="text-right font-semibold">
-                    ${ro.totalEstimate.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground max-w-[200px]">
-                    {ro.complaints.join(", ")}
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className={spyneComponentClasses.studioInventoryTable}>
+            <thead>
+              <tr className={spyneComponentClasses.studioInventoryTableHeaderRow}>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>RO #</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Customer</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Vehicle</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Advisor</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Tech</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Bay</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Status</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Promised</th>
+                <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellRight)}>Estimate</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Complaints</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mockRepairOrders.map((ro) => {
+                const status = statusConfig[ro.status]
+                return (
+                  <tr key={ro.id} className={cn(spyneComponentClasses.studioInventoryTableRow, ro.hasConcern && spyneComponentClasses.rowError)}>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "!text-xs")}>
+                      <div className="flex items-center gap-1.5 font-mono font-semibold">
+                        {ro.roNumber}
+                        {ro.isWaiter && (
+                          <Clock className="h-3 w-3 text-spyne-warning" />
+                        )}
+                      </div>
+                    </td>
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
+                      <span className="font-semibold">{ro.customerName}</span>
+                    </td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "!text-xs text-muted-foreground max-w-[180px] truncate")}>
+                      {ro.vehicle}
+                    </td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "!text-xs")}>{ro.advisor}</td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "!text-xs")}>{ro.technician}</td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "!text-xs")}>{ro.bay ?? "—"}</td>
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
+                      <Badge variant="outline" className={cn("text-xs", status.className)}>
+                        {ro.hasConcern && <AlertCircle className="h-3 w-3 mr-1" />}
+                        {status.label}
+                      </Badge>
+                    </td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "!text-xs text-muted-foreground")}>{ro.promisedTime}</td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-right font-semibold")}>
+                      ${ro.totalEstimate.toLocaleString()}
+                    </td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "!text-xs text-muted-foreground max-w-[200px]")}>
+                      {ro.complaints.join(", ")}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </CardContent>
     </Card>
   )

@@ -440,7 +440,7 @@ function VehicleCellDownloadMediaControl({ v }: { v: MerchandisingVehicle }) {
           aria-disabled={!hasMedia}
           tabIndex={hasMedia ? 0 : -1}
           className={cn(
-            "absolute right-2.5 -top-1 z-[1] inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 pointer-events-none transition-opacity duration-150",
+            "-mt-1 z-[1] inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 pointer-events-none transition-opacity duration-150",
             "group-hover:pointer-events-auto group-hover:opacity-100",
             "focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-spyne-primary/30",
             hasMedia && "hover:bg-muted hover:text-spyne-text",
@@ -1202,10 +1202,14 @@ export function VehicleMediaTable({
                       showCheckboxes && spyneComponentClasses.studioInventoryTableVehicleColAfterCheckbox,
                     )}
                   >
-                    <div className="relative w-full min-w-0 pr-9">
-                      <div className={spyneComponentClasses.studioInventoryTableVehicleMediaRow}>
-                        <ImagePreviewCell v={v} />
-                        <div className="min-w-0 cursor-default text-start">
+                    <div
+                      className={cn(
+                        spyneComponentClasses.studioInventoryTableVehicleMediaRow,
+                        "w-full min-w-0",
+                      )}
+                    >
+                      <ImagePreviewCell v={v} />
+                      <div className="min-w-0 flex-1 cursor-default text-start">
                         <TooltipPrimitive.Root>
                           <TooltipPrimitive.Trigger asChild>
                             <div className="flex w-full min-w-0 cursor-default items-center justify-start gap-1 text-start">
@@ -1278,8 +1282,9 @@ export function VehicleMediaTable({
                           </p>
                         ) : null}
                       </div>
+                      <div className="shrink-0 self-start">
+                        <VehicleCellDownloadMediaControl v={v} />
                       </div>
-                      <VehicleCellDownloadMediaControl v={v} />
                     </div>
                   </td>
 

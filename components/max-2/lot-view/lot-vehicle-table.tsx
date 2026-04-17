@@ -89,18 +89,18 @@ export function LotVehicleTable() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className={spyneComponentClasses.studioInventoryTable}>
             <thead>
-              <tr className="border-b text-left">
-                <th className="pb-3 pr-4 text-xs font-semibold text-spyne-text whitespace-nowrap">Stock #</th>
-                <th className="pb-3 pr-4 text-xs font-semibold text-spyne-text">Vehicle</th>
-                <th className="pb-3 pr-4 text-xs font-semibold text-spyne-text">Color</th>
-                <th className="pb-3 pr-4 text-xs font-semibold text-spyne-text text-right">List Price</th>
-                <th className="pb-3 pr-4 text-xs font-semibold text-spyne-text text-right">Days</th>
-                <th className="pb-3 pr-4 text-xs font-semibold text-spyne-text whitespace-nowrap">Issue</th>
-                <th className="pb-3 pr-4 text-xs font-semibold text-spyne-text">Status</th>
-                <th className="pb-3 pr-4 text-xs font-semibold text-spyne-text text-right whitespace-nowrap">Holding Cost</th>
-                <th className="pb-3 text-xs font-semibold text-spyne-text whitespace-nowrap">Action</th>
+              <tr className={spyneComponentClasses.studioInventoryTableHeaderRow}>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Stock #</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Vehicle</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Color</th>
+                <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellRight)}>List Price</th>
+                <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellRight)}>Days</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Issue</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Status</th>
+                <th className={cn(spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellRight)}>Holding Cost</th>
+                <th className={spyneComponentClasses.studioInventoryTableHeadCell}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -112,46 +112,48 @@ export function LotVehicleTable() {
                 return (
                   <tr
                     key={v.vin}
-                    className="border-b last:border-0 border-spyne-border transition-colors hover:bg-muted/30"
+                    className={spyneComponentClasses.studioInventoryTableRow}
                   >
                     <td
                       className={cn(
-                        "py-3.5 pr-4 text-xs text-muted-foreground tabular-nums",
+                        spyneComponentClasses.studioInventoryTableCell,
+                        "!text-xs text-muted-foreground tabular-nums",
                         (isAged || issueAccent) && spyneComponentClasses.overviewIssueRowAccent,
                       )}
                     >
                       {v.stockNumber}
                     </td>
-                    <td className="py-3.5 pr-4 font-medium whitespace-nowrap">
-                      {v.year} {v.make} {v.model} {v.trim}
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
+                      <span className="font-semibold">{v.year} {v.make} {v.model} {v.trim}</span>
                     </td>
-                    <td className="py-3.5 pr-4 text-muted-foreground whitespace-nowrap">{v.color}</td>
-                    <td className="py-3.5 pr-4 text-right tabular-nums">{fmt$(v.listPrice)}</td>
-                    <td className={cn("py-3.5 pr-4 text-right tabular-nums font-semibold", isAged && "text-spyne-error")}>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-muted-foreground")}>{v.color}</td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-right tabular-nums")}>{fmt$(v.listPrice)}</td>
+                    <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-right tabular-nums font-semibold", isAged && "text-spyne-error")}>
                       {v.daysInStock}
                     </td>
-                    <td className="py-3.5 pr-4">
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
                       <span
                         className={cn(
                           "text-xs font-medium",
                           issue.tone === "danger" && "text-spyne-error",
-                          issue.tone === "warning" && "text-amber-800",
+                          issue.tone === "warning" && "text-spyne-warning-ink",
                           issue.tone === "neutral" && "text-muted-foreground",
                         )}
                       >
                         {issue.label}
                       </span>
                     </td>
-                    <td className="py-3.5 pr-4">
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
                       <SpyneLotStatusChip status={v.lotStatus} compact />
                     </td>
                     <td className={cn(
-                      "py-3.5 pr-4 text-right tabular-nums font-semibold",
+                      spyneComponentClasses.studioInventoryTableCell,
+                      "text-right tabular-nums font-semibold",
                       v.totalHoldingCost >= 2000 ? "text-spyne-error" : v.totalHoldingCost >= 1000 ? "text-spyne-text" : "text-muted-foreground",
                     )}>
                       {fmt$(v.totalHoldingCost)}
                     </td>
-                    <td className="py-3.5">
+                    <td className={spyneComponentClasses.studioInventoryTableCell}>
                       <MerchandisingInventoryActionCta
                         v={lotVehicleToMerchandising(v)}
                         size="md"
