@@ -1030,7 +1030,7 @@ export function VehicleMediaTable({
               {tableView === "lot-view" ? (
                 <>
                   {vehicleType === "all" && (
-                    <th className={cn("w-24", spyneComponentClasses.studioInventoryTableHeadCell)}>Type</th>
+                    <th className={cn("w-28", spyneComponentClasses.studioInventoryTableHeadCell, spyneComponentClasses.studioInventoryTableHeadCellRight)}>Gross Margin</th>
                   )}
                   <th
                     className={cn(
@@ -1287,6 +1287,11 @@ export function VehicleMediaTable({
                             {v.isNew ? "New" : "Pre-Owned"}
                           </p>
                         ) : null}
+                        {tableView === "lot-view" ? (
+                          <p className={cn("mt-1 text-xs font-medium", v.daysInStock >= 45 ? "text-spyne-info" : "text-spyne-warning-ink")}>
+                            {v.daysInStock >= 45 ? "Wholesale" : "Retail"}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="shrink-0 self-start">
                         <VehicleCellDownloadMediaControl v={v} />
@@ -1297,18 +1302,11 @@ export function VehicleMediaTable({
 
                   {tableView === "lot-view" ? (
                     <>
-                      {/* Lot View: Type */}
+                      {/* Lot View: Gross Margin */}
                       {vehicleType === "all" && (
-                        <td className={spyneComponentClasses.studioInventoryTableCell}>
-                          {v.daysInStock >= 45 ? (
-                            <span className={cn(spyneComponentClasses.badgePillInline, spyneComponentClasses.badgeInfo)}>
-                              Wholesale
-                            </span>
-                          ) : (
-                            <span className={cn(spyneComponentClasses.badgePillInline, spyneComponentClasses.badgeOrange)}>
-                              Retail
-                            </span>
-                          )}
+                        <td className={cn(spyneComponentClasses.studioInventoryTableCell, "text-right")}>
+                          <span className="text-sm font-semibold tabular-nums text-spyne-success">{formatPrice(estGross)}</span>
+                          <p className={cn("mt-0.5", spyneComponentClasses.studioInventoryTableCellMeta)}>est. gross</p>
                         </td>
                       )}
 
